@@ -1932,11 +1932,17 @@ class Component extends DCLogic {
     const len = e.sworb.length;
     this.sfxClick();
     this.setState(s => {
-      const slots = (s.sworbSlots || []).slice(); while (slots.length < len) slots.push('');
-      const idx = slots.findIndex(x => !x);
+      let slots = (s.sworbSlots || []).slice(); while (slots.length < len) slots.push('');
+      let colors = (s.sworbColors || []).slice();
+      // resuming after a miss: the first keystroke clears the soft YELLOW hints so you can
+      // freely OVERRIDE them (you lose that hint, by design). Locked GREENS stay put.
+      if (colors.some(x => x === 'yellow')) {
+        slots = slots.map((c, i) => colors[i] === 'green' ? c : '');
+        colors = colors.map(x => x === 'green' ? x : null);
+      }
+      const idx = slots.findIndex(x => !x); // first empty slot (green slots are filled → skipped)
       if (idx < 0) return {};
-      slots[idx] = ch;
-      const colors = (s.sworbColors || []).slice(); colors[idx] = null; // typing a slot drops its stale color
+      slots[idx] = ch; colors[idx] = null;
       return { sworbSlots: slots, sworbColors: colors.some(Boolean) ? colors : null };
     });
   }
@@ -1944,10 +1950,11 @@ class Component extends DCLogic {
     this.sfxClick();
     this.setState(s => {
       const slots = (s.sworbSlots || []).slice();
-      let idx = -1; for (let i = slots.length - 1; i >= 0; i--) { if (slots[i]) { idx = i; break; } }
+      const colors = (s.sworbColors || []).slice();
+      // clear the last filled slot — but never a locked GREEN (it's confirmed correct)
+      let idx = -1; for (let i = slots.length - 1; i >= 0; i--) { if (slots[i] && colors[i] !== 'green') { idx = i; break; } }
       if (idx < 0) return {};
-      slots[idx] = '';
-      const colors = (s.sworbColors || []).slice(); colors[idx] = null;
+      slots[idx] = ''; colors[idx] = null;
       return { sworbSlots: slots, sworbColors: colors.some(Boolean) ? colors : null };
     });
   }
