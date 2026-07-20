@@ -1421,6 +1421,15 @@ class Component extends DCLogic {
     this.applySize();
     // boot lands on HOME — the first deal happens when the player picks a mode
     this.loadDict();
+    // ...unless a live run survived a reload: rehydrate it NOW (paused, still on home) so
+    // home immediately shows the run's score + seven and PLAY reads RESUME. The board
+    // itself re-enters through the normal in-memory resume path when they tap PLAY.
+    try {
+      if (this.optVal('dailyMode', true)) {
+        const savedRun = this.loadRunState();
+        if (savedRun) this.restoreRun(savedRun, { atBoot: true });
+      }
+    } catch (e) {}
     this.loadHomeLb(); // home versus/champion card needs today's standings
     this.later(() => this.ensurePuzzlePar(), 800); // puzzle mode: tiers should be ready while the player is still on home (self-retries until the dict loads)
     if (window.__sworbleSoomerRaf) cancelAnimationFrame(window.__sworbleSoomerRaf);
@@ -2009,16 +2018,17 @@ class Component extends DCLogic {
   // and budget — and the SAME deterministic future (letter queue position + each seeded rng
   // stream fast-forwarded to its call count at save time). Any mismatch falls back to a
   // fresh deal; a restore must never produce a board a normal run couldn't reach.
-  restoreRun(run) {
+  restoreRun(run, o) {
+    const atBoot = !!(o && o.atBoot); // boot rehydrate: stay on home, paused — PLAY re-enters via the in-memory resume path
     // prologue mirrors newGame: nothing scheduled by a previous game may fire into this one
     this.timeouts.forEach(t => clearTimeout(t));
     this.timeouts = [];
     this.reloadTimer = null;
     this.dragging = false;
     this.dailyKey = SworbleCore.dayKey(new Date());
-    const stale = run.day !== this.dailyKey // midnight passed between home render and this tap
+    const stale = run.day !== this.dailyKey // midnight passed between save and restore
       || (run.cols != null && run.cols !== this.cols()) || (run.rows != null && run.rows !== this.rows());
-    if (stale) { this.clearRunState(); this.newGame(true); return; }
+    if (stale) { this.clearRunState(); if (!atBoot) this.newGame(true); return; }
     const seedN = SworbleCore.hashSeed(this.dailyKey);
     this.seedN = seedN;
     const ff = (seed, n) => { const f = mulberry32(seed); for (let i = 0; i < n; i++) f(); return f; };
@@ -2061,10 +2071,11 @@ class Component extends DCLogic {
     this._boardElapsedMs = run.boardElapsedMs || 0; this._boardTickAt = null;
     this.reloadAt = performance.now() + 800;
     const tiles = run.tiles.map(t => ({ ...t, spawn: false, dead: false, clearing: false }));
+    if (atBoot && this.pausedAt == null) this.pausedAt = performance.now(); // engine anchors freeze until PLAY, same as a manual visit home
     this.setState({
       nextFresh: false,
       dropStamp: (this.state.dropStamp || 0) + 1,
-      tiles, score: run.score, over: false, paused: false, guessesLeft: run.guessesLeft, tut: null,
+      tiles, score: run.score, over: false, paused: atBoot, guessesLeft: run.guessesLeft, tut: null,
       path: [], banner: null, streak: run.streak || 0, maxStreak: run.maxStreak || 0,
       scoreShown: run.score, bestLit: false, roundWords: run.roundWords || [], hopSwap: null, boom: null, rattle: 0, _tr: (this.timeRoll = 0),
       nextRow: (Array.isArray(run.nextRow) && run.nextRow.length === this.cols()) ? run.nextRow : this.genRow(),
@@ -4749,7 +4760,7 @@ class Component extends DCLogic {
         const palOf = (nm) => PALETTE[this.tileColorFor((String(nm || 'a')[0] || 'a').toLowerCase(), 0)] || PALETTE[0];
         const dk = this.isDark();
         const slotMap = { 0: { left: '84%', size: 58, rad: 14, font: 26, float: 'floatSlotA 6s ease-in-out infinite' }, 1: { left: '58%', size: 50, rad: 12, font: 22, float: 'floatSlotB 7.2s ease-in-out -1.2s infinite' }, 2: { left: '33%', size: 46, rad: 11, font: 20, float: 'floatSlotC 6.6s ease-in-out -2.4s infinite' } };
-        const youBelow = played && meName && !field.slice(0, 3).some(e => e.name === meName);
+        const youBelow = played && !field.slice(0, 3).some(e => meName && e.name === meName); // nameless players still get the YOU node below the podium
         const leftPct = youBelow ? { 0: '74%', 1: '52%', 2: '29%' } : { 0: '74%', 1: '44%', 2: '14%' };
         const xMap = youBelow ? { 0: 209, 1: 147, 2: 82 } : { 0: 209, 1: 124, 2: 39 };
         const sTop = field[0] ? field[0].score : 0, sBot = field[2] ? field[2].score : sTop;
@@ -4798,7 +4809,9 @@ class Component extends DCLogic {
         const homePodium = [buildCol(1), buildCol(0), buildCol(2)].filter(Boolean);
         const youOnPodium = meName && field.slice(0, 3).some(e => e.name === meName);
         const yp = palOf(meName);
-        const homeYouNode = (played && !youOnPodium && meName) ? { show: true, rank: '#' + fmt(rank), initial: (meName[0] || 'Y').toUpperCase(), name: 'YOU', score: fmt(bestT),
+        // YOU renders as soon as there's ANY score today — a name is only needed to join the
+        // podium fold-in (the leaderboard submit flow still asks for one at the right moment)
+        const homeYouNode = (played && !youOnPodium) ? { show: true, rank: '#' + fmt(rank), initial: (meName[0] || 'Y').toUpperCase(), name: 'YOU', score: fmt(bestT),
           segStyle: 'fill:none; stroke:color-mix(in srgb, ' + yp.bg + ' 88%, transparent); stroke-width:6; stroke-linecap:round; stroke-linejoin:round; filter:blur(2px);',
           slotStyle: 'position:absolute; left:12%; top:calc(62.50% - 20px); transform:translateX(-50%); width:76px; z-index:1; display:flex; flex-direction:column; align-items:center; gap:5px; animation:floatSlotB 7.6s ease-in-out -0.6s infinite;',
           blockStyle: 'position:relative; width:40px; height:40px; border-radius:11px; background:' + yp.bg + '; box-shadow:inset 0 -4px 0 ' + yp.edge + '; color:#1F1442; font-family:\'Fredoka\',\'Manrope\',sans-serif; font-size:18px; font-weight:600; display:flex; align-items:center; justify-content:center; padding-bottom:2px;',
@@ -5501,15 +5514,8 @@ class Component extends DCLogic {
           this.setState({ screen: 'game', paused: false });
           return;
         }
-        // RESUME after a reload: a saved snapshot restores the exact mid-run board (same
-        // score, words, and remaining budget) — the page dying is not a re-roll either.
-        const savedRun = this.loadRunState();
-        if (savedRun) {
-          const rOpts = { ...(this.state.opts || {}), dailyMode: true };
-          this.saveOpts(rOpts);
-          this.setState({ opts: rOpts, screen: 'game', paused: false }, () => this.restoreRun(savedRun));
-          return;
-        }
+        // (reload-resume happens at BOOT now — componentDidMount rehydrates the saved run
+        // into memory, so the in-memory branch above already covers the reload case)
         try { this._tutPending = this._tutForce || !LS.getItem(K.TUT_DONE); } catch (e) { this._tutPending = !!this._tutForce; } // first play ever (or dev replay): warm-up round
         this._tutForce = false;
         const opts = { ...(this.state.opts || {}), dailyMode: true };
