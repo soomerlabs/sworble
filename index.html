@@ -287,8 +287,7 @@
           <sc-for list="{{ cells }}" as="c" hint-placeholder-count="30">
             <div style="{{ c.style }}"></div>
           </sc-for>
-          <div key="{{ boardMorphKey }}" style="{{ boardMorphLayerStyle }}">
-          <sc-if value="{{ boardActive }}" hint-placeholder-val="{{ true }}">
+          <div style="{{ boardGameLayerStyle }}">
           <svg style="{{ trailSvgStyle }}">
             <sc-for list="{{ trailSegs }}" as="tsg" hint-placeholder-count="0">
               <path key="{{ tsg.key }}" d="{{ tsg.d }}" pathLength="1" style="{{ tsg.style }}"></path>
@@ -309,15 +308,14 @@
           <sc-if value="{{ ghostTip }}" hint-placeholder-val="{{ false }}">
             <div style="{{ ghostTipStyle }}">{{ ghostTipLetter }}</div>
           </sc-if>
-          </sc-if>
-          <sc-if value="{{ boardTyping }}" hint-placeholder-val="{{ false }}">
+          </div>
+          <sc-if value="{{ sworbKb.open }}" hint-placeholder-val="{{ false }}">
             <div style="{{ sworbKb.gameGridStyle }}">
               <sc-for list="{{ sworbKb.keys }}" as="k" hint-placeholder-count="28">
                 <div onClick="{{ k.onClick }}" style="{{ k.style }}" style-active="transform:translateY(3px) scale(0.93); filter:brightness(1.1)">{{ k.ch }}</div>
               </sc-for>
             </div>
           </sc-if>
-          </div>
         </div>
       </div>
       <sc-if value="{{ clueFan.show }}" hint-placeholder-val="{{ false }}">
@@ -6239,8 +6237,9 @@ class Component extends DCLogic {
         position: 'absolute', inset: 0, zIndex: 3, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', background: 'var(--card)', borderRadius: 16,
         opacity: st.stepperMode === 'sworb' ? 1 : 0,
+        filter: st.stepperMode === 'sworb' ? 'blur(0px)' : 'blur(6px)',
         pointerEvents: st.stepperMode === 'sworb' ? 'auto' : 'none',
-        transition: 'opacity 0.24s ease',
+        transition: 'opacity 0.24s ease, filter 0.24s ease',
       },
       // board morph layer: re-keyed on every active<->typing toggle so the swap animates
       // (scale+fade) in BOTH directions; the grid wells behind it stay put as the frame.
@@ -6290,8 +6289,12 @@ class Component extends DCLogic {
       ...(() => {
         const e = this.dailyEntry();
         const sw = this.dailyStatus().sworb;
-        const open = !!(st.sworbTyping && e && sw.active && !sw.solved && sw.guessesLeft > 0);
-        if (!open) return { sworbKb: { open: false, keys: [], gameGridStyle: { display: 'none' }, homeGridStyle: { display: 'none' } }, boardTyping: false, boardActive: true };
+        // Build the keys whenever a guess is LIVE (not only while typing) so the in-game
+        // keyboard layer is always mounted and can CROSSFADE both ways with the game tiles
+        // (its opacity/blur is driven by sworbTyping below — no remount, no jump).
+        const canGuess = !!(e && sw.active && !sw.solved && sw.guessesLeft > 0);
+        const typing = !!st.sworbTyping;
+        if (!canGuess) return { sworbKb: { open: false, keys: [], gameGridStyle: { display: 'none' }, homeGridStyle: { display: 'none' } }, boardTyping: false, boardActive: true };
         const dk = this.isDark();
         const s = st.tileSize, gp = this.gap(s), rad = Math.round(s * 0.2), lift = Math.max(3, Math.round(s * 0.08));
         const len = e.sworb.length;
@@ -6300,38 +6303,42 @@ class Component extends DCLogic {
         const mono = dk ? MONO_DARK : MONO;
         // the keyboard is NOT the mono play board — it lights up in true candy color (color is
         // earned on the game board; the keyboard is its own bright surface). Each letter takes a
-        // PALETTE hue; keys pop in on a stagger (keyPop) and press down on tap (style-active).
+        // PALETTE hue; keys press down on tap (style-active). Entrance is the blur crossfade.
         const keyBase = {
           width: '100%', height: '100%', boxSizing: 'border-box', borderRadius: rad,
           fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: Math.round(s * 0.5), fontWeight: 600,
           display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
           userSelect: 'none', WebkitUserSelect: 'none', WebkitTapHighlightColor: 'transparent', position: 'relative',
         };
-        const candy = (p, i) => Object.assign({}, keyBase, {
+        const candy = (p) => Object.assign({}, keyBase, {
           background: p.bg, color: '#1F1442',
           boxShadow: '0 ' + lift + 'px 0 ' + p.edge + ', inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -3px 4px rgba(0,0,0,0.08)',
-          animation: 'keyPop 0.32s cubic-bezier(0.34,1.56,0.64,1) ' + (i * 0.012).toFixed(3) + 's backwards',
         });
         const neutralShadow = dk
           ? '0 ' + lift + 'px 0 ' + mono.edge + ', inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -3px 4px rgba(0,0,0,0.28)'
           : '0 ' + lift + 'px 0 ' + mono.edge + ', inset 0 2px 0 rgba(255,255,255,0.8), inset 0 -3px 4px rgba(0,0,0,0.07)';
         const keys = [];
-        for (let i = 0; i < 26; i++) { const ch = String.fromCharCode(65 + i); keys.push({ k: 'kb' + ch, ch, style: candy(PALETTE[i % PALETTE.length], i), onClick: () => this.sworbKey(ch) }); }
-        keys.push({ k: 'kbBk', ch: 'backspace', style: Object.assign({}, keyBase, { gridColumn: 'span 2', background: mono.bg, boxShadow: neutralShadow, fontFamily: "'Material Symbols Rounded'", fontSize: Math.round(s * 0.44), fontWeight: 'normal', color: dk ? '#B8B4C2' : '#6B6775', fontFeatureSettings: "'liga'", WebkitFontFeatureSettings: "'liga'", animation: 'keyPop 0.32s cubic-bezier(0.34,1.56,0.64,1) 0.31s backwards' }), onClick: () => this.sworbBackspace() });
+        for (let i = 0; i < 26; i++) { const ch = String.fromCharCode(65 + i); keys.push({ k: 'kb' + ch, ch, style: candy(PALETTE[i % PALETTE.length]), onClick: () => this.sworbKey(ch) }); }
+        keys.push({ k: 'kbBk', ch: 'backspace', style: Object.assign({}, keyBase, { gridColumn: 'span 2', background: mono.bg, boxShadow: neutralShadow, fontFamily: "'Material Symbols Rounded'", fontSize: Math.round(s * 0.44), fontWeight: 'normal', color: dk ? '#B8B4C2' : '#6B6775', fontFeatureSettings: "'liga'", WebkitFontFeatureSettings: "'liga'" }), onClick: () => this.sworbBackspace() });
         keys.push({ k: 'kbGo', ch: full ? 'GUESS' : 'keyboard_return',
           style: full
             ? Object.assign({}, keyBase, { gridColumn: 'span 2', background: '#5FD6A8', boxShadow: '0 ' + lift + 'px 0 #38AD7F, inset 0 2px 0 rgba(255,255,255,0.6), inset 0 -3px 4px rgba(0,0,0,0.1)', color: '#1F1442', fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: Math.round(s * 0.3), fontWeight: 700, letterSpacing: '0.5px', animation: 'bestPop 0.4s ease-out' })
-            : Object.assign({}, keyBase, { gridColumn: 'span 2', background: mono.bg, boxShadow: neutralShadow, fontFamily: "'Material Symbols Rounded'", fontSize: Math.round(s * 0.44), fontWeight: 'normal', color: dk ? '#6E6E7A' : '#B4B0BE', fontFeatureSettings: "'liga'", WebkitFontFeatureSettings: "'liga'", animation: 'keyPop 0.32s cubic-bezier(0.34,1.56,0.64,1) 0.33s backwards' }),
+            : Object.assign({}, keyBase, { gridColumn: 'span 2', background: mono.bg, boxShadow: neutralShadow, fontFamily: "'Material Symbols Rounded'", fontSize: Math.round(s * 0.44), fontWeight: 'normal', color: dk ? '#6E6E7A' : '#B4B0BE', fontFeatureSettings: "'liga'", WebkitFontFeatureSettings: "'liga'" }),
           onClick: () => this.sworbSubmit() });
         return {
           sworbKb: {
             open: true, keys,
-            gameGridStyle: { position: 'absolute', inset: 0, zIndex: 5, display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gridTemplateRows: 'repeat(6,1fr)', gap: gp },
+            // the keyboard grid IS the crossfade layer: visible+sharp+interactive while typing,
+            // transparent+blurred+inert otherwise. The game-tile layer does the mirror.
+            gameGridStyle: { position: 'absolute', inset: 0, zIndex: 5, display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gridTemplateRows: 'repeat(6,1fr)', gap: gp, opacity: typing ? 1 : 0, filter: typing ? 'blur(0px)' : 'blur(9px)', pointerEvents: typing ? 'auto' : 'none', transition: 'opacity 0.28s ease, filter 0.28s ease' },
             homeGridStyle: { display: 'grid', gridTemplateColumns: 'repeat(5,' + s + 'px)', gridAutoRows: s + 'px', gap: gp, justifyContent: 'center', margin: '0 auto' },
           },
-          boardTyping: true, boardActive: false,
+          boardTyping: typing, boardActive: !typing,
         };
       })(),
+      // the game-tile layer crossfades opposite the keyboard: sharp/opaque in play, blurred/
+      // faded while typing. Both layers stay mounted so the swap animates BOTH ways (no jump).
+      boardGameLayerStyle: { position: 'absolute', inset: 0, opacity: st.sworbTyping ? 0 : 1, filter: st.sworbTyping ? 'blur(9px)' : 'blur(0px)', pointerEvents: st.sworbTyping ? 'none' : 'auto', transition: 'opacity 0.28s ease, filter 0.28s ease' },
       cancelSworb: () => { this.sfxClick(); this.closeModal(); },
       closeSworb: () => { this.sfxClick(); this.closeModal(); },
       // re-key the input's wrapper on every wrong guess so shakeX (which doesn't restart on an
