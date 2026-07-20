@@ -148,6 +148,7 @@
     }
   }
   function boot(runtime, doc = document) {
+    runtime.seedHelmet();
     const parsed = parseDcDocument(doc);
     if (!parsed) return null;
     const React = getReact();
@@ -1300,6 +1301,23 @@
   function createHelmetManager(doc, isStreaming) {
     const mounted = /* @__PURE__ */ new Set();
     const live = /* @__PURE__ */ new Map();
+    /** Scripts inside a raw in-document <x-dc> template were ALREADY executed by the
+     *  document parser — re-injecting them into <head> would evaluate each module a
+     *  second time, silently resetting any configured module state. Seeding the dedupe
+     *  set with them means helmet only injects scripts the parser never ran (canvas /
+     *  string-template modes, where the template was never live in the document).
+     *  Called again from boot(): the manager is usually created while support.js parses
+     *  in <head>, BEFORE the body's <x-dc> exists — boot() re-seeds while the raw
+     *  template is in the document and about to be replaced. */
+    function seedExecuted() {
+      try {
+        for (const s of doc.querySelectorAll("x-dc script")) {
+          mounted.add("SCRIPT|" + (s.getAttribute("src") || s.textContent || ""));
+        }
+      } catch {
+      }
+    }
+    seedExecuted();
     let designDocMode = null;
     let canvasStyleEl = null;
     let appTheme = "light";
@@ -1425,7 +1443,7 @@
         return null;
       };
     }
-    return { compile, setDesignDocMode };
+    return { compile, setDesignDocMode, seedExecuted };
   }
 
   // src/pseudo.ts
@@ -1718,6 +1736,7 @@
         return r.tpl && r.tpl.__annotated || null;
       },
       templateSource: (name) => registry.get(name).html || null,
+      seedHelmet: () => helmet.seedExecuted(),
       StreamableLogic
     };
   }
