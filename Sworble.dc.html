@@ -3547,6 +3547,7 @@ class Component extends DCLogic {
         added.push(t);
       }
     }
+    this._placeCluesInRefill(added); // sworb: broken clues re-enter as fresh drops (assign clue letters to the NEW tiles only — never mutate settled tiles)
     if (added.length) this.scrubTiles(this.liveTiles().filter(t => !t.clearing).concat(added), new Set(added.map(t => t.id)), this._eggIds);
     if (!added.length) { this.ensureWordExists(); return; }
     this.bestLen = null; this._bestSol = null; // board composition changed — best-word target re-solves lazily
@@ -3571,24 +3572,28 @@ class Component extends DCLogic {
       this.enqueue(lastLandMs, () => this.sfxThud());
       this.later(() => { this.ensureWordExists(); this.syncMines(); }, lastLandMs + 200);
     }, 30);
-    this.later(() => this._persistClues(), 60);
   }
 
-  // sworb day: after a settle, re-stamp any unfound clue whose path play broke so every
-  // clue stays findable across the falling board (pure math delegated to SworbleSeed).
-  _persistClues() {
+  // sworb day: as the board REFILLS, place any un-found clue that play has broken into the
+  // NEW incoming tiles (never touch settled tiles — a tile already on the board must never
+  // change its letter). reseedBroken picks a connected path among the spawning cells; we
+  // assign those new tiles their clue letters. A clue not placeable this refill (too few
+  // fresh cells) is restored on a later one. Deterministic per (seed, moves) → fair for all.
+  _placeCluesInRefill(added) {
     const e = this.dailyEntry();
-    if (!e || this.state.over) return;
+    if (!e || this.state.over || !added || !added.length) return;
     let found = []; try { found = JSON.parse(LS.getItem(K.FOUND_PREFIX + this.dailyKey) || '[]'); } catch (err) {}
     const unfound = e.clues.filter(w => found.indexOf(w) < 0);
     if (!unfound.length) return;
-    const live = this.liveTiles().filter(t => !t.clearing && !t.dead);
-    const isFindable = (w) => !!SworbleSolver.findWord(live, { word: w, expand: SworbleCore.expandLetter, diag: this.diag() });
-    const rng = mulberry32((SworbleCore.hashSeed(this.dailyKey + '|persist') ^ (this.tileSeq * 2654435761)) >>> 0);
-    const changes = SworbleSeed.reseedBroken({ tiles: live, unfound, isFindable, rng, reserve: new Set() });
+    // a clue only needs restoring when it's NOT findable on the settled survivors
+    const settled = this.liveTiles().filter(t => !t.clearing && !t.dead);
+    const isFindable = (w) => !!SworbleSolver.findWord(settled, { word: w, expand: SworbleCore.expandLetter, diag: this.diag() });
+    const rng = mulberry32((SworbleCore.hashSeed(this.dailyKey + '|refill') ^ (this.tileSeq * 2654435761)) >>> 0);
+    // stamp broken clues onto the INCOMING tiles' cells only
+    const changes = SworbleSeed.reseedBroken({ tiles: added, unfound, isFindable, rng, reserve: new Set() });
     if (!changes.length) return;
-    const byCell = {}; changes.forEach(ch => { byCell[ch.r + ',' + ch.c] = ch.letter; });
-    this.setState(s => ({ tiles: s.tiles.map(t => (byCell[t.row + ',' + t.col] != null && !t.clearing) ? { ...t, letter: byCell[t.row + ',' + t.col] } : t) }));
+    const byCell = {}; added.forEach(t => { byCell[t.row + ',' + t.col] = t; });
+    changes.forEach(ch => { const t = byCell[ch.r + ',' + ch.c]; if (t) t.letter = ch.letter; });
   }
 
   // first adjacent identical-letter pair on the settled board — the idle stack-coach target
