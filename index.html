@@ -1984,7 +1984,12 @@ class Component extends DCLogic {
         if (ok) { placed = cand; this._cluePaths = cand.cluePaths; }
         else { reverts.forEach(([t, l]) => { t.letter = l; }); } // revert, retry with next seed
       }
-      if (placed) { try { LS.setItem(K.TARGETS_PREFIX + this.dailyKey, JSON.stringify(_entry.clues)); } catch (e) {} }
+      if (placed) {
+        // clue tiles must be INDISTINGUISHABLE from normal tiles — recolor each to match its
+        // new letter (v2 colors encode letter class; a stale color is an accidental "clue tell")
+        Object.keys(placed.letters).forEach(k => { const [r, cc] = k.split(',').map(Number); const t = byCell[r + ',' + cc]; if (t) t.color = this.tileColorFor(t.letter, t.id); });
+        try { LS.setItem(K.TARGETS_PREFIX + this.dailyKey, JSON.stringify(_entry.clues)); } catch (e) {}
+      }
     }
     this.scrubTiles(tiles, null, this._eggIds); // opening board: everything is fresh, scrub freely
     // snapshot the opening board (post-scrub) for the "words you missed" recap
@@ -3593,7 +3598,7 @@ class Component extends DCLogic {
     const changes = SworbleSeed.reseedBroken({ tiles: added, unfound, isFindable, rng, reserve: new Set() });
     if (!changes.length) return;
     const byCell = {}; added.forEach(t => { byCell[t.row + ',' + t.col] = t; });
-    changes.forEach(ch => { const t = byCell[ch.r + ',' + ch.c]; if (t) t.letter = ch.letter; });
+    changes.forEach(ch => { const t = byCell[ch.r + ',' + ch.c]; if (t) { t.letter = ch.letter; t.color = this.tileColorFor(t.letter, t.id); } }); // recolor so re-stamped clue tiles blend in (no color "tell")
   }
 
   // first adjacent identical-letter pair on the settled board — the idle stack-coach target
