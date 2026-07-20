@@ -232,6 +232,21 @@
 
     <div style="{{ colStyle }}" onPointerDown="{{ onGameDismissDown }}" onPointerUp="{{ onGameDismissUp }}">
       <div style="{{ gameMorphStyle }}">
+      <sc-if value="{{ sworbGuess.active }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; align-items:center; justify-content:center; gap:9px; margin-bottom:11px;">
+          <div key="{{ sworbGuess.shakeKey }}" style="{{ sworbGuess.wrapStyle }}">
+            <div style="position:relative; display:flex; gap:5px; justify-content:center;">
+              <sc-for list="{{ sworbGuess.blocks }}" as="b" hint-placeholder-count="5">
+                <div style="{{ b.style }}">{{ b.ch }}</div>
+              </sc-for>
+              <input value="{{ sworbInput }}" onInput="{{ onSworbInput }}" onKeyDown="{{ onSworbKey }}" maxLength="{{ sworbGuess.maxLen }}" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" style="{{ sworbGuess.overlayInputStyle }}" />
+            </div>
+          </div>
+          <sc-if value="{{ sworbGuess.full }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ submitSworb }}" style="flex:none; background:#8971FF; color:#FFFFFF; border:none; border-radius:10px; padding:8px 15px; font-size:12px; font-weight:800; font-family:inherit; letter-spacing:0.5px; cursor:pointer; box-shadow:0 3px 0 #5A43C9;">GUESS</button>
+          </sc-if>
+        </div>
+      </sc-if>
       <div style="display:flex; align-items:stretch; gap:10px; width:100%; box-sizing:border-box;">
         <div style="{{ headerPanelStyle }}">
           <div style="flex:1; min-width:0; position:relative;">
@@ -265,9 +280,6 @@
         </div>
       </div>
 
-      <sc-if value="{{ sworbCanGuessShow }}" hint-placeholder-val="{{ false }}">
-        <button onClick="{{ openSworbModal }}" style="{{ sworbGuessBtnStyle }}">GUESS THE SWORB</button>
-      </sc-if>
 
       <div style="{{ hopperCardStyle }}">
         <div key="{{ msgKey }}" ref="{{ hopperMsgRef }}" style="{{ hopperMsgStyle }}">{{ bannerEl }}</div>
@@ -1264,7 +1276,7 @@ class Component extends DCLogic {
       scoreShown: 0, bestLit: false, roundWords: [],
       nextFresh: false, muted, opts, activeModal: null, modalStack: [], contentFading: false, heightAnim: false, modalW: 320, modalFromHome: false,
       lbData: null, homeLb: null, nameInput: '', nameError: '', sheetH: 0,
-      sworbInput: '', sworbShake: 0, clueGlowIds: null, // sworb-of-the-day guess sheet + clue-find tile glow (UI-only)
+      sworbInput: '', sworbShake: 0, sworbColors: null, clueGlowIds: null, // sworb guess: current typed letters, wrong-guess shake counter, last-guess Wordle colors (UI-only)
       screen: 'home',
       dictNote: 'loading dictionary\u2026',
       tileSize: this.initialSize(props), vw: window.innerWidth,
@@ -1838,11 +1850,25 @@ class Component extends DCLogic {
   // clears the field either way, and shakes (via sworbShake, a bump counter so repeated
   // wrong guesses re-key the wrapper and always restart the CSS animation) on a miss.
   doGuessSworb() {
-    const raw = (this.state.sworbInput || '').trim();
-    if (!raw) return;
+    const e = this.dailyEntry();
+    const raw = (this.state.sworbInput || '').trim().toLowerCase().replace(/[^a-z]/g, '');
+    if (!raw || !e) return;
+    // the guess must be the full length of the sworb (the blocks show how many) — a short
+    // guess just nudges (shake) rather than burning one of your three guesses
+    if (raw.length !== e.sworb.length) { this.setState(s => ({ sworbShake: (s.sworbShake || 0) + 1 })); return; }
+    const colors = SworbleDaily.scoreGuess(raw, e.sworb); // Wordle green/yellow/gray for the blocks
     const res = this.guessSworb(raw);
-    if (!res || !res.ok) return; // no sworb today, or guesses already exhausted
-    this.setState(s => ({ sworbInput: '', sworbShake: res.correct ? (s.sworbShake || 0) : (s.sworbShake || 0) + 1 }));
+    if (!res || !res.ok) return; // no sworb, or already solved / out of guesses
+    if (res.correct) {
+      // all green — hold the win colors; the bar retires on its own (sworb.solved → inactive)
+      this.setState({ sworbColors: colors });
+      try { this.sfxWin ? this.sfxWin() : this.sfxOver(); } catch (x) {}
+    } else {
+      // show the hint colors, then clear the row for the next guess + shake
+      this.setState({ sworbColors: colors });
+      try { this.sfxBad(); } catch (x) {}
+      this.later(() => this.setState(s => ({ sworbInput: '', sworbColors: null, sworbShake: (s.sworbShake || 0) + 1 })), 1300);
+    }
   }
 
   // never ACCEPT slurs as playable words, even when a source dictionary has them
@@ -6025,6 +6051,39 @@ class Component extends DCLogic {
       onSworbInput: (e) => this.setState({ sworbInput: e.target.value }),
       onSworbKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.doGuessSworb(); } },
       submitSworb: () => this.doGuessSworb(),
+      // ---- SWORB guess BLOCKS (inline Wordle): the shared block-row for in-game + home.
+      // Empty by default; typing fills the blocks; on submit they color green/yellow/gray.
+      // A transparent input sits over the row — tapping it raises the keyboard.
+      sworbGuess: (() => {
+        const sw = this.dailyStatus().sworb;
+        const e = this.dailyEntry();
+        const off = { active: false, blocks: [], full: false, maxLen: 0, guessesLine: '', shakeKey: 'sg0', wrapStyle: { display: 'none' }, overlayInputStyle: { display: 'none' } };
+        if (!e || !sw.active || sw.solved || sw.guessesLeft <= 0) return off;
+        const len = e.sworb.length;
+        const input = (st.sworbInput || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, len);
+        const colors = st.sworbColors, dk = this.isDark();
+        const blocks = [];
+        for (let i = 0; i < len; i++) {
+          const ch = input[i] || '';
+          const col = colors ? colors[i] : null;
+          let bg, edge, ink;
+          if (col === 'green') { bg = '#5FD6A8'; edge = '#38AD7F'; ink = '#1F1442'; }
+          else if (col === 'yellow') { bg = '#F5B84A'; edge = '#CE9022'; ink = '#1F1442'; }
+          else if (col === 'gray') { bg = dk ? '#3A3A44' : '#C8C4D2'; edge = dk ? '#26262E' : '#A9A5B3'; ink = dk ? '#8A8A96' : '#6B6775'; }
+          else if (ch) { bg = dk ? '#42424F' : '#EAE8F0'; edge = dk ? '#22222A' : '#C8C4D2'; ink = dk ? '#FFFFFF' : '#1F1442'; }
+          else { bg = null; edge = null; ink = 'var(--ghost)'; }
+          const box = 'flex:none; width:38px; height:42px; box-sizing:border-box; border-radius:10px; display:flex; align-items:center; justify-content:center; font-family:\'Fredoka\',\'Manrope\',sans-serif; font-size:21px; font-weight:600; color:' + ink + ';';
+          const skin = bg ? ('background:' + bg + '; box-shadow:inset 0 -3px 0 ' + edge + ';') : 'background:transparent; border:2px dashed var(--line);';
+          blocks.push({ k: 'sg' + i, ch, style: box + skin });
+        }
+        return {
+          active: true, blocks, full: input.length === len, maxLen: len,
+          guessesLine: sw.guessesLeft + ' guess' + (sw.guessesLeft === 1 ? '' : 'es') + ' left',
+          shakeKey: 'sg' + (st.sworbShake || 0),
+          wrapStyle: { display: 'inline-block', animation: (st.sworbShake || 0) > 0 ? 'shakeX 0.4s ease-out' : 'none' },
+          overlayInputStyle: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, border: 'none', background: 'transparent', color: 'transparent', cursor: 'pointer', fontSize: 16, caretColor: 'transparent', textAlign: 'center' },
+        };
+      })(),
       cancelSworb: () => { this.sfxClick(); this.closeModal(); },
       closeSworb: () => { this.sfxClick(); this.closeModal(); },
       // re-key the input's wrapper on every wrong guess so shakeX (which doesn't restart on an
