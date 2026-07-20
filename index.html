@@ -3223,11 +3223,9 @@ class Component extends DCLogic {
       const _e = this.dailyEntry();
       if (_e && SworbleDaily.isClue(word, _e)) {
         pts = Math.round(pts * 1.5); // +50% clue bonus
-        try {
-          const fk = K.FOUND_PREFIX + (this.dailyKey || this.dayKey(new Date()));
-          const found = JSON.parse(LS.getItem(fk) || '[]');
-          if (found.indexOf(word.toLowerCase()) < 0) { found.push(word.toLowerCase()); LS.setItem(fk, JSON.stringify(found)); }
-        } catch (e) {}
+        // found-tracking is owned by checkTargetCatch (clues ARE the targets on a sworb day),
+        // which runs after this commit and fires the "n/total" catch pill — do NOT write the
+        // found list here, or that pill sees the word already collected and never fires.
         this._clueJustFound = word.toLowerCase(); // surfaces read this for the glow (Task 10)
       }
       const nextRoundWords = (s.roundWords || []).concat({ word, pts, colors: wordColors, best: bestHit });
