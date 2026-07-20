@@ -3666,7 +3666,11 @@ class Component extends DCLogic {
     const e = this.dailyEntry();
     if (!e || this.state.over || !added || !added.length) return;
     let found = []; try { found = JSON.parse(LS.getItem(K.FOUND_PREFIX + this.dailyKey) || '[]'); } catch (err) {}
-    const unfound = e.clues.filter(w => found.indexOf(w) < 0);
+    // NEVER re-place a clue the player just SPELLED this run — roundWords is written
+    // synchronously at commit, so it can't lose the race against the found-list write the
+    // way FOUND_PREFIX can. Without this, spelling a clue makes it fall right back onto the board.
+    const playedThisRun = new Set((this.state.roundWords || []).map(w => (w.word || '').toLowerCase()));
+    const unfound = e.clues.filter(w => found.indexOf(w) < 0 && !playedThisRun.has(w));
     if (!unfound.length) return;
     // a clue only needs restoring when it's NOT findable on the settled survivors
     const settled = this.liveTiles().filter(t => !t.clearing && !t.dead);
@@ -3845,7 +3849,7 @@ class Component extends DCLogic {
     if (found.indexOf(w) >= 0) return null; // already collected today
     found.push(w);
     try { LS.setItem(fkey, JSON.stringify(found)); } catch (e) {}
-    return { n: targets.filter(t => found.indexOf(t) >= 0).length, total: targets.length };
+    return { n: targets.filter(t => found.indexOf(t) >= 0).length, total: targets.length, isClue: !!this.dailyEntry() };
   }
 
   // --- daily streak + 7-day history (local only, derived from sworble_daily_* keys) ---
@@ -4604,7 +4608,7 @@ class Component extends DCLogic {
         key: 'b' + b.key,
         style: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, maxWidth: '100%', boxSizing: 'border-box', padding: '0 10px' }, // NO wrapper fade — it dipped the solid pending chips to 0 (the flash); gray is continuous, color chips own their landing
       },
-        h('div', { key: 'cg', style: { whiteSpace: 'nowrap', fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 9.5, fontWeight: 700, letterSpacing: 1, color: '#F5B84A', background: 'rgba(245,184,74,0.16)', borderRadius: 999, padding: '2px 9px' } }, '\u2605 TOP WORD ' + b.caught.n + '/' + b.caught.total),
+        h('div', { key: 'cg', style: { whiteSpace: 'nowrap', fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 9.5, fontWeight: 700, letterSpacing: 1, color: '#F5B84A', background: 'rgba(245,184,74,0.16)', borderRadius: 999, padding: '2px 9px' } }, (b.caught.isClue ? '\u2605 CLUE ' : '\u2605 TOP WORD ') + b.caught.n + '/' + b.caught.total),
         wordRow
       );
     }
