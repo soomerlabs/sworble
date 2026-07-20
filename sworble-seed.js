@@ -53,7 +53,24 @@
     return null;
   }
 
-  var API = { stampWord: stampWord, _shuffle: shuffle };
+  // Place multiple clues on disjoint self-avoiding paths. Returns { letters, cluePaths } or null if any
+  // clue can't be placed. `letters` is "r,c" -> letter. `cluePaths` is { word: [{r,c}] }.
+  function seedClueLetters(opts) {
+    var clues = opts.clues || [], cols = opts.cols, rows = opts.rows, rng = opts.rng;
+    var cells = [];
+    for (var c = 0; c < cols; c++) for (var r = 0; r < rows; r++) cells.push({ r: r, c: c });
+    var avoid = new Set(), letters = {}, cluePaths = {};
+    for (var i = 0; i < clues.length; i++) {
+      var w = String(clues[i]).toLowerCase();
+      var path = stampWord(cells, { word: w, rng: rng, avoid: avoid });
+      if (!path) return null;
+      cluePaths[w] = path.map(function (p) { return { r: p.r, c: p.c }; });
+      for (var j = 0; j < path.length; j++) { var k = path[j].r + ',' + path[j].c; letters[k] = path[j].letter; avoid.add(k); }
+    }
+    return { letters: letters, cluePaths: cluePaths };
+  }
+
+  var API = { stampWord: stampWord, seedClueLetters: seedClueLetters, _shuffle: shuffle };
   root.SworbleSeed = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

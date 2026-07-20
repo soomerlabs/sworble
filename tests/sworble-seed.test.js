@@ -37,3 +37,23 @@ function adjacent(a, b) { return Math.max(Math.abs(a.r - b.r), Math.abs(a.c - b.
   assert.strictEqual(Seed.stampWord(only3, { word: 'coral', rng: Core.mulberry32(1) }), null);
 }
 console.log('sworble-seed: stampWord passed');
+
+// seedClueLetters places multiple clues on disjoint cells
+{
+  const out = Seed.seedClueLetters({ clues: ['tide', 'coral', 'wave', 'reef', 'salt'], cols: 5, rows: 6, rng: Core.mulberry32(Core.hashSeed('2026-07-21')) });
+  assert.ok(out, '5 short clues fit on 5x6');
+  const occupied = Object.keys(out.letters);
+  const wordLen = 'tide'.length + 'coral'.length + 'wave'.length + 'reef'.length + 'salt'.length;
+  assert.strictEqual(occupied.length, wordLen, 'clues occupy disjoint cells (no overlap)');
+  assert.strictEqual(new Set(occupied).size, occupied.length, 'no cell shared between clues');
+  for (const w of ['tide', 'coral', 'wave', 'reef', 'salt']) {
+    assert.strictEqual(out.cluePaths[w].map(p => out.letters[p.r + ',' + p.c]).join(''), w, w + ' letters land on its path');
+  }
+  // deterministic
+  const out2 = Seed.seedClueLetters({ clues: ['tide', 'coral', 'wave', 'reef', 'salt'], cols: 5, rows: 6, rng: Core.mulberry32(Core.hashSeed('2026-07-21')) });
+  assert.deepStrictEqual(out.cluePaths, out2.cluePaths, 'same seed -> same placement');
+  // over-packed -> null (six 5-letter words = 30 cells, no room for disjoint self-avoiding paths in practice)
+  const tooMany = Seed.seedClueLetters({ clues: ['aaaaa','bbbbb','ccccc','ddddd','eeeee','fffff','ggggg'], cols: 5, rows: 6, rng: Core.mulberry32(1) });
+  assert.strictEqual(tooMany, null, 'impossible pack -> null so caller reseeds/rejects');
+}
+console.log('sworble-seed: seedClueLetters passed');
