@@ -1387,9 +1387,7 @@ class Component extends DCLogic {
         this.timeLeftV = v;
         this.setState({ timeLeft: v });
       } else if (k === 'parGuesses') {
-        // new budget = new par (the bot re-sims) and a fresh run if one is live
-        try { LS.removeItem(K.PUZZLE_PAR_PREFIX + (this.dailyKey || this.dayKey(new Date()))); } catch (e) {}
-        this.ensurePuzzlePar();
+        // new budget = a fresh run if one is live
         if (this.state.screen === 'game' && !this.state.over && this.puzzleOn()) this.newGame(true);
         else this.setState({ guessesLeft: v });
       }
@@ -1421,8 +1419,6 @@ class Component extends DCLogic {
     window.addEventListener('scroll', this._scrollPin, { passive: true });
     if (window.visualViewport) window.visualViewport.addEventListener('resize', this._scrollPin);
     window.addEventListener('focusout', () => setTimeout(this._scrollPin, 60)); // snap back once the keyboard closes
-    // par home countdown ("NEW BOARD IN 6H 12M") ticks while idling on home
-    this._parClock = setInterval(() => { if (this.state.screen === 'home' && this.puzzleOn()) this.forceUpdate(); }, 30000);
     // claim ownership: if a stale instance survives a hot-reload, its clock and
     // sounds are killed here so nothing ever runs (or plays audio) doubled
     window.__sworbleSoomerLive = this;
@@ -1441,7 +1437,6 @@ class Component extends DCLogic {
       }
     } catch (e) {}
     this.loadHomeLb(); // home versus/champion card needs today's standings
-    this.later(() => this.ensurePuzzlePar(), 800); // puzzle mode: tiers should be ready while the player is still on home (self-retries until the dict loads)
     if (window.__sworbleSoomerRaf) cancelAnimationFrame(window.__sworbleSoomerRaf);
     const loop = (now) => {
       if (window.__sworbleSoomerLive === this) this.frame(now);
@@ -1546,7 +1541,6 @@ class Component extends DCLogic {
 
   componentWillUnmount() {
     this._unlockScroll();
-    if (this._parClock) clearInterval(this._parClock);
     if (window.__sworbleSoomerLive === this) window.__sworbleSoomerLive = null;
     if (this.raf) cancelAnimationFrame(this.raf);
     clearInterval(this.interval);
@@ -1947,7 +1941,6 @@ class Component extends DCLogic {
     // snapshot the opening board (post-scrub) for the "words you missed" recap
     this.openingSnapshot = tiles.map(t => ({ letter: t.letter, row: t.row, col: t.col }));
     this.ensureDailyTargets(); // compute + cache today's top-5 collectible words (once/day, deferred)
-    this.ensurePuzzlePar(); // puzzle mode: bot plays today's board headlessly to set the tiers (once/day, deferred)
     requestAnimationFrame(() => requestAnimationFrame(() => {
       this.sfxIntro(tiles.length);
       // release: drop the intro hold so every tile springs from scale(0) to full
@@ -2123,7 +2116,6 @@ class Component extends DCLogic {
     this.feverUntil = 0;
     this.openingSnapshot = run.openingSnapshot || null; // "words you missed" recap survives the reload
     this.ensureDailyTargets();
-    this.ensurePuzzlePar();
     this.lastActiveAt = performance.now() + 1500;
     this.idleTipN = 0;
     this._worbLast = performance.now();
@@ -2263,7 +2255,6 @@ class Component extends DCLogic {
         const best = this.mergeDailySeven(this.state.roundWords, this.state.score);
         this._tb = best; this._tbKey = this.dailyKey; // header's "today's best" stays fresh
         try { LS.setItem(K.DONE_PREFIX + (this.dailyKey || this.dayKey(new Date())), '1'); } catch (e) {} // one run per day: this run locks today's daily (Practice is unaffected)
-        try { const par = this.puzzlePar(); if (par && par.bot > 0) LS.setItem(K.EFF_PREFIX + this.dailyKey, String(Math.max(1, Math.min(100, Math.round((best / par.bot) * 100))))); } catch (e) {} // efficiency vs the bot's optimal — feeds the season IQ
         try { LS.setItem(K.TIME_PREFIX + (this.dailyKey || this.dayKey(new Date())), String(this._timeOnBoard || 0)); } catch (e) {} // seconds actively on the board this run (freezes when you leave the board)
       } catch (e) {}
     }
@@ -3670,222 +3661,6 @@ class Component extends DCLogic {
     }, 400);
   }
 
-  // ===== Puzzle-mode par: the bot plays today's exact board headlessly =====
-  // Same seed streams, same letter queue, same scrub, same scoring rules. Its score
-  // anchors the day's Bronze/Silver/Gold tiers, its word list powers "bot's top find".
-  // Runs once per day (deferred, ~200-600ms), cached in sworble_puzzle_par_<day>.
-  ensurePuzzlePar() {
-    if (!this.puzzleOn() || !this.optVal('dailyMode', true)) return;
-    const day = this.dailyKey || this.dayKey(new Date());
-    try { const c = JSON.parse(LS.getItem(K.PUZZLE_PAR_PREFIX + day) || 'null'); if (c && c.v === 6 && c.g === this.parGuesses()) return; } catch (e) {}
-    if (this._parBusy) return;
-    if (!this.dict || !this.commonDict) { this.later(() => this.ensurePuzzlePar(), 1200); return; }
-    this._parBusy = true;
-    setTimeout(() => {
-      try {
-        const res = this.simDaily(day);
-        if (res && res.score > 0) {
-          const r50 = v => Math.max(50, Math.round(v / 50) * 50);
-          LS.setItem(K.PUZZLE_PAR_PREFIX + day, JSON.stringify({
-            v: 6, g: this.parGuesses(), bot: res.score, // v6: bombs CUT from board + shared dealer (concurrent dup cap, vowel trim)
-            bronze: r50(res.score * 0.25), silver: r50(res.score * 0.45), gold: r50(res.score * 0.70),
-            words: res.words.sort((a, b) => b.pts - a.pts).slice(0, 8),
-          }));
-          this.forceUpdate();
-        }
-      } catch (e) {}
-      this._parBusy = false;
-    }, 250);
-  }
-  puzzlePar() {
-    if (!this.puzzleOn() || !this.optVal('dailyMode', true)) return null;
-    try { const c = JSON.parse(LS.getItem(K.PUZZLE_PAR_PREFIX + (this.dailyKey || this.dayKey(new Date()))) || 'null'); return (c && c.v === 6 && c.g === this.parGuesses()) ? c : null; } catch (e) { return null; }
-  }
-  // The headless engine: replays newGame's daily setup from the seed, then a greedy
-  // bot commits the best-scoring findable word each turn on a word-time budget.
-  // Mirrors: dealLetter/smartLetter, refillBoard's column-major bottom-up deal,
-  // removeAndSettle's gravity pack, clearWord's scoring (lm/sm/fever/best/mine),
-  // puzzle bombs (arm-after-2-words, fuse 6, −40 self-detonation), profanity scrub.
-  simDaily(day) {
-    const seedN = SworbleCore.hashSeed(day);
-    const rand = mulberry32(seedN);
-    const mineRand = mulberry32((seedN ^ 0x0B0B5EED) >>> 0);
-    const qr = mulberry32(seedN ^ 0x51AC1E);
-    const queue = shuffledBag(FRIENDLY, qr).concat(shuffledBag(BAG, qr), shuffledBag(BAG, qr), shuffledBag(BAG, qr));
-    const rows = this.rows(), cols = this.cols();
-    const sim = { qi: 0, juice: 0, words: 0, seq: 1 };
-    const deal = (neighbors, boardLetters) => { // SHARED dealer — identical code to the live game, so par can't drift
-      const dealer = { queue, qi: sim.qi, juice: sim.juice, words: sim.words, rand };
-      const L = dealFromQueue(dealer, { neighbors, boardLetters });
-      sim.qi = dealer.qi; sim.juice = dealer.juice;
-      return L;
-    };
-    let tiles = [];
-    const dealt = {};
-    for (let c = 0; c < cols; c++) {
-      for (let i = 0; i < rows; i++) { // v2: startRows = rows (grid always full)
-        const L = deal([dealt[(c - 1) + ',' + i], dealt[c + ',' + (i - 1)]], Object.values(dealt));
-        dealt[c + ',' + i] = L;
-        tiles.push({ id: sim.seq++, letter: L, row: rows - 1 - i, col: c });
-      }
-    }
-    try { this.scrubTiles(tiles, null, null); } catch (e) {}
-    const dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-    const lm = n => n >= 7 ? 6 : n === 6 ? 4 : n === 5 ? 2.5 : n === 4 ? 1.5 : 1;
-    const sMult = k => Math.min(2, 1 + Math.floor(k / 3) * 0.5);
-    const val = t => (VALUES[t.letter] || 1);
-    const settleRefill = () => { // mirrors removeAndSettle's pack + refillBoard's deal order
-      const fresh = [], newIds = new Set();
-      const boardLetters = tiles.filter(t => !t.dead && !t.clearing).map(t => t.letter); // whole-board dup cap, mirror of the game
-      for (let c = 0; c < cols; c++) {
-        const colLive = tiles.filter(t => t.col === c).sort((a, b) => b.row - a.row);
-        colLive.forEach((t, i) => { t.row = rows - 1 - i; });
-        const missing = rows - colLive.length;
-        const top = colLive[colLive.length - 1];
-        let prevL = top ? top.letter : null;
-        for (let i = missing - 1; i >= 0; i--) {
-          const L = deal([prevL], boardLetters); boardLetters.push(L); prevL = L;
-          const t = { id: sim.seq++, letter: L, row: i, col: c };
-          newIds.add(t.id); fresh.push(t);
-        }
-      }
-      tiles = tiles.concat(fresh);
-      try { this.scrubTiles(tiles, newIds, null); } catch (e) {}
-    };
-    const syncSimMines = (found) => { // mirrors mineQuota escalation + treasure anchoring exactly
-      const armed = tiles.filter(t => t.mine);
-      const rem = budget - words.length;
-      const want = 0; // BOMBS CUT from the board — par sims a no-bomb game (mirror of mineQuota). Escalation kept in history: rem <= 3 ? 4 : rem <= 9 ? 3 : 2
-      let cand = tiles.filter(t => !t.mine).sort((a, b) => a.row - b.row || a.col - b.col);
-      let placed = false;
-      // B′ MULTI-BEACON mirror: rank findable words by score, mark each distinct top word's
-      // canonical first letter (min-index start) — same rule as the game's topWordStarts, so
-      // the daily bomb map is identical for player and bot.
-      const idx = t => t.row * 100 + t.col;
-      const byWord = {};
-      for (const f of found) {
-        if (!f.path || f.path.length < 4) continue;
-        const valSum = f.path.reduce((a, t) => a + (VALUES[t.letter] || 1), 0);
-        const pts = Math.round(valSum * f.path.length * this.lenMult(f.path.length));
-        const start = f.path[0];
-        const cur = byWord[f.word];
-        if (!cur || pts > cur.pts || (pts === cur.pts && idx(start) < idx(cur.start))) byWord[f.word] = { pts, start };
-      }
-      const startTiles = Object.values(byWord).sort((a, b) => b.pts - a.pts).slice(0, want).map(r => r.start);
-      for (const stt of startTiles) { // fill open slots with beacons
-        if (tiles.filter(t => t.mine).length >= want) break;
-        if (stt.mine) continue;
-        stt.mine = true; cand = cand.filter(t => t !== stt); placed = true;
-      }
-      // quota full but a top word unmarked: relocate a decoy (mirror of the game)
-      if (tiles.filter(t => t.mine).length >= want) {
-        const startSet = new Set(startTiles);
-        let decoys = tiles.filter(t => t.mine && !startSet.has(t));
-        for (const stt of startTiles) { if (stt.mine || !decoys.length) continue; const mover = decoys.pop(); mover.mine = false; stt.mine = true; placed = true; }
-      }
-      if (tiles.filter(t => t.mine).length >= want) return placed;
-      let pool = cand.filter(t => t.row > 0 && t.row < rows - 1 && t.col > 0 && t.col < cols - 1);
-      if (!pool.length) pool = cand;
-      for (let k = tiles.filter(t => t.mine).length; k < want && pool.length; k++) {
-        const pick = pool.splice(Math.floor(mineRand() * pool.length), 1)[0];
-        pick.mine = true; placed = true; // hidden always — no fuse, no buried flag
-      }
-      return placed;
-    };
-    const enumerate = () => { // all findable common-tier words (≤6 tiles, like solveLongest's CAP)
-      const dict = this.commonDict;
-      const avail = {};
-      for (const t of tiles) for (const ch of this.expandLetter(t.letter)) avail[ch] = (avail[ch] || 0) + 1;
-      const cand = [];
-      for (const w of dict) {
-        if (w.length < 3 || w.length > 7) continue;
-        const need = {}; let ok = true;
-        for (const ch of w) { need[ch] = (need[ch] || 0) + 1; if (need[ch] > (avail[ch] || 0)) { ok = false; break; } }
-        if (ok) cand.push(w);
-      }
-      if (!cand.length) return { found: [], maxLen: 0 };
-      const cset = new Set(cand), pref = new Set();
-      for (const w of cand) for (let i = 1; i <= w.length; i++) pref.add(w.slice(0, i));
-      const grid = {};
-      for (const t of tiles) grid[t.row + ',' + t.col] = t;
-      const found = []; let budget = 60000; let maxLen = 0;
-      const dfs = (t, path, str) => {
-        if (--budget < 0) return;
-        const s2 = str + this.expandLetter(t.letter);
-        if (!pref.has(s2)) return;
-        const p2 = path.concat(t);
-        if (p2.length >= 3 && cset.has(s2)) {
-          if (!(p2.length <= 3 && p2.some(x => x.mine))) { // the bot NEVER fizzles: no ≤3 word through a hidden bomb
-            found.push({ word: s2, path: p2 });
-            if (p2.length > maxLen) maxLen = p2.length;
-          }
-        }
-        if (p2.length >= 6) return;
-        for (const [dr, dc] of dirs) {
-          const n = grid[(t.row + dr) + ',' + (t.col + dc)];
-          if (n && p2.indexOf(n) < 0) dfs(n, p2, s2);
-        }
-      };
-      for (const t of tiles) dfs(t, [], '');
-      return { found, maxLen };
-    };
-    const budget = this.parGuesses(); // the bot spends the same guess budget as the player
-    let score = 0, streak = 0, bombRun = 0, bestRun = 0, feverLeft = 0, attempts = 0;
-    const words = [];
-    let guard = 200;
-    while (words.length < budget && --guard > 0) {
-      // STRONG HUMAN, not exploit machine: every 6th attempt is a miss (resets
-      // streak AND the bomb chain, exactly like a real miss — free, like the real rule)
-      attempts += 1;
-      if (attempts % 6 === 0) { streak = 0; bombRun = 0; continue; }
-      let { found, maxLen } = enumerate();
-      if (syncSimMines(found)) ({ found, maxLen } = enumerate()); // fresh mines re-gate ≤3 words — enumerate again
-      if (!found.length) { // mirror ensureWordExists, seeded: permute letters in place
-        const letters = tiles.map(t => t.letter);
-        for (let i = letters.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); const sw = letters[i]; letters[i] = letters[j]; letters[j] = sw; }
-        tiles.forEach((t, i) => { t.letter = letters[i]; });
-        ({ found, maxLen } = enumerate());
-        if (!found.length) break;
-      }
-      let best = null;
-      for (const f of found) { // exact clearWord math for this state
-        const n = f.path.length;
-        const base = f.path.reduce((a, t) => a + val(t), 0) * n;
-        const sm = sMult(streak + 1);
-        const fever = feverLeft > 0 ? 1 : 0;
-        const bestHit = maxLen >= 4 && n >= maxLen;
-        const runNext = bestHit ? Math.min(bestRun + 1, 5) : 0;
-        const bestBonus = bestHit ? Math.round(base * lm(n) * sm * 0.2 * runNext) : 0;
-        const mineT = f.path.find(t => t.mine); // any word through a hidden bomb triggers it (the bot only ever picks 4+, filtered above)
-        let mineBonus = 0, blast = [];
-        if (mineT && n >= 4) {
-          const inWord = new Set(f.path);
-          const r0 = n >= 6 ? 2 : 1;
-          blast = tiles.filter(t => !inWord.has(t) && Math.abs(t.row - mineT.row) <= r0 && Math.abs(t.col - mineT.col) <= r0);
-          if (blast.length < 2) {
-            for (let rr = r0 + 1; rr <= r0 + 2 && blast.length < 2; rr++) {
-              blast = tiles.filter(t => !inWord.has(t) && !t.mine && Math.abs(t.row - mineT.row) <= rr && Math.abs(t.col - mineT.col) <= rr);
-            }
-          }
-          const chainMult = 1 + 0.5 * bombRun;
-          mineBonus = Math.round((blast.reduce((a, t) => a + val(t), 0) + val(mineT)) * 2 * lm(n) * sm * chainMult);
-        }
-        const pts = Math.round(base * lm(n) * (sm + fever)) + bestBonus + mineBonus;
-        if (!best || pts > best.pts) best = { ...f, n, pts, bestHit, mineT: mineT && n >= 4 ? mineT : null, blast };
-      }
-      score += best.pts;
-      words.push({ word: best.word, pts: best.pts });
-      streak += 1; sim.words += 1;
-      bestRun = best.bestHit ? Math.min(bestRun + 1, 5) : (maxLen >= 4 ? 0 : bestRun);
-      if (best.mineT) { bombRun += 1; feverLeft = 2; sim.juice = best.n + best.blast.length; }
-      else if (feverLeft > 0) feverLeft -= 1;
-      const gone = new Set(best.path.concat(best.blast || []));
-      tiles = tiles.filter(t => !gone.has(t));
-      settleRefill(); // hidden-bomb model: nothing surfaces, no fuse burns in the sim either
-    }
-    return { score, words };
-  }
-
   // A committed word matching an un-caught target: record it and return {n,total} for the
   // banner pill. Returns null when it isn't a fresh catch (so the pill stays hidden).
   checkTargetCatch(word) {
@@ -3943,13 +3718,9 @@ class Component extends DCLogic {
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
     const n = Math.min(pool.length, 16 + Math.floor(rnd() * 12));
     const entries = [];
-    // puzzle scores run on a higher scale than classic — anchor the stub field to the
-    // day's bot par so standings read realistically instead of everyone topping it
-    const par = this.puzzleOn() ? this.puzzlePar() : null;
     for (let i = 0; i < n; i++) {
       let sc;
-      if (par && par.bot) sc = Math.round(par.bot * (0.28 + Math.pow(rnd(), 1.5) * 0.5));
-      else if (this.puzzleOn()) sc = Math.round(1200 + Math.pow(rnd(), 1.7) * 3200);
+      if (this.puzzleOn()) sc = Math.round(1200 + Math.pow(rnd(), 1.7) * 3200);
       else sc = Math.round(250 + Math.pow(rnd(), 1.8) * 1600);
       entries.push({ name: pool[i], score: sc });
     }
@@ -4137,18 +3908,7 @@ class Component extends DCLogic {
   prepareRecap() {
     try {
       const played = new Set((this.state.roundWords || []).map(w => (w.word || '').toLowerCase()));
-      let missed;
-      if (this.puzzleOn()) {
-        // puzzle mode teaches from the BOT's own run of today's board: the words it
-        // scored that you didn't. The #1 is showcased as "bot's top find", so this
-        // lists the next few (falls back to an opening-board solve if par isn't cached).
-        const par = this.puzzlePar();
-        const notPlayed = ((par && par.words) || []).filter(w => !played.has((w.word || '').toLowerCase()));
-        const rest = notPlayed.slice(1, 4);
-        missed = rest.length ? rest : (notPlayed.length ? notPlayed.slice(0, 3) : this.topWords(this.openingSnapshot, 3, [...played]));
-      } else {
-        missed = this.topWords(this.openingSnapshot, 3, [...played]);
-      }
+      const missed = this.topWords(this.openingSnapshot, 3, [...played]);
       this.setState({ missedWords: missed });
     } catch (e) { this.setState({ missedWords: [] }); }
     this.shareBlob = null;
@@ -4686,9 +4446,7 @@ class Component extends DCLogic {
 
   overParVals(st, dailyOn) { // Par experience: end-of-round verdict, ± gauge, rank card (replaces the old tier system)
         const puz = this.puzzleOn();
-        const par = puz ? this.puzzlePar() : null;
-        const parV = par ? par.gold : null; // "par" = the day's target (the 70%-of-bot number, now shown as one score to beat)
-        if (!puz || !dailyOn || !parV) return { parOverShow: false, classicOverShow: true, tierRailShow: false, overTierShow: false, botFindShow: false, homePuzzleShow: false };
+        if (!puz || !dailyOn) return { parOverShow: false, classicOverShow: true, tierRailShow: false, overTierShow: false, botFindShow: false, homePuzzleShow: false };
         const sc = st.score || 0;
         const fmt = n => Math.round(n).toLocaleString();
         // RESULT LADDER (canvas: Result Flow 1a-1d) — vs yourself first; podium/big-dawg
@@ -4714,10 +4472,9 @@ class Component extends DCLogic {
           : 'best';
         const perfect = !!this._lastRunPerfect && sc > 0; // 15/15 best words — outranks every headline
         const heads = { dawg: 'today\u2019s board is yours', podium: 'you made the board!', best: 'new best run!', under: 'under your best' };
-        const dT = sc - parV;
         const lastRun = ctx.lastRuns.length ? ctx.lastRuns[ctx.lastRuns.length - 1] : 0;
         let chip, good, flat = false;
-        if (firstRun) { good = dT >= 0; flat = !good; chip = good ? 'beat today\u2019s target' : ('target ' + fmt(parV)); } // just state the target — no "short of" math-speak
+        if (firstRun) { good = true; chip = total > 1 ? ('you\u2019re #' + fmt(rank) + ' of ' + fmt(total)) : 'you\u2019re on the board'; }
         else if (tier === 'under') { good = false; chip = fmt(ctx.prevBest - sc) + ' off your best'; }
         else if (tier === 'podium') { good = true; chip = 'new best run' + (rb - rank > 0 ? ' \u00b7 \u25b2 ' + (rb - rank) + ' spot' + (rb - rank === 1 ? '' : 's') : ''); }
         else if (tier === 'dawg') { good = true; chip = 'new best run'; }
@@ -5275,7 +5032,6 @@ class Component extends DCLogic {
         try { const f = ((st.homeLb && st.homeLb.entries) || this.lbStub(day).entries || []); for (const e of f) if (e.score > bench) bench = e.score; } catch (e) {}
         try { const me = JSON.parse(LS.getItem(K.LB_ME_PREFIX + this.lbBoardId(day)) || 'null'); if (me && me.score > bench) bench = me.score; } catch (e) {}
         try { const pb = Number(LS.getItem(K.PUZZLE_BEST_PREFIX + day) || 0) || 0; if (pb > bench) bench = pb; } catch (e) {}
-        if (!bench) { try { const par = this.puzzlePar(); if (par && par.gold) bench = par.gold; } catch (e) {} }
         const mine = (st.screen === 'game') && bench > 0 && (st.score || 0) >= bench;
         return {
           topText: bench > 0 ? Math.max(bench, st.score || 0).toLocaleString() : '\u2014',
