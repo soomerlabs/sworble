@@ -100,4 +100,25 @@ function st(over) { return S.dailyStatus(Object.assign({}, BASE, over)); }
   assert.strictEqual(S.dailyStatus(null).played, false);
 }
 
+// --- sworb block -------------------------------------------------------------------
+{
+  const entry = { sworb: 'ocean', clues: ['tide','coral','wave','reef','salt'] };
+  const base = { done:false, storedDailyBest:0, storedSeven:null, puzzleBest:0, lbMe:null, savedRun:null, live:{active:false,over:false,roundWords:[],tilesCount:0} };
+  const off = S.dailyStatus(base).sworb;
+  assert.deepStrictEqual(off, { active: false }, 'no sworb src -> inactive');
+  const on = S.dailyStatus(Object.assign({}, base, { sworb: { entry, cluesFound: ['tide','wave'], guessesUsed: 1, solved: false } })).sworb;
+  assert.strictEqual(on.active, true);
+  assert.strictEqual(on.total, 5);
+  assert.strictEqual(on.foundCount, 2);
+  assert.strictEqual(on.guessesLeft, 2);
+  assert.strictEqual(on.solved, false);
+  assert.strictEqual(on.canGuess, true);
+  const solved = S.dailyStatus(Object.assign({}, base, { sworb: { entry, cluesFound: ['tide'], guessesUsed: 1, solved: true } })).sworb;
+  assert.strictEqual(solved.canGuess, false, 'solved -> cannot guess');
+  const spent = S.dailyStatus(Object.assign({}, base, { sworb: { entry, cluesFound: [], guessesUsed: 3, solved: false } })).sworb;
+  assert.strictEqual(spent.guessesLeft, 0);
+  assert.strictEqual(spent.canGuess, false, 'no guesses left -> cannot guess');
+}
+console.log('sworble-status: sworb block passed');
+
 console.log('sworble-status: all tests passed');

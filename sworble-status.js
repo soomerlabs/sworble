@@ -66,11 +66,22 @@
     const resumable = !s.done && (
       !!(live.active && !live.over && num(live.tilesCount)) || !!s.savedRun
     );
+    var sw = s.sworb;
+    var sworb;
+    if (!sw || !sw.entry) { sworb = { active: false }; }
+    else {
+      var total = sw.entry.clues.length;
+      var foundCount = Array.isArray(sw.cluesFound) ? sw.cluesFound.length : 0;
+      var guessesLeft = Math.max(0, 3 - (num(sw.guessesUsed) || 0));
+      var solved = !!sw.solved;
+      sworb = { active: true, total: total, foundCount: foundCount, guessesLeft: guessesLeft, solved: solved, canGuess: !solved && guessesLeft > 0 };
+    }
     return {
       played: bestToday > 0,
       bestToday,
       seven: { words: seven.words, total: seven.total, live: !!sevenLive },
       resumable,
+      sworb: sworb,
     };
   }
 
