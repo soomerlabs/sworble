@@ -38,6 +38,10 @@
     @keyframes bannerIn { 0% { transform: translateY(14px) scale(0.7); opacity: 0; } 60% { transform: translateY(-3px) scale(1.05); } 100% { transform: translateY(0) scale(1); opacity: 1; } }
     @keyframes shakeX { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
     @keyframes sworbFlip { 0% { transform: perspective(700px) rotateX(-88deg); opacity: 0; } 55% { transform: perspective(700px) rotateX(12deg); opacity: 1; } 100% { transform: perspective(700px) rotateX(0deg); opacity: 1; } }
+    @keyframes clueBob { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-5px) rotate(1.6deg); } }
+    @keyframes boardMorph { 0% { opacity: 0; } 100% { opacity: 1; } }
+    @keyframes keyPop { 0% { transform: scale(0.35); opacity: 0; } 70% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+    @keyframes clueLand { 0% { transform: scale(0.3) rotate(-12deg); opacity: 0; } 60% { transform: scale(1.12) rotate(4deg); } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
     @keyframes confettiUp { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(-64px) rotate(260deg); opacity: 0; } }
     @keyframes conIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes wbStateIn { from { opacity: 0; filter: blur(7px); transform: translateY(4px); } to { opacity: 1; filter: blur(0); transform: none; } }
@@ -263,8 +267,8 @@
       <div style="{{ hopperCardStyle }}" onClick="{{ flipStepper }}">
         <div key="{{ msgKey }}" ref="{{ hopperMsgRef }}" style="{{ hopperMsgStyle }}">{{ bannerEl }}</div>
         <div style="{{ payBadgeStyle }}"><span style="{{ payMultStyle }}">{{ payMult }}</span><span style="{{ payPtsStyle }}">{{ payPts }}</span></div>
-        <sc-if value="{{ stepperSworb }}" hint-placeholder-val="{{ false }}">
-          <div key="{{ sworbFlipKey }}" style="{{ stepperSworbFaceStyle }}">
+        <sc-if value="{{ isSworbDay }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ stepperSworbFaceStyle }}">
             <div key="{{ sworbGuess.shakeKey }}" style="{{ sworbGuess.wrapStyle }}">
               <div style="display:flex; gap:5px; justify-content:center;">
                 <sc-for list="{{ sworbGuess.blocks }}" as="b" hint-placeholder-count="5">
@@ -274,8 +278,6 @@
             </div>
             <div style="{{ sworbGuess.captionStyle }}">{{ sworbGuess.caption }}</div>
           </div>
-        </sc-if>
-        <sc-if value="{{ isSworbDay }}" hint-placeholder-val="{{ false }}">
           <div style="{{ stepperHintStyle }}">{{ stepperHintGlyph }}</div>
         </sc-if>
       </div>
@@ -285,6 +287,7 @@
           <sc-for list="{{ cells }}" as="c" hint-placeholder-count="30">
             <div style="{{ c.style }}"></div>
           </sc-for>
+          <div key="{{ boardMorphKey }}" style="{{ boardMorphLayerStyle }}">
           <sc-if value="{{ boardActive }}" hint-placeholder-val="{{ true }}">
           <svg style="{{ trailSvgStyle }}">
             <sc-for list="{{ trailSegs }}" as="tsg" hint-placeholder-count="0">
@@ -310,12 +313,20 @@
           <sc-if value="{{ boardTyping }}" hint-placeholder-val="{{ false }}">
             <div style="{{ sworbKb.gameGridStyle }}">
               <sc-for list="{{ sworbKb.keys }}" as="k" hint-placeholder-count="28">
-                <div onClick="{{ k.onClick }}" style="{{ k.style }}">{{ k.ch }}</div>
+                <div onClick="{{ k.onClick }}" style="{{ k.style }}" style-active="transform:translateY(3px) scale(0.93); filter:brightness(1.1)">{{ k.ch }}</div>
               </sc-for>
             </div>
           </sc-if>
+          </div>
         </div>
       </div>
+      <sc-if value="{{ clueFan.show }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ clueFan.wrapStyle }}">
+          <sc-for list="{{ clueFan.tokens }}" as="cf" hint-placeholder-count="5">
+            <div style="{{ cf.wrapStyle }}"><div style="{{ cf.bobStyle }}"><div style="{{ cf.innerStyle }}">{{ cf.word }}</div></div></div>
+          </sc-for>
+        </div>
+      </sc-if>
       </div>
 
     </div>
@@ -457,19 +468,24 @@
                     </sc-if>
                     </div>
                     <sc-if value="{{ homeSworb.active }}" hint-placeholder-val="{{ false }}">
-                      <div style="display:flex; align-items:center; justify-content:space-between; background:var(--card); border-radius:12px; padding:9px 13px; margin-top:2px;">
-                        <div style="display:flex; flex-direction:column; gap:1px;">
+                      <div style="{{ homeSworb.cardStyle }}">
+                        <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
                           <div style="font-size:9px; font-weight:800; letter-spacing:1.5px; color:var(--ghost);">SWORB OF THE DAY</div>
-                          <sc-if value="{{ homeSworb.solved }}" hint-placeholder-val="{{ false }}">
-                            <div style="font-size:15px; font-weight:800; letter-spacing:1px; color:#5FD6A8; text-transform:uppercase;">{{ homeSworb.word }}</div>
-                          </sc-if>
-                          <sc-if value="{{ homeSworb.notSolved }}" hint-placeholder-val="{{ true }}">
-                            <div style="font-size:13px; font-weight:700; color:var(--sheet-sub);">{{ homeSworb.progressText }}</div>
-                          </sc-if>
+                          <div style="{{ homeSworb.tagStyle }}">{{ homeSworb.tag }}</div>
                         </div>
-                        <sc-if value="{{ homeSworb.solved }}" hint-placeholder-val="{{ false }}">
-                          <div style="font-size:13px; font-weight:800; color:#F5B84A;">{{ homeSworb.bonusText }}</div>
+                        <div onClick="{{ openSworbHome }}" style="{{ homeSworb.blocksWrapStyle }}">
+                          <sc-for list="{{ sworbGuess.blocks }}" as="b" hint-placeholder-count="5">
+                            <div style="{{ b.style }}">{{ b.ch }}</div>
+                          </sc-for>
+                        </div>
+                        <sc-if value="{{ homeKbShow }}" hint-placeholder-val="{{ false }}">
+                          <div style="{{ sworbKb.homeGridStyle }}">
+                            <sc-for list="{{ sworbKb.keys }}" as="k" hint-placeholder-count="28">
+                              <div onClick="{{ k.onClick }}" style="{{ k.style }}" style-active="transform:translateY(3px) scale(0.93); filter:brightness(1.1)">{{ k.ch }}</div>
+                            </sc-for>
+                          </div>
                         </sc-if>
+                        <div style="{{ homeSworb.hintStyle }}">{{ homeSworb.hint }}</div>
                       </div>
                     </sc-if>
                     <button onClick="{{ openLb }}" style="width:100%; box-sizing:border-box; background:transparent; border:none; padding:0; font-family:inherit; cursor:pointer; text-align:left; display:flex; flex-direction:column; gap:11px; margin-top:2px; -webkit-tap-highlight-color:transparent; outline:none;">
@@ -1281,6 +1297,7 @@ class Component extends DCLogic {
       lbData: null, homeLb: null, nameInput: '', nameError: '', sheetH: 0,
       sworbInput: '', sworbShake: 0, sworbColors: null, clueGlowIds: null, // sworb guess: current typed letters, wrong-guess shake counter, last-guess Wordle colors (UI-only)
       stepperMode: 'play', sworbTyping: false, sworbWin: false, sworbFlipKey: 0, // stepper flip (play<->sworb), board-morph keyboard open, win-flash, flip-anim rekey
+      sworbSlots: [], // position-addressable guess slots (Wordle-persistence: green/yellow letters stay after a miss)
       screen: 'home',
       dictNote: 'loading dictionary\u2026',
       tileSize: this.initialSize(props), vw: window.innerWidth,
@@ -1892,54 +1909,76 @@ class Component extends DCLogic {
       return {
         stepperMode: toSworb ? 'sworb' : 'play',
         sworbTyping: typing,
-        sworbInput: '', sworbColors: null, sworbShake: 0, sworbWin: false,
+        sworbSlots: [], sworbColors: null, sworbShake: 0, sworbWin: false,
         sworbFlipKey: (s.sworbFlipKey || 0) + 1,
         path: [], // drop any half-drawn word when the board leaves play mode
       };
     });
   }
-  // tap an A-Z key: append a letter (up to the sworb length), clearing any prior colors
+  // HOME: tapping the sworb hero blocks raises/lowers the same A-Z tile keyboard inline
+  // (no board to morph on home, so the keyboard renders under the blocks). Solved/locked
+  // days just show their state — nothing to type.
+  openSworbHome() {
+    const e = this.dailyEntry(); if (!e) return;
+    const sw = this.dailyStatus().sworb;
+    if (!sw.active || sw.solved || sw.guessesLeft <= 0) return;
+    this.sfxClick();
+    this.setState(s => ({ sworbTyping: !s.sworbTyping, sworbSlots: s.sworbTyping ? s.sworbSlots : [], sworbColors: null, sworbShake: 0 }));
+  }
+  // tap an A-Z key: drop the letter into the first empty slot (Wordle-persistence means slots
+  // can have interior gaps after a miss — green/yellow letters stay put, so we fill first-empty)
   sworbKey(ch) {
     const e = this.dailyEntry(); if (!e) return;
     const len = e.sworb.length;
     this.sfxClick();
     this.setState(s => {
-      const cur = String(s.sworbInput || '').toUpperCase().replace(/[^A-Z]/g, '');
-      if (cur.length >= len) return {};
-      return { sworbInput: cur + ch, sworbColors: null };
+      const slots = (s.sworbSlots || []).slice(); while (slots.length < len) slots.push('');
+      const idx = slots.findIndex(x => !x);
+      if (idx < 0) return {};
+      slots[idx] = ch;
+      const colors = (s.sworbColors || []).slice(); colors[idx] = null; // typing a slot drops its stale color
+      return { sworbSlots: slots, sworbColors: colors.some(Boolean) ? colors : null };
     });
   }
   sworbBackspace() {
     this.sfxClick();
     this.setState(s => {
-      const cur = String(s.sworbInput || '').toUpperCase().replace(/[^A-Z]/g, '');
-      return { sworbInput: cur.slice(0, -1), sworbColors: null };
+      const slots = (s.sworbSlots || []).slice();
+      let idx = -1; for (let i = slots.length - 1; i >= 0; i--) { if (slots[i]) { idx = i; break; } }
+      if (idx < 0) return {};
+      slots[idx] = '';
+      const colors = (s.sworbColors || []).slice(); colors[idx] = null;
+      return { sworbSlots: slots, sworbColors: colors.some(Boolean) ? colors : null };
     });
   }
   // submit from the keyboard's GUESS key — reuses the built guess path (scoreGuess colors,
-  // guessSworb reward). On a correct guess, hold a brief win flash on the SWORB face, then
-  // retire the strip back to PLAY.
+  // guessSworb reward). Correct -> brief win flash then retire to PLAY. Wrong -> show the
+  // Wordle colors, then KEEP the green (right-spot) AND yellow (right-letter) tiles in place,
+  // clearing only the grays, so the next guess builds on what you learned.
   sworbSubmit() {
     const e = this.dailyEntry();
-    const raw = String(this.state.sworbInput || '').trim().toLowerCase().replace(/[^a-z]/g, '');
+    const slots = (this.state.sworbSlots || []);
+    const raw = slots.join('').trim().toLowerCase().replace(/[^a-z]/g, '');
     if (!raw || !e) return;
     if (raw.length !== e.sworb.length) { this.setState(s => ({ sworbShake: (s.sworbShake || 0) + 1 })); return; }
     const colors = SworbleDaily.scoreGuess(raw, e.sworb);
     const res = this.guessSworb(raw);
     if (!res || !res.ok) return;
     if (res.correct) {
-      // green hold on the blocks, keyboard folds away, brief win flash, then back to play
       this.setState({ sworbColors: colors, sworbTyping: false, sworbWin: true });
       try { this.sfxWin ? this.sfxWin() : this.sfxOver(); } catch (x) {}
-      this.later(() => this.setState({ sworbWin: false, stepperMode: 'play', sworbInput: '', sworbColors: null, sworbFlipKey: (this.state.sworbFlipKey || 0) + 1 }), 2400);
+      this.later(() => this.setState({ sworbWin: false, stepperMode: 'play', sworbSlots: [], sworbColors: null, sworbFlipKey: (this.state.sworbFlipKey || 0) + 1 }), 2400);
     } else {
       this.setState({ sworbColors: colors });
       try { this.sfxBad(); } catch (x) {}
-      // out of guesses after this miss? fold the keyboard and retire to play
       const spent = res.guessesLeft <= 0;
-      this.later(() => this.setState(s => spent
-        ? { sworbInput: '', sworbColors: null, sworbTyping: false, stepperMode: 'play', sworbFlipKey: (s.sworbFlipKey || 0) + 1 }
-        : { sworbInput: '', sworbColors: null, sworbShake: (s.sworbShake || 0) + 1 }), 1300);
+      this.later(() => this.setState(s => {
+        if (spent) return { sworbSlots: [], sworbColors: null, sworbTyping: false, stepperMode: 'play', sworbFlipKey: (s.sworbFlipKey || 0) + 1 };
+        // keep letters that landed green (right spot) or yellow (in the word); blank the grays
+        const keepSlots = slots.map((c, i) => (colors[i] === 'green' || colors[i] === 'yellow') ? c : '');
+        const keepColors = colors.map(c => (c === 'green' || c === 'yellow') ? c : null);
+        return { sworbSlots: keepSlots, sworbColors: keepColors.some(Boolean) ? keepColors : null, sworbShake: (s.sworbShake || 0) + 1 };
+      }), 1300);
     }
   }
 
@@ -4922,14 +4961,16 @@ class Component extends DCLogic {
   _exitGame() {
     this.sfxClick();
     const opts = { ...(this.state.opts || {}), dailyMode: true };
+    // leaving the board drops any in-progress sworb typing + returns the stepper to play
+    const sworbReset = { sworbTyping: false, stepperMode: 'play', sworbSlots: [], sworbColors: null };
     if (this._dailyLive && !this.state.over && this.optVal('dailyMode', true)) {
-      this.setState({ opts, screen: 'home', paused: true, path: [], banner: null, homeSeq: (this.state.homeSeq || 0) + 1 });
+      this.setState({ opts, screen: 'home', paused: true, path: [], banner: null, homeSeq: (this.state.homeSeq || 0) + 1, ...sworbReset });
       this.loadHomeLb();
       return;
     }
     this.timeLeftV = this.roundSecs();
     this.progV = 0;
-    this.setState({ opts, screen: 'home', paused: false, over: false, tiles: [], path: [], banner: null, bombArmed: false, boom: null, rattle: 0, score: 0, scoreShown: 0, streak: 0, prog: 0, timeLeft: this.optVal('gameSeconds', 120), homeSeq: (this.state.homeSeq || 0) + 1 });
+    this.setState({ opts, screen: 'home', paused: false, over: false, tiles: [], path: [], banner: null, bombArmed: false, boom: null, rattle: 0, score: 0, scoreShown: 0, streak: 0, prog: 0, timeLeft: this.optVal('gameSeconds', 120), homeSeq: (this.state.homeSeq || 0) + 1, ...sworbReset });
     this.loadHomeLb();
   }
   renderVals() {
@@ -5442,19 +5483,26 @@ class Component extends DCLogic {
       // reveals the theme word (from dailyEntry().sworb) + the guess bonus earned
       // (sworbState().bonus). Safe {active:false} default on any non-sworb day.
       homeSworb: (() => {
+        const off = { active: false, solved: false, notSolved: false, tag: '', tagStyle: { display: 'none' }, hint: '', hintStyle: { display: 'none' }, cardStyle: { display: 'none' }, blocksWrapStyle: { display: 'none' } };
         try {
           const sw = this.dailyStatus().sworb;
-          if (!sw.active) return { active: false, solved: false, notSolved: false, word: '', progressText: '', bonusText: '' };
-          const entry = this.dailyEntry();
-          const word = (entry && entry.sworb) ? String(entry.sworb).toUpperCase() : '';
+          if (!sw.active) return off;
+          const typing = !!st.sworbTyping && st.screen === 'home';
+          const canGuess = !sw.solved && sw.guessesLeft > 0;
           const bonus = sw.solved ? (this.sworbState().bonus || 0) : 0;
+          const hint = sw.solved ? 'solved' : sw.guessesLeft <= 0 ? 'out of guesses' : typing ? 'tap letters, then GUESS' : 'tap to guess the theme';
           return {
-            active: true, solved: sw.solved, notSolved: !sw.solved, word,
-            progressText: sw.foundCount + ' / ' + sw.total + ' clues found',
-            bonusText: '+' + bonus.toLocaleString(),
+            active: true, solved: sw.solved, notSolved: !sw.solved,
+            tag: sw.solved ? ('+' + bonus.toLocaleString() + ' pts') : (sw.foundCount + '/' + sw.total + ' clues'),
+            tagStyle: { fontSize: 11, fontWeight: 800, letterSpacing: '0.5px', color: sw.solved ? '#F5B84A' : 'var(--ghost)' },
+            hint, hintStyle: { fontSize: 10.5, fontWeight: 800, letterSpacing: '1px', color: 'var(--ghost)', textTransform: 'uppercase', textAlign: 'center' },
+            cardStyle: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, background: 'var(--card)', borderRadius: 16, padding: '13px 14px', marginTop: 2, boxShadow: '0 4px 0 var(--card-edge)' },
+            blocksWrapStyle: { display: 'flex', gap: 5, justifyContent: 'center', cursor: canGuess ? 'pointer' : 'default', animation: (st.sworbShake || 0) > 0 && st.screen === 'home' ? 'shakeX 0.4s ease-out' : 'none' },
           };
-        } catch (e) { return { active: false, solved: false, notSolved: false, word: '', progressText: '', bonusText: '' }; }
+        } catch (e) { return off; }
       })(),
+      openSworbHome: () => this.openSworbHome(),
+      homeKbShow: !!(st.sworbTyping && st.screen === 'home' && this.dailyEntry() && (() => { const sw = this.dailyStatus().sworb; return sw.active && !sw.solved && sw.guessesLeft > 0; })()),
       goWordBank: () => { if (this._swiped) return; this.sfxClick(); this.setState({ screen: 'wordbank', wbQuery: '' }); },
       wbBack: () => { this.sfxClick(); this.setState({ screen: 'home' }); },
       appBarStyle: { position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40, display: 'flex', justifyContent: 'center', padding: mobile ? 'calc(env(safe-area-inset-top) + ' + navPadV + 'px) 16px ' + navPadV + 'px' : navPadV + 'px 16px ' + navPadV + 'px', boxSizing: 'border-box', pointerEvents: 'none' }, // PERSISTENT on every screen incl. game (one wordmark, never display-toggled) — no launch flash, no home->game hop
@@ -5644,7 +5692,7 @@ class Component extends DCLogic {
         if (this.dailyDone()) { if (this._startPractice) this._startPractice(); return; } // already played today — swipe/tap now launches practice
         // RESUME a live, unfinished daily run — you only paused it by visiting home. Never re-roll.
         if (this._dailyLive && !this.state.over && (this.state.tiles || []).length) {
-          this.setState({ screen: 'game', paused: false });
+          this.setState({ screen: 'game', paused: false, sworbTyping: false, stepperMode: 'play' });
           return;
         }
         // (reload-resume happens at BOOT now — componentDidMount rehydrates the saved run
@@ -5653,7 +5701,7 @@ class Component extends DCLogic {
         this._tutForce = false;
         const opts = { ...(this.state.opts || {}), dailyMode: true };
         this.saveOpts(opts); // also heals any stale dailyMode:false from the removed toggle
-        this.setState({ opts, screen: 'game' }, () => {
+        this.setState({ opts, screen: 'game', sworbTyping: false, stepperMode: 'play' }, () => {
           this.newGame(true);
           if (this.firstRunPending) this.setState({ activeModal: 'howto', modalW: 350, paused: true });
         });
@@ -5918,8 +5966,8 @@ class Component extends DCLogic {
         transformOrigin: '50% 50%',
         background: 'var(--card)', borderRadius: 16, padding: 10, margin: '11px auto 0',
         boxShadow: '0 4px 0 var(--card-edge)', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', width: boardW + 24, boxSizing: 'border-box',
-        position: 'relative', overflow: 'hidden', // anchors the message pill; clips celebration bits so nothing escapes the card
+        alignItems: 'center', justifyContent: 'center', width: boardW + 24, minHeight: 74, boxSizing: 'border-box',
+        position: 'relative', overflow: 'hidden', // anchors the message pill; clips celebration bits so nothing escapes the card; minHeight keeps play/sworb faces the same size (no jump on flip)
       },
       boardCardStyle: {
         background: 'var(--card)', borderRadius: 20, padding: '12px 12px ' + (12 + Math.max(3, Math.round(st.tileSize * 0.08))) + 'px', margin: '12px auto 0',
@@ -6140,7 +6188,7 @@ class Component extends DCLogic {
         const solved = !!sw.solved || winning;
         const locked = !solved && sw.guessesLeft <= 0;
         const canType = !solved && !locked; // a guess is still live
-        const input = (st.sworbInput || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, len);
+        const slots = st.sworbSlots || [];
         const colors = st.sworbColors;
         // resolve each block's letter + skin for the current state
         const blocks = [];
@@ -6148,7 +6196,7 @@ class Component extends DCLogic {
           let ch = '', col = null;
           if (solved) { ch = answer[i]; col = 'green'; }
           else if (locked) { ch = answer[i]; col = 'gray'; }
-          else { ch = input[i] || ''; col = colors ? colors[i] : null; }
+          else { ch = (slots[i] || '').toUpperCase(); col = colors ? colors[i] : null; }
           let bg, edge, ink;
           if (col === 'green') { bg = '#5FD6A8'; edge = '#38AD7F'; ink = '#1F1442'; }
           else if (col === 'yellow') { bg = '#F5B84A'; edge = '#CE9022'; ink = '#1F1442'; }
@@ -6165,30 +6213,70 @@ class Component extends DCLogic {
           ? ('OUT OF GUESSES · ' + answer)
           : (sw.guessesLeft + ' guess' + (sw.guessesLeft === 1 ? '' : 'es') + ' left · ' + sw.foundCount + '/' + sw.total + ' clues');
         return {
-          isDay: true, blocks, full: input.length === len && canType, maxLen: len,
+          isDay: true, blocks, full: slots.filter(Boolean).length === len && canType, maxLen: len,
           canType, solved, locked,
           caption,
-          captionStyle: { marginTop: 7, fontSize: 10.5, fontWeight: 800, letterSpacing: '1px', color: solved ? '#5FD6A8' : 'var(--ghost)', textTransform: 'uppercase' },
+          captionStyle: { marginTop: 7, textAlign: 'center', fontSize: 10, fontWeight: 800, letterSpacing: '1px', color: solved ? '#5FD6A8' : 'var(--ghost)', textTransform: 'uppercase', pointerEvents: 'none' },
           shakeKey: 'sg' + (st.sworbShake || 0),
           wrapStyle: { display: 'inline-block', animation: (st.sworbShake || 0) > 0 ? 'shakeX 0.4s ease-out' : 'none' },
         };
       })(),
-      // stepper flip: tap the strip to turn PLAY <-> SWORB (only meaningful on a sworb day)
+      // stepper flip: tap the strip to turn PLAY <-> SWORB (only meaningful on a sworb day).
+      // The SWORB face is an absolute overlay that CROSSFADES over the always-present play
+      // face — so the card is one fixed size in both modes (no reflow, the board never shifts)
+      // and the transition is a clean opacity fade both ways.
       isSworbDay: !!this.dailyEntry(),
       stepperSworb: st.stepperMode === 'sworb' && !!this.dailyEntry(),
       flipStepper: () => this.flipStepper(),
-      sworbFlipKey: 'flip' + (st.sworbFlipKey || 0),
       stepperSworbFaceStyle: {
         position: 'absolute', inset: 0, zIndex: 3, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', background: 'var(--card)', borderRadius: 16,
-        animation: 'sworbFlip 0.34s cubic-bezier(0.34, 1.2, 0.5, 1) both', transformOrigin: '50% 50%',
+        opacity: st.stepperMode === 'sworb' ? 1 : 0,
+        pointerEvents: st.stepperMode === 'sworb' ? 'auto' : 'none',
+        transition: 'opacity 0.24s ease',
       },
+      // board morph layer: re-keyed on every active<->typing toggle so the swap animates
+      // (scale+fade) in BOTH directions; the grid wells behind it stay put as the frame.
+      boardMorphKey: 'bm' + (st.sworbTyping ? 't' : 'a'),
+      boardMorphLayerStyle: { position: 'absolute', inset: 0, animation: 'boardMorph 0.24s ease both' },
       stepperHintStyle: {
         position: 'absolute', top: 6, right: 8, zIndex: 4, fontFamily: "'Material Symbols Rounded'",
         fontSize: 15, lineHeight: 1, color: 'var(--ghost)', opacity: 0.65, pointerEvents: 'none',
         fontFeatureSettings: "'liga'", WebkitFontFeatureSettings: "'liga'",
       },
       stepperHintGlyph: st.stepperMode === 'sworb' ? 'sync' : 'flip_camera_android',
+      // ---- CLUE FAN: the 5 clue words live as tile-block pills fanned + drifting under the
+      // board (replaces the old CLUES stat cell). Found clues flip face-up in their candy
+      // color; unfound stay ghosted with their length as a length hint. Gentle bob like the
+      // background floaters. This IS the clue tracker now.
+      clueFan: (() => {
+        const e = this.dailyEntry();
+        const sw = this.dailyStatus().sworb;
+        if (!e || !sw.active) return { show: false, tokens: [] };
+        const day = this.dailyKey || this.dayKey(new Date());
+        let found = []; try { found = JSON.parse(LS.getItem(K.FOUND_PREFIX + day) || '[]'); } catch (x) {}
+        const dk = this.isDark();
+        const tokens = e.clues.map((w, i) => {
+          const word = String(w).toLowerCase();
+          const isF = found.indexOf(word) >= 0;
+          const pal = PALETTE[i % PALETTE.length];
+          const inner = {
+            padding: '5px 10px', borderRadius: 9, fontFamily: "'Fredoka','Manrope',sans-serif",
+            fontSize: 12.5, fontWeight: 700, letterSpacing: '1px', whiteSpace: 'nowrap', lineHeight: 1,
+            animation: isF ? 'clueLand 0.5s cubic-bezier(0.34,1.56,0.64,1) both' : 'none',
+            ...(isF
+              ? { background: pal.bg, color: '#1F1442', boxShadow: '0 3px 0 ' + pal.edge, textTransform: 'uppercase' }
+              : { background: dk ? 'rgba(255,255,255,0.03)' : 'rgba(31,20,66,0.03)', color: 'var(--ghost)', border: '2px dashed var(--line)' }),
+          };
+          return {
+            k: 'clue' + i, word: isF ? word.toUpperCase() : '· '.repeat(word.length).trim(), found: isF,
+            wrapStyle: { display: 'inline-flex' },
+            bobStyle: { animation: 'clueBob ' + (3.4 + i * 0.3).toFixed(1) + 's ease-in-out ' + (i * 0.35).toFixed(2) + 's infinite' },
+            innerStyle: inner,
+          };
+        });
+        return { show: true, tokens, wrapStyle: { display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: 7, margin: '16px auto 0', minHeight: 40, width: '100%' } };
+      })(),
       // ---- A-Z TILE KEYBOARD: the board morphs into this while guessing (sworbTyping). ----
       // Reused on HOME (homeGridStyle) and in-game over the board (gameGridStyle). 26 letter
       // keys in reading order + a 2-wide backspace + a 2-wide GUESS that greens up when full.
@@ -6200,26 +6288,33 @@ class Component extends DCLogic {
         const dk = this.isDark();
         const s = st.tileSize, gp = this.gap(s), rad = Math.round(s * 0.2), lift = Math.max(3, Math.round(s * 0.08));
         const len = e.sworb.length;
-        const cur = String(st.sworbInput || '').toUpperCase().replace(/[^A-Z]/g, '');
-        const full = cur.length >= len;
-        const pal = dk ? MONO_DARK : MONO;
-        const faceShadow = dk
-          ? '0 ' + lift + 'px 0 ' + pal.edge + ', inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -3px 4px rgba(0,0,0,0.28)'
-          : '0 ' + lift + 'px 0 ' + pal.edge + ', inset 0 2px 0 rgba(255,255,255,0.8), inset 0 -3px 4px rgba(0,0,0,0.07)';
-        const baseKey = {
+        const slots = st.sworbSlots || [];
+        const full = slots.filter(Boolean).length >= len;
+        const mono = dk ? MONO_DARK : MONO;
+        // the keyboard is NOT the mono play board — it lights up in true candy color (color is
+        // earned on the game board; the keyboard is its own bright surface). Each letter takes a
+        // PALETTE hue; keys pop in on a stagger (keyPop) and press down on tap (style-active).
+        const keyBase = {
           width: '100%', height: '100%', boxSizing: 'border-box', borderRadius: rad,
-          background: pal.bg, boxShadow: faceShadow, color: dk ? '#F2F1F4' : '#1C1B20',
-          fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: Math.round(s * 0.42), fontWeight: 600,
+          fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: Math.round(s * 0.5), fontWeight: 600,
           display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
           userSelect: 'none', WebkitUserSelect: 'none', WebkitTapHighlightColor: 'transparent', position: 'relative',
         };
+        const candy = (p, i) => Object.assign({}, keyBase, {
+          background: p.bg, color: '#1F1442',
+          boxShadow: '0 ' + lift + 'px 0 ' + p.edge + ', inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -3px 4px rgba(0,0,0,0.08)',
+          animation: 'keyPop 0.32s cubic-bezier(0.34,1.56,0.64,1) ' + (i * 0.012).toFixed(3) + 's backwards',
+        });
+        const neutralShadow = dk
+          ? '0 ' + lift + 'px 0 ' + mono.edge + ', inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -3px 4px rgba(0,0,0,0.28)'
+          : '0 ' + lift + 'px 0 ' + mono.edge + ', inset 0 2px 0 rgba(255,255,255,0.8), inset 0 -3px 4px rgba(0,0,0,0.07)';
         const keys = [];
-        for (let i = 0; i < 26; i++) { const ch = String.fromCharCode(65 + i); keys.push({ k: 'kb' + ch, ch, style: baseKey, onClick: () => this.sworbKey(ch) }); }
-        keys.push({ k: 'kbBk', ch: 'backspace', style: Object.assign({}, baseKey, { gridColumn: 'span 2', fontFamily: "'Material Symbols Rounded'", fontSize: Math.round(s * 0.4), fontWeight: 'normal', color: dk ? '#B8B4C2' : '#6B6775', fontFeatureSettings: "'liga'", WebkitFontFeatureSettings: "'liga'" }), onClick: () => this.sworbBackspace() });
+        for (let i = 0; i < 26; i++) { const ch = String.fromCharCode(65 + i); keys.push({ k: 'kb' + ch, ch, style: candy(PALETTE[i % PALETTE.length], i), onClick: () => this.sworbKey(ch) }); }
+        keys.push({ k: 'kbBk', ch: 'backspace', style: Object.assign({}, keyBase, { gridColumn: 'span 2', background: mono.bg, boxShadow: neutralShadow, fontFamily: "'Material Symbols Rounded'", fontSize: Math.round(s * 0.44), fontWeight: 'normal', color: dk ? '#B8B4C2' : '#6B6775', fontFeatureSettings: "'liga'", WebkitFontFeatureSettings: "'liga'", animation: 'keyPop 0.32s cubic-bezier(0.34,1.56,0.64,1) 0.31s backwards' }), onClick: () => this.sworbBackspace() });
         keys.push({ k: 'kbGo', ch: full ? 'GUESS' : 'keyboard_return',
           style: full
-            ? Object.assign({}, baseKey, { gridColumn: 'span 2', background: '#5FD6A8', boxShadow: '0 ' + lift + 'px 0 #38AD7F, inset 0 2px 0 rgba(255,255,255,0.6), inset 0 -3px 4px rgba(0,0,0,0.1)', color: '#1F1442', fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: Math.round(s * 0.26), fontWeight: 700, letterSpacing: '0.5px', animation: 'bestPop 0.4s ease-out' })
-            : Object.assign({}, baseKey, { gridColumn: 'span 2', fontFamily: "'Material Symbols Rounded'", fontSize: Math.round(s * 0.4), fontWeight: 'normal', color: dk ? '#6E6E7A' : '#B4B0BE', fontFeatureSettings: "'liga'", WebkitFontFeatureSettings: "'liga'" }),
+            ? Object.assign({}, keyBase, { gridColumn: 'span 2', background: '#5FD6A8', boxShadow: '0 ' + lift + 'px 0 #38AD7F, inset 0 2px 0 rgba(255,255,255,0.6), inset 0 -3px 4px rgba(0,0,0,0.1)', color: '#1F1442', fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: Math.round(s * 0.3), fontWeight: 700, letterSpacing: '0.5px', animation: 'bestPop 0.4s ease-out' })
+            : Object.assign({}, keyBase, { gridColumn: 'span 2', background: mono.bg, boxShadow: neutralShadow, fontFamily: "'Material Symbols Rounded'", fontSize: Math.round(s * 0.44), fontWeight: 'normal', color: dk ? '#6E6E7A' : '#B4B0BE', fontFeatureSettings: "'liga'", WebkitFontFeatureSettings: "'liga'", animation: 'keyPop 0.32s cubic-bezier(0.34,1.56,0.64,1) 0.33s backwards' }),
           onClick: () => this.sworbSubmit() });
         return {
           sworbKb: {
