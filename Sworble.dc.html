@@ -1937,6 +1937,24 @@ class Component extends DCLogic {
     this.bombRun = 0;            // consecutive caught mines — drives the chain multiplier
     this.feverUntil = 0;         // mine-catch fever window
     this.juiceNext = 0;          // pending friendly deals
+    // SWORB day: stamp the 5 clue words onto the opening board (guaranteed findable).
+    // Mutate tile letters in place, verify all clues findable, revert + reseed on failure.
+    const _entry = this.dailyEntry();
+    if (_entry && this.optVal('dailyMode', true)) {
+      const byCell = {}; tiles.forEach(t => { byCell[t.row + ',' + t.col] = t; });
+      let placed = null;
+      for (let attempt = 0; attempt < 8 && !placed; attempt++) {
+        const rng = mulberry32((SworbleCore.hashSeed(this.dailyKey + '|sworb') ^ (attempt * 0x9E3779B1)) >>> 0);
+        const cand = SworbleSeed.seedClueLetters({ clues: _entry.clues, cols: this.cols(), rows: this.rows(), rng });
+        if (!cand) continue;
+        const reverts = [];
+        Object.keys(cand.letters).forEach(k => { const [r, c] = k.split(',').map(Number); const t = byCell[r + ',' + c]; if (t) { reverts.push([t, t.letter]); t.letter = cand.letters[k]; } });
+        const ok = _entry.clues.every(w => SworbleSolver.findWord(tiles, { word: w, expand: SworbleCore.expandLetter, diag: this.diag() }));
+        if (ok) { placed = cand; this._cluePaths = cand.cluePaths; }
+        else { reverts.forEach(([t, l]) => { t.letter = l; }); } // revert, retry with next seed
+      }
+      if (placed) { try { LS.setItem(K.TARGETS_PREFIX + this.dailyKey, JSON.stringify(_entry.clues)); } catch (e) {} }
+    }
     this.scrubTiles(tiles, null, this._eggIds); // opening board: everything is fresh, scrub freely
     // snapshot the opening board (post-scrub) for the "words you missed" recap
     this.openingSnapshot = tiles.map(t => ({ letter: t.letter, row: t.row, col: t.col }));
@@ -3645,6 +3663,7 @@ class Component extends DCLogic {
   // everyone that day). Solve once and cache; found words persist separately per day.
   ensureDailyTargets() {
     if (!this.optVal('dailyMode', true) || !this.openingSnapshot) return;
+    if (this.dailyEntry()) return; // sworb day: targets ARE the clue words, written at seed time
     const key = K.TARGETS_PREFIX + this.dailyKey;
     try { if (LS.getItem(key)) return; } catch (e) { return; }
     const snap = this.openingSnapshot, day = this.dailyKey;
