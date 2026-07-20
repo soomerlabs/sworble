@@ -3204,7 +3204,7 @@ class Component extends DCLogic {
       }
       fizzleIds = [...bset];
     }
-    const pts = Math.round(base * lm * (sm + fever)) + bestBonus + mineBonus - (mineTripped ? FIZZLE_PEN : 0);
+    let pts = Math.round(base * lm * (sm + fever)) + bestBonus + mineBonus - (mineTripped ? FIZZLE_PEN : 0);
     // capture the tiles' colors in swipe order (for the share) before they clear
     const wordColors = ids.map(id => { const t = this.byId(id); return t ? t.color : 0; });
     // the "new best" flash tracks TODAY'S best in daily mode (matches the header), all-time in practice
@@ -3220,6 +3220,16 @@ class Component extends DCLogic {
     const gFlights = mineTilesHit.filter(m => flyMap[m.id]).map(m => ({ gid: 'g' + m.id, dx: flyMap[m.id].dx, dy: flyMap[m.id].dy, src: m }));
     for (const m of mineTilesHit) delete flyMap[m.id];
     this.setState(s => {
+      const _e = this.dailyEntry();
+      if (_e && SworbleDaily.isClue(word, _e)) {
+        pts = Math.round(pts * 1.5); // +50% clue bonus
+        try {
+          const fk = K.FOUND_PREFIX + (this.dailyKey || this.dayKey(new Date()));
+          const found = JSON.parse(LS.getItem(fk) || '[]');
+          if (found.indexOf(word.toLowerCase()) < 0) { found.push(word.toLowerCase()); LS.setItem(fk, JSON.stringify(found)); }
+        } catch (e) {}
+        this._clueJustFound = word.toLowerCase(); // surfaces read this for the glow (Task 10)
+      }
       const nextRoundWords = (s.roundWords || []).concat({ word, pts, colors: wordColors, best: bestHit });
       const score = this.puzzleOn() ? this.bestSevenTotal(nextRoundWords) : Math.max(0, s.score + pts); // score IS your best seven (matches the leaderboard); classic mode sums
       const best = Math.max(s.best, score);
@@ -3526,6 +3536,24 @@ class Component extends DCLogic {
       this.enqueue(lastLandMs, () => this.sfxThud());
       this.later(() => { this.ensureWordExists(); this.syncMines(); }, lastLandMs + 200);
     }, 30);
+    this.later(() => this._persistClues(), 60);
+  }
+
+  // sworb day: after a settle, re-stamp any unfound clue whose path play broke so every
+  // clue stays findable across the falling board (pure math delegated to SworbleSeed).
+  _persistClues() {
+    const e = this.dailyEntry();
+    if (!e || this.state.over) return;
+    let found = []; try { found = JSON.parse(LS.getItem(K.FOUND_PREFIX + this.dailyKey) || '[]'); } catch (err) {}
+    const unfound = e.clues.filter(w => found.indexOf(w) < 0);
+    if (!unfound.length) return;
+    const live = this.liveTiles().filter(t => !t.clearing && !t.dead);
+    const isFindable = (w) => !!SworbleSolver.findWord(live, { word: w, expand: SworbleCore.expandLetter, diag: this.diag() });
+    const rng = mulberry32((SworbleCore.hashSeed(this.dailyKey + '|persist') ^ (this.tileSeq * 2654435761)) >>> 0);
+    const changes = SworbleSeed.reseedBroken({ tiles: live, unfound, isFindable, rng, reserve: new Set() });
+    if (!changes.length) return;
+    const byCell = {}; changes.forEach(ch => { byCell[ch.r + ',' + ch.c] = ch.letter; });
+    this.setState(s => ({ tiles: s.tiles.map(t => (byCell[t.row + ',' + t.col] != null && !t.clearing) ? { ...t, letter: byCell[t.row + ',' + t.col] } : t) }));
   }
 
   // first adjacent identical-letter pair on the settled board — the idle stack-coach target
