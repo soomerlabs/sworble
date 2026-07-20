@@ -14,6 +14,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
   <script src="./sworble-core.js"></script>
   <script src="./sworble-store.js"></script>
+  <script src="./sworble-run.js"></script>
   <script src="./sworble-solver.js"></script>
   <style>
     html, body { margin: 0; padding: 0; background: #EDEFF7; overscroll-behavior: none; }
@@ -1142,6 +1143,7 @@ class Component extends DCLogic {
     this.sheetRef = React.createRef();
     this.contentRef = React.createRef();
     this.rand = Math.random; // daily mode swaps in a seeded generator
+    SworbleStore.migrateLegacy(); // one-time: heal stackle_*-era player data orphaned by the sworble_* rename — MUST run before the first read below
     try { this.bestWordEver = JSON.parse(LS.getItem(K.BESTWORD) || 'null'); } catch (e) { this.bestWordEver = null; }
     try { this.wordsTotal = parseInt(LS.getItem(K.WORDS_TOTAL) || '0', 10) || 0; } catch (e) { this.wordsTotal = 0; }
     try { this.playerName = LS.getItem(K.NAME) || ''; } catch (e) { this.playerName = ''; }
@@ -1155,6 +1157,7 @@ class Component extends DCLogic {
         const k = LS.key(i); if (!k) continue;
         if (k.indexOf(K.DAILY_PREFIX) === 0 && !validDay.test(k.slice(14))) kill.push(k);
         else if (k.indexOf(K.ATT_PREFIX) === 0 && !validDay.test(k.slice(12))) kill.push(k);
+        else if (k.indexOf(K.RUN_PREFIX) === 0 && k !== K.RUN_PREFIX + this.dailyKey) kill.push(k); // a stale live-run snapshot (any day but today) can never restore — drop it
       }
       kill.forEach(k => LS.removeItem(k));
     } catch (e) {}
@@ -1466,6 +1469,7 @@ class Component extends DCLogic {
     this.onVis = () => {
       if (document.hidden) {
         if (this.pausedAt == null) this.pausedAt = performance.now(); // freeze anchors NOW: rAF stops in hidden tabs
+        this.saveRunState(); // flush the live run NOW — a hidden mobile tab may be evicted before any throttle fires
         // no clock anymore — leaving the tab loses nothing, so we DON'T auto-pause; just
         // hush audio. The player returns to the exact board (pause is a manual menu now).
         if (this.ac) { try { this.ac.suspend(); } catch (e) {} }
@@ -1476,6 +1480,10 @@ class Component extends DCLogic {
       }
     };
     document.addEventListener('visibilitychange', this.onVis);
+    // pagehide is the LAST reliable beat before an iOS Safari page teardown — the live run
+    // must hit storage here or a closed tab silently eats the day's progress
+    this.onPageHide = () => this.saveRunState();
+    window.addEventListener('pagehide', this.onPageHide);
     // landscape on a touch device = rotate overlay covers the game — pause so the
     // clock doesn't burn while the player can't see the board
     try {
@@ -1532,6 +1540,8 @@ class Component extends DCLogic {
     window.removeEventListener('transitionend', this.onTransEnd, true);
     document.removeEventListener('pointerdown', this._dragScroll);
     document.removeEventListener('visibilitychange', this.onVis);
+    window.removeEventListener('pagehide', this.onPageHide);
+    if (this._runSaveT) { clearTimeout(this._runSaveT); this._runSaveT = null; }
     if (this.sheetCloseT) { clearTimeout(this.sheetCloseT); this.sheetCloseT = null; }
     try {
       if (this.rotMq) {
@@ -1556,6 +1566,20 @@ class Component extends DCLogic {
     if (prevProps.gameSeconds !== this.props.gameSeconds) {
       this.timeLeftV = (this.props.gameSeconds || 120);
       this.setState({ timeLeft: this.timeLeftV }); // never un-end a finished game
+    }
+    // live-run persistence: any core change to an active daily run schedules a throttled
+    // snapshot. Change-detection compares against our own last-seen refs (not the prevState
+    // arg) on purpose: support.js only started passing prevState in Jul 2026, and a
+    // regenerated runtime dropping it again must not silently kill the save trigger.
+    const _rs = this.state;
+    if (this._dailyLive && !_rs.over && (
+      _rs.tiles !== this._rsTiles || _rs.score !== this._rsScore ||
+      _rs.guessesLeft !== this._rsGl || _rs.nextRow !== this._rsNext ||
+      _rs.roundWords !== this._rsWords || _rs.streak !== this._rsStreak
+    )) {
+      this._rsTiles = _rs.tiles; this._rsScore = _rs.score; this._rsGl = _rs.guessesLeft;
+      this._rsNext = _rs.nextRow; this._rsWords = _rs.roundWords; this._rsStreak = _rs.streak;
+      this.queueRunSave();
     }
     this.measureSheet();
     this.syncScrollLock();
@@ -1823,9 +1847,12 @@ class Component extends DCLogic {
     if (this.optVal('dailyMode', true)) {
       const seedN = SworbleCore.hashSeed(this.dailyKey);
       this.seedN = seedN;                     // profanity scrub reads this so its fixes are identical for every player
-      this.rand = mulberry32(seedN);          // starting board
-      this.rowRand = mulberry32(seedN ^ 0x1F123BB5); // v1 rows: own stream
-      this.mineRand = mulberry32((seedN ^ 0x0B0B5EED) >>> 0); // mines: own deterministic stream
+      // every seeded stream is wrapped in a call counter (_rngN) so a mid-run snapshot can
+      // record each stream's exact position — restore fast-forwards to the same spot
+      this._rngN = { rand: 0, rowRand: 0, mineRand: 0 };
+      this.rand = this._counted(mulberry32(seedN), 'rand');          // starting board
+      this.rowRand = this._counted(mulberry32(seedN ^ 0x1F123BB5), 'rowRand'); // v1 rows: own stream
+      this.mineRand = this._counted(mulberry32((seedN ^ 0x0B0B5EED) >>> 0), 'mineRand'); // mines: own deterministic stream
       // FULLY deterministic refills: a pre-dealt queue, identical for every attempt
       // and every player — the Nth refill letter is always the same. Ramped from
       // friendly commons to full randomness by queue position.
@@ -1845,7 +1872,9 @@ class Component extends DCLogic {
         } catch (e) {}
       }
       this.skipAttCount = false;
+      this.clearRunState(); // a fresh deal IS a new attempt — any saved live-run snapshot is superseded (restart/re-roll paths)
     } else {
+      this._rngN = null; // practice streams are unseeded — nothing to snapshot
       this.seedN = (Math.random() * 0x7fffffff) | 0; // practice board is random anyway; scrub just needs some seed
       this.mineRand = mulberry32(this.seedN >>> 0);
       this.rand = Math.random;
@@ -1930,6 +1959,121 @@ class Component extends DCLogic {
       timeLeft: this.roundSecs(),
     });
     this.later(() => this.syncMines(), 900); // debug force-mine arms on the fresh board after the deal-in
+  }
+
+  // === live-run persistence: a daily run survives reloads and mobile tab evictions ===
+  // The snapshot layer (pure serialize/validate) lives in sworble-run.js; these methods
+  // wire it to storage and to the live component. The finished-run results path
+  // (mergeDailySeven & co in endRound) is unchanged — this ONLY covers the in-flight run.
+  _counted(fn, key) { // wrap a seeded rng stream so _rngN tracks its exact call position
+    const self = this;
+    return function () { if (self._rngN) self._rngN[key]++; return fn(); };
+  }
+  saveRunState() { // flush the live run to LS (cheap; called throttled + on tab-hide)
+    try {
+      if (!this._dailyLive || this.state.over || !this.optVal('dailyMode', true)) return;
+      if (this.state.tut) return; // the warm-up round is a throwaway — never snapshot it
+      let elapsed = this._boardElapsedMs || 0;
+      if (this._boardTickAt != null) elapsed += performance.now() - this._boardTickAt;
+      const snap = SworbleRun.serializeRun({
+        day: this.dailyKey, cols: this.cols(), rows: this.rows(),
+        tileSeq: this.tileSeq, queueIdx: this.queueIdx || 0, juiceNext: this.juiceNext || 0,
+        rngN: this._rngN, tiles: this.state.tiles, nextRow: this.state.nextRow,
+        score: this.state.score || 0, guessesLeft: this.state.guessesLeft,
+        streak: this.state.streak || 0, maxStreak: this.state.maxStreak || 0,
+        roundWords: this.state.roundWords || [], boardElapsedMs: Math.round(elapsed),
+        bestRun: this.bestRun || 0, bestHits: this._bestHits || 0, bombRun: this.bombRun || 0,
+        mergedOnce: !!this.mergedOnce, openingSnapshot: this.openingSnapshot || null,
+      });
+      if (snap) SworbleStore.setJSON(K.RUN_PREFIX + this.dailyKey, snap);
+    } catch (e) {}
+  }
+  queueRunSave() { // trailing throttle: bursts of setState collapse into one write
+    if (this._runSaveT) return;
+    this._runSaveT = setTimeout(() => { this._runSaveT = null; this.saveRunState(); }, 600);
+  }
+  loadRunState() { // today's snapshot, validated — or null (fresh deal)
+    try {
+      if (this.dailyDone()) return null; // the day is locked — results already banked
+      const day = this.dayKey(new Date());
+      return SworbleRun.validateRun(SworbleStore.getJSON(K.RUN_PREFIX + day, null), day);
+    } catch (e) { return null; }
+  }
+  hasSavedRun() { // cheap render-time check (no JSON parse) for the home RESUME label
+    try { return !this.dailyDone() && !!LS.getItem(K.RUN_PREFIX + (this.dailyKey || this.dayKey(new Date()))); } catch (e) { return false; }
+  }
+  clearRunState() {
+    try { LS.removeItem(K.RUN_PREFIX + (this.dailyKey || this.dayKey(new Date()))); } catch (e) {}
+  }
+  // Rebuild the exact mid-run moment from a validated snapshot: same board, score, words,
+  // and budget — and the SAME deterministic future (letter queue position + each seeded rng
+  // stream fast-forwarded to its call count at save time). Any mismatch falls back to a
+  // fresh deal; a restore must never produce a board a normal run couldn't reach.
+  restoreRun(run) {
+    // prologue mirrors newGame: nothing scheduled by a previous game may fire into this one
+    this.timeouts.forEach(t => clearTimeout(t));
+    this.timeouts = [];
+    this.reloadTimer = null;
+    this.dragging = false;
+    this.dailyKey = SworbleCore.dayKey(new Date());
+    const stale = run.day !== this.dailyKey // midnight passed between home render and this tap
+      || (run.cols != null && run.cols !== this.cols()) || (run.rows != null && run.rows !== this.rows());
+    if (stale) { this.clearRunState(); this.newGame(true); return; }
+    const seedN = SworbleCore.hashSeed(this.dailyKey);
+    this.seedN = seedN;
+    const ff = (seed, n) => { const f = mulberry32(seed); for (let i = 0; i < n; i++) f(); return f; };
+    this._rngN = { rand: run.rngN.rand, rowRand: run.rngN.rowRand, mineRand: run.rngN.mineRand };
+    this.rand = this._counted(ff(seedN, run.rngN.rand), 'rand');
+    this.rowRand = this._counted(ff(seedN ^ 0x1F123BB5, run.rngN.rowRand), 'rowRand');
+    this.mineRand = this._counted(ff((seedN ^ 0x0B0B5EED) >>> 0, run.rngN.mineRand), 'mineRand');
+    const qr = mulberry32(seedN ^ 0x51AC1E);
+    this.letterQueue = shuffledBag(FRIENDLY, qr)
+      .concat(shuffledBag(BAG, qr), shuffledBag(BAG, qr), shuffledBag(BAG, qr));
+    this.queueIdx = run.queueIdx;
+    this.juiceNext = run.juiceNext || 0;
+    this.tileSeq = run.tileSeq || 1;
+    this._eggIds = null;
+    this.bestLen = null; // re-solved lazily on the next commit
+    this.bestRun = run.bestRun || 0;
+    this._bestHits = run.bestHits || 0;
+    this._lastBestWord = null;
+    this.bombRun = run.bombRun || 0;
+    this.feverUntil = 0;
+    this.openingSnapshot = run.openingSnapshot || null; // "words you missed" recap survives the reload
+    this.ensureDailyTargets();
+    this.ensurePuzzlePar();
+    this.lastActiveAt = performance.now() + 1500;
+    this.idleTipN = 0;
+    this._worbLast = performance.now();
+    this._pendingWord = null;
+    this._tutNow = false; this._tutPending = false; // a saved run implies the tutorial is behind them
+    this.mergedOnce = !!run.mergedOnce;
+    this.progV = 0;
+    this.timeLeftV = this.roundSecs();
+    this.roundEndAt = performance.now() + this.timeLeftV * 1000;
+    this.cycleStartAt = performance.now();
+    this.dropMsV = this.optVal('dropSeconds', 10) * 1000;
+    this.pausedAt = null;
+    this.engineQ = [];
+    this.finalDropFired = false;
+    this.bestFlashed = false;
+    this._dailyLive = true;
+    this._boardElapsedMs = run.boardElapsedMs || 0; this._boardTickAt = null;
+    this.reloadAt = performance.now() + 800;
+    const tiles = run.tiles.map(t => ({ ...t, spawn: false, dead: false, clearing: false }));
+    this.setState({
+      nextFresh: false,
+      dropStamp: (this.state.dropStamp || 0) + 1,
+      tiles, score: run.score, over: false, paused: false, guessesLeft: run.guessesLeft, tut: null,
+      path: [], banner: null, streak: run.streak || 0, maxStreak: run.maxStreak || 0,
+      scoreShown: run.score, bestLit: false, roundWords: run.roundWords || [], hopSwap: null, boom: null, rattle: 0, _tr: (this.timeRoll = 0),
+      nextRow: (Array.isArray(run.nextRow) && run.nextRow.length === this.cols()) ? run.nextRow : this.genRow(),
+      dropMs: this.dropMsV,
+      timeLeft: this.roundSecs(),
+      candyIntro: false, introDrain: false, worb: null, worbFlip: false, worbBack: false,
+    });
+    this.later(() => this.syncMines(), 600);
+    this.later(() => this.ensureWordExists(), 1200); // the restored board must still contain a word
   }
 
   // --- Sworble Seven (BEST SINGLE RUN): your daily score is your HIGHEST-scoring 7-word run
@@ -2042,6 +2186,7 @@ class Component extends DCLogic {
     if (this.state.over) return;
     this.dragging = false;
     this._dailyLive = false; // the run ends here (locks via dailyDone below) — no resume after this
+    this.clearRunState(); // the finished run's snapshot must never restore
     if (this._boardTickAt != null) { this._boardElapsedMs = (this._boardElapsedMs || 0) + (performance.now() - this._boardTickAt); this._boardTickAt = null; }
     this._timeOnBoard = Math.round((this._boardElapsedMs || 0) / 1000); // seconds actively on the board this run
     if (this.optVal('dailyMode', true)) {
@@ -5300,7 +5445,7 @@ class Component extends DCLogic {
         try {
           const LS = SworbleStore.LS, K = SworbleStore.K;
           const day = this.dailyKey || this.dayKey(new Date());
-          [K.DONE_PREFIX, K.DAILY_PREFIX, K.SEVEN_PREFIX, K.RUNS_PREFIX, K.ATT_PREFIX, K.EFF_PREFIX, K.TIME_PREFIX, K.FOUND_PREFIX, K.TARGETS_PREFIX, K.PUZZLE_BEST_PREFIX, K.PUZZLE_PAR_PREFIX].forEach(p => { try { LS.removeItem(p + day); } catch (e) {} });
+          [K.DONE_PREFIX, K.DAILY_PREFIX, K.SEVEN_PREFIX, K.RUNS_PREFIX, K.ATT_PREFIX, K.EFF_PREFIX, K.TIME_PREFIX, K.FOUND_PREFIX, K.TARGETS_PREFIX, K.PUZZLE_BEST_PREFIX, K.PUZZLE_PAR_PREFIX, K.RUN_PREFIX].forEach(p => { try { LS.removeItem(p + day); } catch (e) {} });
           [K.LB_ME_PREFIX + day, K.LB_ME_PREFIX + day + '|puzzle'].forEach(k => { try { LS.removeItem(k); } catch (e) {} }); // leaderboard "me" submit (board id = day OR day|puzzle) — else YOU lingers on the standing graph
         } catch (e) {}
         this._dailyLive = false;
@@ -5356,6 +5501,15 @@ class Component extends DCLogic {
           this.setState({ screen: 'game', paused: false });
           return;
         }
+        // RESUME after a reload: a saved snapshot restores the exact mid-run board (same
+        // score, words, and remaining budget) — the page dying is not a re-roll either.
+        const savedRun = this.loadRunState();
+        if (savedRun) {
+          const rOpts = { ...(this.state.opts || {}), dailyMode: true };
+          this.saveOpts(rOpts);
+          this.setState({ opts: rOpts, screen: 'game', paused: false }, () => this.restoreRun(savedRun));
+          return;
+        }
         try { this._tutPending = this._tutForce || !LS.getItem(K.TUT_DONE); } catch (e) { this._tutPending = !!this._tutForce; } // first play ever (or dev replay): warm-up round
         this._tutForce = false;
         const opts = { ...(this.state.opts || {}), dailyMode: true };
@@ -5390,7 +5544,7 @@ class Component extends DCLogic {
       ...(this._ov = this.overParVals(st, dailyOn)),
       // Quiet home: top-3 leaders (your row folds in, highlighted) — no target on the front door
       ...this.homeLeadersVals(st, dailyOn),
-      ...(this._dailyLive && !st.over && (st.tiles || []).length && this.optVal('dailyMode', true) ? { homePlayLabel: 'RESUME' } : {}), // a paused live run resumes on PLAY, it never restarts
+      ...(((this._dailyLive && !st.over && (st.tiles || []).length) || this.hasSavedRun()) && this.optVal('dailyMode', true) ? { homePlayLabel: 'RESUME' } : {}), // a paused live run resumes on PLAY, it never restarts — even across a reload (saved snapshot)
       homeSwipeLabel: 'swipe up to play',
       againLabel: dailyOn ? 'REPLAY' : 'PLAY AGAIN',
       isDaily: dailyOn,

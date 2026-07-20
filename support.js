@@ -760,7 +760,7 @@
     }
     componentDidMount() {
     }
-    componentDidUpdate(_prevProps) {
+    componentDidUpdate(_prevProps, _prevState) {
     }
     componentWillUnmount() {
     }
@@ -927,6 +927,7 @@
         } catch (e) {
           console.error(e);
         }
+        this.__prevLogicState = this.logic.state;
       }
       componentDidUpdate(prevProps) {
         this.logic.props = this.__userProps();
@@ -939,12 +940,15 @@
             console.error(e);
           }
         } else {
+          /** Logic state lives outside React (a plain object the host swaps), so React's
+           *  own prevState is useless here — pass the logic state as of the last commit. */
           try {
-            this.logic.componentDidUpdate(prevProps);
+            this.logic.componentDidUpdate(prevProps, this.__prevLogicState);
           } catch (e) {
             console.error(e);
           }
         }
+        this.__prevLogicState = this.logic.state;
       }
       componentWillUnmount() {
         registry.get(this.__name).subs.delete(this.__sub);

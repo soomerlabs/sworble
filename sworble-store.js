@@ -53,6 +53,8 @@
     FOUND_PREFIX: 'sworble_found_',
     LB_ME_PREFIX: 'sworble_lb_me_',
     DONE_PREFIX: 'sworble_done_', // one run per day: set when a daily run ends, locks the daily
+    RUN_PREFIX: 'sworble_run_', // live-run snapshot (mid-run save/resume) — cleared when the run ends
+    MIGRATED_STACKLE: 'sworble_migrated_stackle', // one-time flag: stackle_*-era data has been copied over
     EFF_PREFIX: 'sworble_eff_', // per-day efficiency (your best-7 vs the bot's optimal) → season IQ
     TIME_PREFIX: 'sworble_time_', // per-day seconds actively on the board (freezes when you leave the board)
   };
@@ -66,7 +68,33 @@
   function remove(k) { try { LS.removeItem(k); } catch (e) {} }
   function keys() { const out = []; try { for (let i = 0; i < LS.length; i++) { const kk = LS.key(i); if (kk) out.push(kk); } } catch (e) {} return out; }
 
-  const API = { LS, K, getStr, getInt, getJSON, set, setJSON, remove, keys };
+  // One-time heal for the stackle_* -> sworble_* rename: the Jul-2026 clean break orphaned
+  // returning players' progress (name, best, streaks all "wiped"). Copies every stackle_*
+  // value to its sworble_* twin — but ONLY where the twin is absent, so progress made since
+  // the rename always wins. Originals stay in place (rollback-safe, a few KB at most).
+  // Returns the number of keys copied; 0 on any repeat run (flag-guarded).
+  function migrateLegacy() {
+    try {
+      if (LS.getItem(K.MIGRATED_STACKLE)) return 0;
+      const legacy = [];
+      for (let i = 0; i < LS.length; i++) {
+        const k = LS.key(i);
+        if (k && k.indexOf('stackle_') === 0) legacy.push(k);
+      }
+      let moved = 0;
+      for (const k of legacy) {
+        const target = 'sworble_' + k.slice(8);
+        if (LS.getItem(target) == null) {
+          const v = LS.getItem(k);
+          if (v != null) { LS.setItem(target, v); moved++; }
+        }
+      }
+      LS.setItem(K.MIGRATED_STACKLE, '1');
+      return moved;
+    } catch (e) { return 0; }
+  }
+
+  const API = { LS, K, getStr, getInt, getJSON, set, setJSON, remove, keys, migrateLegacy };
   root.SworbleStore = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);
