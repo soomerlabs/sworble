@@ -213,9 +213,30 @@
       .sort(function (a, b) { return b.pts - a.pts || b.len - a.len || (a.word < b.word ? -1 : 1); });
   }
 
+  // Targeted: the tile-id path spelling exactly `word` (8-adjacent, no reuse), or null.
+  // Used by the clue seeder to VERIFY a placed/stamped word is actually findable.
+  function findWord(tiles, o) {
+    var word = String(o.word || '').toLowerCase(), expand = o.expand, dirs = dirsFor(o.diag);
+    if (!word) return null;
+    var grid = makeGrid(tiles), found = null;
+    function dfs(t, path, str) {
+      if (found) return;
+      var s2 = str + expand(t.letter);
+      if (s2.length > word.length || word.slice(0, s2.length) !== s2) return;
+      if (s2 === word) { found = path.concat(t.id); return; }
+      var p2 = path.concat(t.id);
+      for (var d = 0; d < dirs.length; d++) {
+        var n = grid[(t.row + dirs[d][0]) + ',' + (t.col + dirs[d][1])];
+        if (n && p2.indexOf(n.id) === -1) dfs(n, p2, s2);
+      }
+    }
+    for (var i = 0; i < tiles.length && !found; i++) dfs(tiles[i], [], '');
+    return found;
+  }
+
   // exposed for tests + reuse
   var API = { findFirstWord: findFirstWord, solveLongest: solveLongest, topWords: topWords,
-    topWordStarts: topWordStarts, findAllWords: findAllWords,
+    topWordStarts: topWordStarts, findAllWords: findAllWords, findWord: findWord,
     _internals: { makeGrid: makeGrid, available: available, candidates: candidates, prefixSet: prefixSet, scoreScan: scoreScan } };
   root.SworbleSolver = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
