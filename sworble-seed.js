@@ -70,7 +70,31 @@
     return { letters: letters, cluePaths: cluePaths };
   }
 
-  var API = { stampWord: stampWord, seedClueLetters: seedClueLetters, _shuffle: shuffle };
+  // Re-stamp unfindable clues broken by play. For each unfound clue where isFindable(word)
+  // is false, stamp it onto the current board's cells, avoiding reserve + other unfound
+  // clues' chosen cells this pass. Returns flat list of cell changes [{r,c,letter}].
+  function reseedBroken(opts) {
+    var tiles = opts.tiles || [], unfound = opts.unfound || [], isFindable = opts.isFindable, rng = opts.rng;
+    var reserve = opts.reserve || new Set();
+    var cells = tiles.map(function (t) { return { r: t.row, c: t.col }; });
+    var avoid = new Set(reserve), changes = [];
+    for (var i = 0; i < unfound.length; i++) {
+      var w = String(unfound[i]).toLowerCase();
+      if (isFindable(w)) { // still on the board — keep its cells reserved so we don't clobber it
+        continue;
+      }
+      var path = stampWord(cells, { word: w, rng: rng, avoid: avoid });
+      if (!path) continue; // no room this pass; a later settle retries
+      for (var j = 0; j < path.length; j++) {
+        var k = path[j].r + ',' + path[j].c;
+        changes.push({ r: path[j].r, c: path[j].c, letter: path[j].letter });
+        avoid.add(k);
+      }
+    }
+    return changes;
+  }
+
+  var API = { stampWord: stampWord, seedClueLetters: seedClueLetters, reseedBroken: reseedBroken, _shuffle: shuffle };
   root.SworbleSeed = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

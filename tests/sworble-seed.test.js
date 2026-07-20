@@ -57,3 +57,22 @@ console.log('sworble-seed: stampWord passed');
   assert.strictEqual(tooMany, null, 'impossible pack -> null so caller reseeds/rejects');
 }
 console.log('sworble-seed: seedClueLetters passed');
+
+// reseedBroken: re-stamp unfindable clues
+{
+  // 5x6 grid, all 'x' except a broken clue. Every clue is "unfindable" per the stub predicate,
+  // so reseedBroken must stamp each requested word somewhere and report the letter changes.
+  const tiles = [];
+  for (let c = 0; c < 5; c++) for (let r = 0; r < 6; r++) tiles.push({ row: r, col: c, letter: 'x' });
+  const changes = Seed.reseedBroken({
+    tiles, unfound: ['wave'], isFindable: () => false, rng: Core.mulberry32(3), reserve: new Set(),
+  });
+  assert.strictEqual(changes.length, 4, 'wave (4 letters) re-stamped');
+  // applying the changes makes wave spell out on a connected path
+  const by = {}; changes.forEach(ch => { by[ch.r + ',' + ch.c] = ch.letter; });
+  assert.strictEqual(changes.map(c => c.letter).join(''), 'wave');
+  for (let i = 1; i < changes.length; i++) assert.ok(Math.max(Math.abs(changes[i-1].r-changes[i].r), Math.abs(changes[i-1].c-changes[i].c)) === 1, 'connected');
+  // nothing broken -> no changes
+  assert.deepStrictEqual(Seed.reseedBroken({ tiles, unfound: ['wave'], isFindable: () => true, rng: Core.mulberry32(3), reserve: new Set() }), []);
+}
+console.log('sworble-seed: reseedBroken passed');
