@@ -1735,6 +1735,37 @@ class Component extends DCLogic {
     if (typeof SworbleDaily === 'undefined' || !this._dailies) return null;
     return SworbleDaily.parseEntry(this._dailies, this.dailyKey || this.dayKey(new Date()));
   }
+  // sworb-of-the-day guess state, per day: { guessesUsed, solved, correct, bonus }
+  sworbState() {
+    const d = this.dailyKey || this.dayKey(new Date());
+    try { return JSON.parse(LS.getItem(K.SWORB_PREFIX + d) || 'null') || { guessesUsed: 0, solved: false, correct: false, bonus: 0 }; }
+    catch (e) { return { guessesUsed: 0, solved: false, correct: false, bonus: 0 }; }
+  }
+  saveSworb(st) { try { LS.setItem(K.SWORB_PREFIX + (this.dailyKey || this.dayKey(new Date())), JSON.stringify(st)); } catch (e) {} }
+  // the sworb-of-the-day guess action: 3 guesses, locks on solve/exhaustion, awards a
+  // clue-scaled bonus that rides today's competitive score (there is no par target to distort).
+  guessSworb(input) {
+    const e = this.dailyEntry(); if (!e) return { ok: false };
+    const st = this.sworbState();
+    if (st.solved || st.guessesUsed >= 3) return { ok: false, done: true };
+    const correct = SworbleDaily.checkGuess(input, e);
+    st.guessesUsed += 1;
+    if (correct) {
+      let found = []; try { found = JSON.parse(LS.getItem(K.FOUND_PREFIX + this.dailyKey) || '[]'); } catch (x) {}
+      const bonus = SworbleDaily.guessReward(found.length, e.clues.length);
+      st.solved = true; st.correct = true; st.bonus = bonus;
+      // DECIDED mid-execution: the guess bonus rides today's competitive score (there is no
+      // par target to distort — ranking is player-vs-player, so solving the sworb helps you
+      // climb, which is the point). It flows into the Seven total like any other points.
+      this.setState(s => ({ score: (s.score || 0) + bonus })); // sworb bonus rides today's score
+      this.sfxWin && this.sfxWin();
+    } else {
+      this.sfxBad && this.sfxBad();
+    }
+    this.saveSworb(st);
+    this.forceUpdate();
+    return { ok: true, correct, guessesLeft: Math.max(0, 3 - st.guessesUsed), bonus: st.bonus };
+  }
 
   // never ACCEPT slurs as playable words, even when a source dictionary has them
   censorDict(set) {
@@ -2095,6 +2126,12 @@ class Component extends DCLogic {
       lbMe,
       savedRun,
       live: { active: !!this._dailyLive, over: !!this.state.over, roundWords: this.state.roundWords || [], tilesCount: (this.state.tiles || []).length },
+      sworb: (() => {
+        const e = this.dailyEntry(); if (!e) return null;
+        let found = []; try { found = JSON.parse(LS.getItem(K.FOUND_PREFIX + day) || '[]'); } catch (x) {}
+        const st = this.sworbState();
+        return { entry: e, cluesFound: found, guessesUsed: st.guessesUsed, solved: st.solved };
+      })(),
     });
   }
   // Rebuild the exact mid-run moment from a validated snapshot: same board, score, words,
