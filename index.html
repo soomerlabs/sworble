@@ -39,7 +39,7 @@
     @keyframes shakeX { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
     @keyframes sworbFlip { 0% { transform: perspective(700px) rotateX(-88deg); opacity: 0; } 55% { transform: perspective(700px) rotateX(12deg); opacity: 1; } 100% { transform: perspective(700px) rotateX(0deg); opacity: 1; } }
     @keyframes clueBob { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-5px) rotate(1.6deg); } }
-    @keyframes boardMorph { 0% { opacity: 0; } 100% { opacity: 1; } }
+    @keyframes boardMorph { 0% { opacity: 0; filter: blur(9px); } 100% { opacity: 1; filter: blur(0); } }
     @keyframes keyPop { 0% { transform: scale(0.35); opacity: 0; } 70% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
     @keyframes clueLand { 0% { transform: scale(0.3) rotate(-12deg); opacity: 0; } 60% { transform: scale(1.12) rotate(4deg); } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
     @keyframes confettiUp { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(-64px) rotate(260deg); opacity: 0; } }
@@ -6245,7 +6245,7 @@ class Component extends DCLogic {
       // board morph layer: re-keyed on every active<->typing toggle so the swap animates
       // (scale+fade) in BOTH directions; the grid wells behind it stay put as the frame.
       boardMorphKey: 'bm' + (st.sworbTyping ? 't' : 'a'),
-      boardMorphLayerStyle: { position: 'absolute', inset: 0, animation: 'boardMorph 0.24s ease both' },
+      boardMorphLayerStyle: { position: 'absolute', inset: 0, animation: 'boardMorph 0.28s ease both' },
       stepperHintStyle: {
         position: 'absolute', top: 6, right: 8, zIndex: 4, fontFamily: "'Material Symbols Rounded'",
         fontSize: 15, lineHeight: 1, color: 'var(--ghost)', opacity: 0.65, pointerEvents: 'none',
