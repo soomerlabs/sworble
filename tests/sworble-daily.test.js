@@ -19,4 +19,13 @@ assert.strictEqual(D.guessReward(0, 5), 500, 'cold read = jackpot');
 assert.strictEqual(D.guessReward(2, 5), 350);
 assert.strictEqual(D.guessReward(4, 5), 200);
 assert.strictEqual(D.guessReward(5, 5), 75, 'all clues found = gimme');
+
+// --- scoreGuess: Wordle per-letter feedback (green/yellow/gray) ---------------------
+assert.deepStrictEqual(D.scoreGuess('ocean', 'ocean'), ['green','green','green','green','green'], 'exact = all green');
+assert.deepStrictEqual(D.scoreGuess('canoe', 'ocean'), ['yellow','yellow','yellow','yellow','yellow'], 'all present, all misplaced = yellow');
+assert.deepStrictEqual(D.scoreGuess('xxxxx', 'ocean'), ['gray','gray','gray','gray','gray'], 'none present = gray');
+assert.deepStrictEqual(D.scoreGuess('ocxxx', 'ocean'), ['green','green','gray','gray','gray'], 'prefix right = green, rest gray');
+// duplicate-letter handling — answer 'reef' has E at positions 1 and 2:
+assert.deepStrictEqual(D.scoreGuess('eeee', 'reef'), ['gray','green','green','gray'], 'both middle Es green; the two extra guess-Es have no answer-E left = gray');
+assert.deepStrictEqual(D.scoreGuess('erxx', 'reef'), ['yellow','yellow','gray','gray'], 'E and R both present but misplaced = yellow; X absent = gray');
 console.log('sworble-daily: all passed');

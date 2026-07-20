@@ -39,7 +39,28 @@
     return REWARD.most;
   }
 
-  var API = { parseEntry: parseEntry, isClue: isClue, checkGuess: checkGuess, guessReward: guessReward, REWARD: REWARD };
+  // Wordle-style per-letter feedback for a guess against the answer. Returns an array the
+  // length of `guess`: 'green' (right letter, right spot), 'yellow' (in the word, wrong spot),
+  // 'gray' (not in the word). Duplicate letters are handled the true-Wordle way: greens are
+  // matched first, then each remaining answer letter can satisfy at most one yellow.
+  function scoreGuess(guess, answer) {
+    var g = String(guess || '').toLowerCase();
+    var a = String(answer || '').toLowerCase();
+    var res = [], used = [];
+    for (var j = 0; j < a.length; j++) used[j] = false;
+    for (var i = 0; i < g.length; i++) {
+      if (g[i] === a[i]) { res[i] = 'green'; used[i] = true; } else res[i] = 'gray';
+    }
+    for (var k = 0; k < g.length; k++) {
+      if (res[k] === 'green') continue;
+      for (var m = 0; m < a.length; m++) {
+        if (!used[m] && g[k] === a[m]) { res[k] = 'yellow'; used[m] = true; break; }
+      }
+    }
+    return res;
+  }
+
+  var API = { parseEntry: parseEntry, isClue: isClue, checkGuess: checkGuess, guessReward: guessReward, scoreGuess: scoreGuess, REWARD: REWARD };
   root.SworbleDaily = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);
