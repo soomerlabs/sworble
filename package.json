@@ -1,0 +1,9 @@
+{
+  "name": "sworble",
+  "private": true,
+  "version": "0.1.0",
+  "description": "sworble — daily word-drop puzzle (GitHub Pages prototype)",
+  "scripts": {
+    "test": "node tests/sworble-core.test.js && node tests/sworble-status.test.js && node tests/sworble-store.test.js && node tests/sworble-run.test.js && node tests/mirror-check.js"
+  }
+}

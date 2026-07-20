@@ -15,6 +15,7 @@
   <script src="./sworble-core.js"></script>
   <script src="./sworble-store.js"></script>
   <script src="./sworble-run.js"></script>
+  <script src="./sworble-status.js"></script>
   <script src="./sworble-solver.js"></script>
   <style>
     html, body { margin: 0; padding: 0; background: #EDEFF7; overscroll-behavior: none; }
@@ -1691,9 +1692,12 @@ class Component extends DCLogic {
       this.hintDict = base;
       this.buildPrefixes();
       this.setState({ dictNote: 'Dictionary: ' + base.size.toLocaleString() + ' starter words' });
-      // curated Scrabble list FIRST (real words only — the permissive list was full
-      // of junk 3-letter "words"); fall back to the old list, then the starter set
-      const urls = ['https://raw.githubusercontent.com/redbo/scrabble/master/dictionary.txt', mod.REMOTE_URL].filter(Boolean);
+      // BUNDLED dictionary (same-origin ./dictionary.txt, pre-filtered 3-10 letters from
+      // the curated Scrabble list): every player validates against the IDENTICAL list, no
+      // third-party fetch to fail or drift. Deliberately NOT read from words.js REMOTE_URL —
+      // a cached words.js must never resurrect the old remote list. Standalone export can
+      // still override via the baked-in global.
+      const urls = [window.__SWORBLE_WORDS_URL || './dictionary.txt'];
       for (const url of urls) {
         try {
           const res = await fetch(url);
@@ -2014,6 +2018,32 @@ class Component extends DCLogic {
   clearRunState() {
     try { LS.removeItem(K.RUN_PREFIX + (this.dailyKey || this.dayKey(new Date()))); } catch (e) {}
   }
+  // THE one answer to "what's the player's status today" — gathers storage + memory and
+  // delegates to the pure selector (sworble-status.js, unit-tested). Every daily surface
+  // (home seven, standings graph, PLAY/RESUME label) reads THIS; none may roll its own mix.
+  dailyStatus() {
+    const day = this.dailyKey || this.dayKey(new Date());
+    let storedSeven = null, lbMe = null, savedRun = null;
+    try { storedSeven = JSON.parse(LS.getItem(K.SEVEN_PREFIX + day) || 'null'); } catch (e) {}
+    try { lbMe = JSON.parse(LS.getItem(K.LB_ME_PREFIX + this.lbBoardId(day)) || 'null'); } catch (e) {}
+    try { // snapshot re-parses only when the stored string actually changes (this runs per render)
+      const raw = LS.getItem(K.RUN_PREFIX + day);
+      if (raw !== this._dsSnapRaw || this._dsSnapDay !== day) {
+        this._dsSnapRaw = raw; this._dsSnapDay = day;
+        this._dsSnap = raw ? SworbleRun.validateRun(JSON.parse(raw), day) : null;
+      }
+      savedRun = this._dsSnap;
+    } catch (e) { savedRun = null; }
+    return SworbleStatus.dailyStatus({
+      done: this.dailyDone(day),
+      storedDailyBest: SworbleStore.getInt(K.DAILY_PREFIX + day, 0),
+      storedSeven,
+      puzzleBest: SworbleStore.getInt(K.PUZZLE_BEST_PREFIX + day, 0),
+      lbMe,
+      savedRun,
+      live: { active: !!this._dailyLive, over: !!this.state.over, roundWords: this.state.roundWords || [], tilesCount: (this.state.tiles || []).length },
+    });
+  }
   // Rebuild the exact mid-run moment from a validated snapshot: same board, score, words,
   // and budget — and the SAME deterministic future (letter queue position + each seeded rng
   // stream fast-forwarded to its call count at save time). Any mismatch falls back to a
@@ -2095,14 +2125,8 @@ class Component extends DCLogic {
     const dkey = K.DAILY_PREFIX + day, skey = K.SEVEN_PREFIX + day;
     const prev = parseInt(LS.getItem(dkey) || '0', 10) || 0;
     if ((runScore || 0) <= prev) return prev; // not a new best run — keep the standing Seven
-    const map = {};
-    for (const w of (roundWords || [])) {
-      const word = (w && w.word ? String(w.word) : '').toLowerCase();
-      const pts = (w && w.pts) || 0;
-      if (!word || pts <= 0) continue;
-      if (!map[word] || pts > map[word]) map[word] = pts; // distinct words of THIS run
-    }
-    const words = Object.keys(map).map(w => ({ word: w, pts: map[w] })).sort((a, b) => b.pts - a.pts).slice(0, 7);
+    // ONE seven algorithm everywhere: the same sevenFromWords the live surfaces render
+    const words = SworbleStatus.sevenFromWords((roundWords || []).map(w => ({ ...w, word: (w && w.word ? String(w.word) : '').toLowerCase() }))).words;
     try { LS.setItem(skey, JSON.stringify({ score: runScore, words })); } catch (e) {}
     try { LS.setItem(dkey, String(runScore)); } catch (e) {}
     return runScore;
@@ -2115,18 +2139,8 @@ class Component extends DCLogic {
     const total = (obj && obj.score) || (parseInt(LS.getItem(K.DAILY_PREFIX + d) || '0', 10) || 0);
     return { words, total };
   }
-  // the CURRENT (in-progress) run's live seven — so home reflects words as you PLAY, not only
-  // after the run ends. Same best-per-word / top-7 logic the live score uses.
-  currentSeven() {
-    const map = {};
-    for (const w of (this.state.roundWords || [])) {
-      const word = (w && w.word) ? String(w.word) : ''; const pts = (w && w.pts) || 0;
-      if (!word || pts <= 0) continue;
-      if (!map[word] || pts > map[word].pts) map[word] = { word, pts, best: !!(w && w.best) };
-    }
-    const words = Object.values(map).sort((a, b) => b.pts - a.pts).slice(0, 7);
-    return { words, total: words.reduce((a, b) => a + b.pts, 0) };
-  }
+  // (currentSeven removed — the daily-status selector (sworble-status.js sevenFromWords)
+  //  is the ONE seven algorithm; surfaces read this.dailyStatus().seven)
   // WORD BANK: every distinct best-word you've ever banked (from each day's saved seven),
   // deduped to its highest-scoring appearance + the day it happened, A-Z, searchable.
   wordBankVals() {
@@ -4733,15 +4747,15 @@ class Component extends DCLogic {
         if (!on) return {};
         const fmt = n => (n == null ? '' : Number(n).toLocaleString('en-US'));
         const day = this.dailyKey || this.dayKey(new Date());
-        let bestT = 0;
-        try { bestT = Number(LS.getItem(K.PUZZLE_BEST_PREFIX + day) || 0) || 0; } catch (e) {}
-        try { const me = JSON.parse(LS.getItem(K.LB_ME_PREFIX + this.lbBoardId(day)) || 'null'); if (me && me.score > bestT) bestT = me.score; } catch (e) {}
-        try { if (this._dailyLive && (st.roundWords || []).length) { const ls = this.currentSeven().total; if (ls > bestT) bestT = ls; } } catch (e) {}
-        const played = bestT > 0;
+        // the daily-status selector is the ONE source for score/played — a live run, a saved
+        // snapshot, or a banked day all land here through the same tested priority rules
+        const ds = this.dailyStatus();
+        const bestT = ds.bestToday;
+        const played = ds.played;
         let field = []; try { field = ((st.homeLb && st.homeLb.entries) || this.lbStub(day).entries || []).slice(); } catch (e) {}
         field.sort((a, b) => b.score - a.score);
         const meName = this.playerName || '';
-        const rank = field.filter(e => e.score > bestT).length + 1;
+        const rank = SworbleStatus.rankFor(field, bestT);
         const mk = (rk, name, score, me, gold, top) => ({
           rk, name, score,
           rowStyle: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', marginBottom: 5, borderRadius: 12, background: me ? 'rgba(137,113,255,0.16)' : 'color-mix(in srgb, var(--sheet-ink) 4%, transparent)' },
@@ -5300,9 +5314,9 @@ class Component extends DCLogic {
       // (no gold box), then the seven listed below in ink. Best-single-run model.
       homeSeven: (() => {
         try {
-          // a live run in progress → show THIS run's seven building up; otherwise your saved best
-          const live = this._dailyLive && (this.state.roundWords || []).length > 0;
-          const sev = live ? this.currentSeven() : this.dailySeven();
+          // the daily-status selector decides the seven's source (live run > saved snapshot >
+          // banked day) — home just renders whatever it says
+          const sev = this.dailyStatus().seven;
           const topW = sev.words[0];
           const emp = sev.words.length === 0, started = this.dailyDone(), n = sev.total || 0; // started = player has CLOSED a run at least once (dailyDone); only THEN may the empty spot read 0 — before that it stays a ghost box (no jarring empty→0 flash on swipe-up)
           const heroLetters = topW ? (() => {
@@ -5550,7 +5564,7 @@ class Component extends DCLogic {
       ...(this._ov = this.overParVals(st, dailyOn)),
       // Quiet home: top-3 leaders (your row folds in, highlighted) — no target on the front door
       ...this.homeLeadersVals(st, dailyOn),
-      ...(((this._dailyLive && !st.over && (st.tiles || []).length) || this.hasSavedRun()) && this.optVal('dailyMode', true) ? { homePlayLabel: 'RESUME' } : {}), // a paused live run resumes on PLAY, it never restarts — even across a reload (saved snapshot)
+      ...(this.dailyStatus().resumable && this.optVal('dailyMode', true) ? { homePlayLabel: 'RESUME' } : {}), // a paused live run resumes on PLAY, it never restarts — even across a reload (the selector knows both)
       homeSwipeLabel: 'swipe up to play',
       againLabel: dailyOn ? 'REPLAY' : 'PLAY AGAIN',
       isDaily: dailyOn,

@@ -1,8 +1,10 @@
 // Dictionary for the word puzzle game.
 // FALLBACK_WORDS: curated common-word list, always loaded instantly (also used for hints).
-// REMOTE_URL: full English dictionary fetched at runtime to upgrade validation (~370k words).
+// REMOTE_URL: full dictionary fetched at runtime to upgrade validation. BUNDLED same-origin
+// (./dictionary.txt, curated Scrabble list pre-filtered to 3-10 letters) so every player
+// validates against the identical list — no third-party dependency.
 
-export const REMOTE_URL = 'https://raw.githubusercontent.com/dwyl/english-words/master/words_alpha.txt';
+export const REMOTE_URL = './dictionary.txt';
 
 export const FALLBACK_WORDS = `
 ace act add ado aft age ago aid ail aim air ale all and ant any ape apt arc are ark arm art ash ask ate awe axe

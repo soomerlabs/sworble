@@ -1,0 +1,17 @@
+# Runs the full test suite (determinism contract, status selector, store/migration,
+# run snapshots, mirror check) on every push. Pages deploys straight from main, so
+# this is the only gate between a push and production — keep it green.
+name: test
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm test
