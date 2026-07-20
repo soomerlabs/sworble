@@ -16,6 +16,7 @@
   <script src="./sworble-store.js"></script>
   <script src="./sworble-run.js"></script>
   <script src="./sworble-status.js"></script>
+  <script src="./sworble-net.js"></script>
   <script src="./sworble-solver.js"></script>
   <style>
     html, body { margin: 0; padding: 0; background: #EDEFF7; overscroll-behavior: none; }
@@ -1066,9 +1067,13 @@ const VOWELS = SworbleCore.VOWELS;
 // commons-heavy bag for the early-round on-ramp: words practically deal themselves
 const FRIENDLY = SworbleCore.FRIENDLY;
 const SHARE_URL = 'https://soomerlabs.github.io/sworble/';
-// Leaderboard swap point: set LB_REMOTE to the Soomer API base to go live;
-// while empty, a local stub persists the player's own best + seeds competitors.
-const LB_REMOTE = '';
+// Soomer app wiring (sworble IS a Soomer app — web client now, SDK mobile clients later,
+// all bound by the same Application UUID). Set appId to the UUID provisioned for sworble
+// on the Soomer backend to go live; while empty, everything stays fully local (stub bots +
+// your own LS entry) and every score submit queues durably for the day the backend lands.
+// Contract: docs/SOOMER_BACKEND_CONTRACT.md. All remote I/O goes through SworbleApi —
+// no raw fetch to the backend anywhere else in this file.
+const SOOMER_APP = { appId: '', environment: 'prod', appVersion: '0.1.0' };
 const LS = SworbleStore.LS; // safe storage shim + key registry live in sworble-store.js (unit-tested)
 const K = SworbleStore.K;   // every storage key name in ONE place (rename-safe)
 // public-name profanity gate (display names are shown to everyone)
@@ -1145,6 +1150,7 @@ class Component extends DCLogic {
     this.contentRef = React.createRef();
     this.rand = Math.random; // daily mode swaps in a seeded generator
     SworbleStore.migrateLegacy(); // one-time: heal stackle_*-era player data orphaned by the sworble_* rename — MUST run before the first read below
+    try { this.netApi(); } catch (e) {} // best-effort warm-up; real config happens lazily (helmet scripts load async)
     try { this.bestWordEver = JSON.parse(LS.getItem(K.BESTWORD) || 'null'); } catch (e) { this.bestWordEver = null; }
     try { this.wordsTotal = parseInt(LS.getItem(K.WORDS_TOTAL) || '0', 10) || 0; } catch (e) { this.wordsTotal = 0; }
     try { this.playerName = LS.getItem(K.NAME) || ''; } catch (e) { this.playerName = ''; }
@@ -1487,6 +1493,7 @@ class Component extends DCLogic {
         // wake audio the moment we're visible again — otherwise the first sound
         // after a tab switch hits a suspended context and silently drops
         if (this.ac && this.ac.state === 'suspended') { try { this.ac.resume(); } catch (e) {} }
+        try { const api = this.netApi(); if (api) api.flushQueue(); } catch (e) {} // returning to the tab delivers any queued scores
       }
     };
     document.addEventListener('visibilitychange', this.onVis);
@@ -2017,6 +2024,30 @@ class Component extends DCLogic {
   }
   clearRunState() {
     try { LS.removeItem(K.RUN_PREFIX + (this.dailyKey || this.dayKey(new Date()))); } catch (e) {}
+  }
+  // Soomer net layer, resolved + configured at CALL time — the dc runtime injects helmet
+  // scripts asynchronously, so sworble-net.js may not exist yet when the constructor runs
+  // (same house rule as the mulberry32 adapter: never capture helmet globals early).
+  // Returns the configured SworbleApi, or null while the script is still loading.
+  // Empty SOOMER_APP.appId = fully local play; the stable per-device player_id is minted
+  // on first use and later claimable by a Soomer account.
+  netApi() {
+    try {
+      if (typeof SworbleApi === 'undefined') return null;
+      // ask the INSTANCE, never latch on `this` — if the runtime ever swaps the global for
+      // a fresh copy, the next call self-heals by configuring whatever is current
+      if (!SworbleApi.isReady()) {
+        if (SOOMER_APP.appId && !SoomerNet.isConfigured()) SoomerNet.setup(SOOMER_APP);
+        let pid = LS.getItem(K.PLAYER_ID);
+        if (!pid) {
+          pid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID()
+            : 'p-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+          LS.setItem(K.PLAYER_ID, pid);
+        }
+        SworbleApi.setup({ storage: LS, playerId: pid });
+      }
+      return SworbleApi;
+    } catch (e) { return null; }
   }
   // THE one answer to "what's the player's status today" — gathers storage + memory and
   // delegates to the pure selector (sworble-status.js, unit-tested). Every daily surface
@@ -3865,33 +3896,33 @@ class Component extends DCLogic {
   dayKey(d) { return SworbleCore.dayKey(d); }
 
   // ===== Leaderboard client ================================================
-  // v1: one daily board — everyone's best score for the calendar day. The swap
-  // point for Dave's backend is LB_REMOTE (top of file); while it's empty a local
-  // stub persists the player's own best and seeds deterministic competitors so
-  // the board looks alive during testing.
+  // LOCAL-FIRST: the seeded stub renders instantly (and is the whole experience while
+  // SOOMER_APP.appId is empty); when the Soomer backend is configured, the real board
+  // upgrades in place and every submit carries its seven as proof-of-play. Remote I/O
+  // lives in sworble-net.js (validated, retried, queued) — never raw fetch here.
   // one leaderboard bucket PER MODE: puzzle (3:00) and classic (2:00) scores are set
   // under different rules, so they must never share a board. The mode suffix on the
-  // board id keeps them apart for the local stub AND Dave's remote backend.
+  // board id keeps them apart for the local stub; the Soomer API takes mode explicitly.
   lbBoardId(date) { return date + (this.puzzleOn() ? '|puzzle' : ''); }
+  lbMode() { return this.puzzleOn() ? 'puzzle' : 'classic'; }
   async lbSubmit(date, name, score) {
     if (!name || !score) return;
-    const board = this.lbBoardId(date);
-    if (LB_REMOTE) {
-      try { await fetch(LB_REMOTE + '/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date: board, name, score }) }); } catch (e) {}
-      return;
-    }
+    // the local stub entry ALWAYS updates first — offline play keeps a live board
     try {
-      const k = K.LB_ME_PREFIX + board;
+      const k = K.LB_ME_PREFIX + this.lbBoardId(date);
       const prev = JSON.parse(LS.getItem(k) || 'null');
       if (!prev || score > prev.score) LS.setItem(k, JSON.stringify({ name, score }));
     } catch (e) {}
+    // Soomer submit rides behind it; a failure (or no backend yet) queues durably
+    try { const api = this.netApi(); if (api) await api.submitScore({ date, mode: this.lbMode(), displayName: name, score, seven: this.dailySeven(date).words }); } catch (e) {}
   }
-  async lbFetch(date) {
-    const board = this.lbBoardId(date);
-    if (LB_REMOTE) {
-      try { const r = await fetch(LB_REMOTE + '/board?date=' + encodeURIComponent(board)); return await r.json(); } catch (e) { return { entries: [], me: null, count: 0 }; }
-    }
-    return this.lbStub(date);
+  // remote board for the day, or null (unconfigured / offline / bad payload) — callers
+  // render the stub either way and swap this in only when it exists
+  async lbRemote(date) {
+    const api = this.netApi();
+    if (!api) return null;
+    try { await api.flushQueue(); } catch (e) {} // deliver queued scores before reading the board
+    try { return await api.fetchBoard(date, this.lbMode()); } catch (e) { return null; }
   }
   lbStub(date) {
     const seed = SworbleCore.hashSeed('lb' + this.lbBoardId(date));
@@ -3916,12 +3947,15 @@ class Component extends DCLogic {
   }
   loadLb() {
     const date = this.dailyKey || this.dayKey(new Date());
-    Promise.resolve(this.lbFetch(date)).then(data => { if (this.state.activeModal === 'lb' || this.state.screen === 'lb') this.setState({ lbData: data }); });
+    const onLb = () => this.state.activeModal === 'lb' || this.state.screen === 'lb';
+    this.setState({ lbData: this.lbStub(date) }); // local renders NOW — no spinner on the stub
+    this.lbRemote(date).then(remote => { if (remote && onLb()) this.setState({ lbData: remote }); });
   }
   // standings behind the HOME versus/champion card (prefetched so the card is populated on arrival)
   loadHomeLb() {
     const date = this.dailyKey || this.dayKey(new Date());
-    Promise.resolve(this.lbFetch(date)).then(data => { this.setState({ homeLb: data }); });
+    this.setState({ homeLb: this.lbStub(date) }); // local renders NOW
+    this.lbRemote(date).then(remote => { if (remote) this.setState({ homeLb: remote }); });
   }
   submitDaily() {
     if (!this.playerName || !this.optVal('dailyMode', true)) return;
