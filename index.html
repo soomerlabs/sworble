@@ -3992,7 +3992,9 @@ class Component extends DCLogic {
   // A committed word matching an un-caught target: record it and return {n,total} for the
   // banner pill. Returns null when it isn't a fresh catch (so the pill stays hidden).
   checkTargetCatch(word) {
-    if (!this.optVal('dailyMode', true) || !word) return null;
+    // record a found theme word into the SHARED per-day safe for BOTH casual (dailyMode) AND
+    // stacks (stacklOn) — the safe/sworb are shared, so a hint found in stacks must bank too.
+    if ((!this.optVal('dailyMode', true) && !this.stacklOn()) || !word) return null;
     const day = this.dailyKey, w = ('' + word).toLowerCase();
     let targets = [];
     try { targets = JSON.parse(LS.getItem(K.TARGETS_PREFIX + day) || '[]') || []; } catch (e) { return null; }
