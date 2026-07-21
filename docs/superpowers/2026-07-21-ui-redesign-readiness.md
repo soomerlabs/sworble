@@ -71,8 +71,15 @@ Priority order. All line refs `index.html`; mirror to `Sworble.dc.html`.
    `timeText`. **When you do, re-home the ≤60s low-time warning** (`~2656`, currently gated on dead
    `!puzzleOn()`) onto `stacklOn()` — stacks actually wants it.
 6. **Dead `toggleDaily`** (`~5844`, referenced nowhere; also the (dailyMode,stacklMode) landmine).
-7. **Seven basis vestigially retained** — the "Sworble Seven" UI is already gone, but `bestSevenTotal`/
-   `mergeDailySeven`/`SEVEN_PREFIX` remain the scoring spine (feeds the podium/LB). See decision #B.
+7. **Seven WORDS-LIST machinery retained** (Step-1 update, 2026-07-21) — `bestSevenTotal` (the best-7
+   SCORE) is DELETED; score is cumulative now. But the seven **words-list** machinery is intact and
+   still load-bearing: `sevenFromWords`, `SEVEN_PREFIX`, `mergeDailySeven`, `dailySeven`,
+   `dailyStatus().seven.words`, and the `submitScore` `seven:` payload. Left alive deliberately —
+   it feeds the current home "seven fills" hero, the recap, and (critically) the **word bank**, which
+   is *data-backed by each day's saved seven words* (index.html:~2389). **Deleting the machinery is a
+   redesign task, not free deletion:** retiring `SEVEN_PREFIX` requires re-backing the word bank with a
+   new data source (e.g. store all distinct banked words per day). Do it when the redesign rebuilds
+   home/recap/word-bank. (Design owner confirmed: leave for the redesign, 2026-07-21.)
 8. **`clues` alias** in `dailyEntry()` — still load-bearing (`_placeCluesInRefill`, `clueFan`,
    `sworble-status`). Convert those reads to `themeWords`, then remove the alias.
 9. **Duplicate `animation` key** in `timeValStyle` (`~6020`/`6026`) — second silently wins.
