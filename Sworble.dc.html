@@ -3203,6 +3203,12 @@ class Component extends DCLogic {
   // (radius 1 for 4-5 letters, 2 for 6+); spend it on a ≤3 word and the fizzle
   // costs 5s. Armed from a dedicated seeded stream so daily runs stay fair.
   mineQuota() {
+    // stackl (timed run): SPARSE bombs on the themed board — deterministic per day seed,
+    // catch it in a 4+ word for a blast bonus, spend a ≤3 word on it and fizzle (tune later).
+    if (this.stacklOn()) {
+      if (this.state.over) return 0;
+      return this.state.tut ? 1 : 2;
+    }
     // puzzle mode: hidden always — and the minefield ESCALATES as the budget drains:
     // 2 early, 3 mid-run, 4 for the last 3 words (comeback targets right when easy
     // words run dry; overlapping sonar patches finally produce real 2s and 3s)
@@ -5087,7 +5093,7 @@ class Component extends DCLogic {
           boxShadow: 'inset 0 -3px 0 #000000, 0 3px 16px 4px rgba(229,72,77,0.6)',
           animation: 'bombFade 0.08s ease both, bombGlowUp 0.2s ease-in both', // no shrink theatrics: SNAP black, red glow flares — woah, bomb — then it just blows
         } : { display: 'none' },
-        ring: t.mine && !t.clearing && this.optVal('debugMine', false) ? {
+        ring: t.mine && !t.clearing && (this.optVal('debugMine', false) || this.stacklOn()) ? {
           position: 'absolute', top: 2, right: 2, fontSize: Math.round(s * 0.3), lineHeight: 1,
           animation: 'mineRing 1s ease-in-out infinite', pointerEvents: 'none', zIndex: 7,
           filter: 'drop-shadow(0 1px 1.5px rgba(0,0,0,0.45))',
@@ -5101,7 +5107,7 @@ class Component extends DCLogic {
           zIndex: 6, pointerEvents: 'none',
         } : { display: 'none' },
         danger: { display: 'none' }, // red face removed with the pressure-pop reveal
-        ringGlyph: isBomb ? '' : (t.mine && !t.clearing && this.optVal('debugMine', false)) ? '💣' : '',
+        ringGlyph: isBomb ? '' : (t.mine && !t.clearing && (this.optVal('debugMine', false) || this.stacklOn())) ? '💣' : '',
         style: {
           position: 'absolute', left: 0, top: 0, width: s, height: s,
           transform,
@@ -5424,7 +5430,7 @@ class Component extends DCLogic {
       openWords: () => this.goModal('words'),
       closeWords: () => { this.sfxClick(); this.closeModal(); },
       htTimeLine: this.puzzleOn() ? 'You get ' + this.parGuesses() + ' words, no clock. Spend them on the biggest words you can find. Misses are free.' : 'Every word adds time. Keep the clock alive and rack up points.',
-      htBombShow: this.optVal('debugMine', false), // bombs cut from the board — only surface their how-to line when a dev re-enables them
+      htBombShow: this.optVal('debugMine', false) || this.stacklOn(), // bombs live on stackl's themed board (and via dev debugMine elsewhere) — surface the how-to line there
       // SWORB home reveal (Task 11): pre-solve shows the X/5 clue-find progress; once solved,
       // reveals the theme word (from dailyEntry().sworb) + the guess bonus earned
       // (sworbState().bonus). Safe {active:false} default on any non-sworb day.
