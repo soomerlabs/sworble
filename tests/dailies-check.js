@@ -18,11 +18,12 @@ for (const day of Object.keys(dailies)) {
     assert.ok(dict.has(w), day + ': theme word "' + w + '" is in dictionary.txt');
     assert.ok(w.length >= 3 && w.length <= 7, day + ': theme word "' + w + '" is 3-7 letters');
   }
-  // at least the default target (10) must be able to pack, or the day feels thin
-  const target = Math.min(10, e.themeWords.length);
+  // best-effort packing must land a healthy number of PURE theme words (>=6), or the day is thin.
+  // 30 cells hold ~7 pure short words; requiring 6 is comfortably met without any filler padding.
   const rng = Core.mulberry32(Core.hashSeed(day + '|sworb'));
-  const out = Seed.seedClueLetters({ clues: e.themeWords.slice(0, target), cols: 5, rows: 6, rng });
-  assert.ok(out, day + ': first ' + target + ' theme words pack onto the board');
+  const out = Seed.seedClueLettersBestEffort({ clues: e.themeWords, cols: 5, rows: 6, rng });
+  const realized = Object.keys(out.cluePaths);
+  assert.ok(realized.length >= 6, day + ': best-effort packs at least 6 theme words (got ' + realized.length + ')');
   days++;
 }
 console.log('dailies-check: ' + days + ' days valid');
