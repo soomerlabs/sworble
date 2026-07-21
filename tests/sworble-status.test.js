@@ -27,6 +27,28 @@ const S = require('../sworble-status.js');
   assert.deepStrictEqual(S.sevenFromWords([{ word: '', pts: 5 }, { word: 'ok', pts: 0 }]), { words: [], total: 0 }, 'empty words and zero scores are noise');
 }
 
+// --- cumulativeTotal: sums best-pts per distinct word, uncapped, no double-count --
+{
+  const S = require('../sworble-status.js');
+  assert.strictEqual(typeof S.cumulativeTotal, 'function', 'cumulativeTotal exported');
+  // 8 distinct words -> ALL count (best-7 would drop the smallest); dup word -> best pts only
+  const rw = [
+    { word: 'a', pts: 10 }, { word: 'b', pts: 9 }, { word: 'c', pts: 8 },
+    { word: 'd', pts: 7 }, { word: 'e', pts: 6 }, { word: 'f', pts: 5 },
+    { word: 'g', pts: 4 }, { word: 'h', pts: 3 },        // 8th word: +3 (best-7 would drop it)
+    { word: 'A', pts: 2 },                                // dup of 'a' at lower pts -> ignored
+    { word: 'z', pts: 0 }, { word: '', pts: 5 },          // zero/blank -> ignored
+  ];
+  assert.strictEqual(S.cumulativeTotal(rw), 10+9+8+7+6+5+4+3, 'uncapped sum of best-per-word');
+  assert.strictEqual(S.cumulativeTotal([]), 0, 'empty -> 0');
+  assert.strictEqual(S.cumulativeTotal(null), 0, 'null-safe');
+  // dailyStatus.seven.total + bestToday reflect the cumulative total (not the best-7 cap)
+  const ds = S.dailyStatus({ live: { active: true, over: false, roundWords: rw, tilesCount: 5 } });
+  assert.strictEqual(ds.seven.total, 52, 'live seven.total is cumulative');
+  assert.strictEqual(ds.bestToday, 52, 'bestToday is cumulative');
+  assert.strictEqual(ds.seven.words.length, 7, 'display list still capped at 7');
+}
+
 // --- rankFor ----------------------------------------------------------------------
 {
   const field = [{ name: 'A', score: 300 }, { name: 'B', score: 200 }, { name: 'C', score: 100 }];

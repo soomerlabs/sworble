@@ -25,6 +25,19 @@
     return { words, total: words.reduce((a, b) => a + b.pts, 0) };
   }
 
+  // Cumulative score: sum of the best pts per DISTINCT word, UNCAPPED (no top-7 slice) and no
+  // double-count for re-spelling. This is the running total the arcade/daily now shows (decision A).
+  function cumulativeTotal(roundWords) {
+    const map = {};
+    for (const w of (Array.isArray(roundWords) ? roundWords : [])) {
+      const word = (w && w.word) ? String(w.word).toLowerCase() : '';
+      const pts = num(w && w.pts);
+      if (!word || pts <= 0) continue;
+      if (!map[word] || pts > map[word]) map[word] = pts;
+    }
+    return Object.values(map).reduce((a, b) => a + b, 0);
+  }
+
   // Standing rank for a score against a field of {score} entries (1-based).
   function rankFor(entries, score) {
     const f = Array.isArray(entries) ? entries : [];
@@ -46,8 +59,8 @@
     const liveNow = !!(live.active && !live.over && (Array.isArray(live.roundWords) ? live.roundWords : []).length);
     // seven source priority: live memory (freshest) > saved snapshot (pre-rehydrate) > banked day
     let seven, sevenLive;
-    if (liveNow) { seven = sevenFromWords(live.roundWords); sevenLive = true; }
-    else if (!s.done && s.savedRun && Array.isArray(s.savedRun.roundWords) && s.savedRun.roundWords.length) { seven = sevenFromWords(s.savedRun.roundWords); sevenLive = true; }
+    if (liveNow) { seven = sevenFromWords(live.roundWords); seven.total = cumulativeTotal(live.roundWords); sevenLive = true; }
+    else if (!s.done && s.savedRun && Array.isArray(s.savedRun.roundWords) && s.savedRun.roundWords.length) { seven = sevenFromWords(s.savedRun.roundWords); seven.total = cumulativeTotal(s.savedRun.roundWords); sevenLive = true; }
     else {
       const st = s.storedSeven;
       const words = (st && Array.isArray(st.words)) ? st.words.slice(0, 7) : [];
@@ -61,7 +74,7 @@
       num(s.puzzleBest),
       num(s.lbMe && s.lbMe.score),
       liveNow ? seven.total : 0,
-      (!s.done && s.savedRun) ? num(sevenFromWords(s.savedRun.roundWords).total) : 0
+      (!s.done && s.savedRun) ? cumulativeTotal(s.savedRun.roundWords) : 0
     );
     const resumable = !s.done && (
       !!(live.active && !live.over && num(live.tilesCount)) || !!s.savedRun
@@ -90,7 +103,7 @@
     };
   }
 
-  const API = { sevenFromWords, rankFor, dailyStatus };
+  const API = { sevenFromWords, cumulativeTotal, rankFor, dailyStatus };
   root.SworbleStatus = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

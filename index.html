@@ -1396,18 +1396,9 @@ class Component extends DCLogic {
   // (grab the safe word or hunt the monster?) — that agony IS the game.
   // Invalid words are free (they only break streak) — the skill is spending your seven well.
   parGuesses() { return Math.max(5, Math.min(40, Math.round(this.optVal('parGuesses', 21)))); }
-  // sum of the top-7 distinct words (best pts per word) — your score IS your best seven,
-  // recomputed live as you spend your tries. Matches the number saved to the leaderboard.
-  bestSevenTotal(roundWords) {
-    const map = {};
-    for (const w of (roundWords || [])) {
-      const word = (w && w.word ? String(w.word) : '').toLowerCase();
-      const pts = (w && w.pts) || 0;
-      if (!word || pts <= 0) continue;
-      if (!map[word] || pts > map[word]) map[word] = pts;
-    }
-    return Object.values(map).sort((a, b) => b - a).slice(0, 7).reduce((a, b) => a + b, 0);
-  }
+  // cumulative running total (best pts per distinct word, uncapped) — decision A: your score
+  // IS the sum of every distinct word you've spelled, recomputed live as you spend your tries.
+  cumulativeTotal(roundWords) { return SworbleStatus.cumulativeTotal(roundWords); }
   roundSecs() { return this.stacklOn() ? 120 : (this.puzzleOn() ? 180 : this.optVal('gameSeconds', 120)); }
   isV1() { return !this.isV2(); }
   cols() { return Math.max(4, Math.min(9, Math.round(this.optVal('cols', 5)))); }
@@ -3505,7 +3496,7 @@ class Component extends DCLogic {
         this._clueJustFound = word.toLowerCase(); // surfaces read this for the glow (Task 10)
       }
       const nextRoundWords = (s.roundWords || []).concat({ word, pts, colors: wordColors, best: bestHit });
-      const score = this.puzzleOn() ? this.bestSevenTotal(nextRoundWords) : Math.max(0, s.score + pts); // score IS your best seven (matches the leaderboard); classic mode sums
+      const score = this.cumulativeTotal(nextRoundWords); // decision A: cumulative running total (all modes)
       const best = Math.max(s.best, score);
       try { LS.setItem(K.BEST, String(best)); } catch (e) {}
       return {
