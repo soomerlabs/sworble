@@ -1386,11 +1386,11 @@ class Component extends DCLogic {
   }
   // the classic drop mode (v1) was retired — always-full board, words add time
   isV2() { return true; }
-  // Puzzle mode (beta): the optimization-puzzle identity — fixed clock with no time
-  // economy, visible word-fuse bombs, bot-anchored Bronze/Silver/Gold tiers on the daily.
-  puzzleOn() { return true; } // BAKED: budget mode IS the game (classic fully retired)
-  // Stackl (2-minute timed mode): orthogonal to puzzleOn — a session-only run flag set
-  // at launch (startStackl). The daily/practice puzzle stays baked true and unaffected.
+  // Puzzle mode: the optimization-puzzle identity — fixed clock with no time economy,
+  // visible word-fuse bombs, bot-anchored Bronze/Silver/Gold tiers on the daily. BAKED:
+  // budget mode IS the game (classic fully retired) — always live, no toggle.
+  // Stackl (2-minute timed mode): orthogonal to puzzle mode — a session-only run flag set
+  // at launch (startStackl). The daily/practice puzzle stays baked on and unaffected.
   stacklOn() { return !!this.state.stacklMode; }
   // The Sworble Seven: 7 words per run (dev-tunable). Fewer picks = each one is high-stakes
   // (grab the safe word or hunt the monster?) — that agony IS the game.
@@ -1399,7 +1399,7 @@ class Component extends DCLogic {
   // cumulative running total (best pts per distinct word, uncapped) — decision A: your score
   // IS the sum of every distinct word you've spelled, recomputed live as you spend your tries.
   cumulativeTotal(roundWords) { return SworbleStatus.cumulativeTotal(roundWords); }
-  roundSecs() { return this.stacklOn() ? 120 : (this.puzzleOn() ? 180 : this.optVal('gameSeconds', 120)); }
+  roundSecs() { return this.stacklOn() ? 120 : 180; }
   isV1() { return !this.isV2(); }
   cols() { return Math.max(4, Math.min(9, Math.round(this.optVal('cols', 5)))); }
   rows() { return Math.max(4, Math.min(14, Math.round(this.optVal('rows', 6)))); }
@@ -1445,7 +1445,7 @@ class Component extends DCLogic {
         this.setState({ timeLeft: v });
       } else if (k === 'parGuesses') {
         // new budget = a fresh run if one is live
-        if (this.state.screen === 'game' && !this.state.over && this.puzzleOn()) this.newGame(true);
+        if (this.state.screen === 'game' && !this.state.over) this.newGame(true);
         else this.setState({ guessesLeft: v });
       }
     });
@@ -2284,13 +2284,12 @@ class Component extends DCLogic {
   }
   loadRunState() { // today's snapshot, validated — or null (fresh deal)
     try {
-      if (this.dailyDone()) return null; // the day is locked — results already banked
       const day = this.dayKey(new Date());
       return SworbleRun.validateRun(SworbleStore.getJSON(K.RUN_PREFIX + day, null), day);
     } catch (e) { return null; }
   }
   hasSavedRun() { // cheap render-time check (no JSON parse) for the home RESUME label
-    try { return !this.dailyDone() && !!LS.getItem(K.RUN_PREFIX + (this.dailyKey || this.dayKey(new Date()))); } catch (e) { return false; }
+    try { return !!LS.getItem(K.RUN_PREFIX + (this.dailyKey || this.dayKey(new Date()))); } catch (e) { return false; }
   }
   clearRunState() {
     try { LS.removeItem(K.RUN_PREFIX + (this.dailyKey || this.dayKey(new Date()))); } catch (e) {}
@@ -2336,7 +2335,7 @@ class Component extends DCLogic {
       savedRun = this._dsSnap;
     } catch (e) { savedRun = null; }
     return SworbleStatus.dailyStatus({
-      done: this.dailyDone(day),
+      done: false, // endless daily: never hard-locks; resumes within the day (resets at the next daily)
       storedDailyBest: SworbleStore.getInt(K.DAILY_PREFIX + day, 0),
       storedSeven,
       puzzleBest: SworbleStore.getInt(K.PUZZLE_BEST_PREFIX + day, 0),
@@ -2499,7 +2498,6 @@ class Component extends DCLogic {
       wbQuery: st.wbQuery || '', wbHasQuery: searching, wbQueryUpper: q.toUpperCase(),
     };
   }
-  dailyDone() { return false; } // endless daily: never hard-locks; resumes within the day (resets at the next daily)
   // season "IQ": average efficiency (your best-7 vs the bot's optimal) across every daily you've finished
   seasonIQ() {
     let sum = 0, n = 0;
@@ -2511,7 +2509,7 @@ class Component extends DCLogic {
   endRound() {
     if (this.state.over) return;
     this.dragging = false;
-    this._dailyLive = false; // the run ends here (locks via dailyDone below) — no resume after this
+    this._dailyLive = false; // the run ends here (no hard lock — endless daily resumes within the day) — no resume after this
     // only CASUAL owns the shared RUN_PREFIX snapshot (stacks is session-only, never saves one) —
     // gating this on dailyMode stops a finished STACKS round from wiping casual's saved run.
     if (this.optVal('dailyMode', true)) this.clearRunState(); // the finished run's snapshot must never restore
@@ -2528,7 +2526,7 @@ class Component extends DCLogic {
       } catch (e) {}
     }
     // result ladder context: log this run; snapshot best + rank from BEFORE it landed
-    if (this.puzzleOn() && this.optVal('dailyMode', true)) {
+    if (this.optVal('dailyMode', true)) {
       try {
         const d = this.dailyKey || this.dayKey(new Date()), rk = K.RUNS_PREFIX + d;
         const runs = JSON.parse(LS.getItem(rk) || '[]');
@@ -2545,7 +2543,7 @@ class Component extends DCLogic {
       } catch (e) {}
     }
     // par home reads a per-day best so the return visit works even before a name/leaderboard submit
-    if (this.puzzleOn() && this.optVal('dailyMode', true)) {
+    if (this.optVal('dailyMode', true)) {
       try { const d = this.dailyKey || this.dayKey(new Date()), k = K.PUZZLE_BEST_PREFIX + d, p = Number(LS.getItem(k) || 0) || 0; if ((this.state.score || 0) > p) LS.setItem(k, String(this.state.score || 0)); } catch (e) {}
     }
     // stackl (2-min timed) per-day best: own prefix, own board — never touches puzzle's best/leaderboard
@@ -2558,7 +2556,7 @@ class Component extends DCLogic {
       } catch (e) {}
     }
     // PERFECT RUN: every word of a full budget was a best word (legendary, crowned on the result sheet)
-    this._lastRunPerfect = this.puzzleOn() && (this._bestHits || 0) >= this.parGuesses();
+    this._lastRunPerfect = (this._bestHits || 0) >= this.parGuesses();
     this.setState({ timeLeft: 0, over: true, path: [], scoreShown: this.state.score });
     this.sfxOver();
     this.prepareRecap(); // words you missed + pre-rendered share image
@@ -2632,12 +2630,11 @@ class Component extends DCLogic {
       }
     }
     // --- round clock (classic only; par is guess-bound — endRound fires from clearWord) ---
-    // Stackl gets a LIVE countdown regardless of puzzleOn (which stays baked true for the
-    // daily); the daily/practice puzzle stays frozen at 9999 — the clock is a boundary,
-    // not the antagonist, for puzzle mode.
+    // Stackl gets a LIVE countdown; the daily/practice puzzle stays frozen at 9999 — the
+    // clock is a boundary, not the antagonist, for puzzle mode.
     const timeLeft = this.stacklOn()
       ? Math.max(0, (this.roundEndAt - now) / 1000)   // live countdown for Stackl
-      : (this.puzzleOn() ? 9999 : Math.max(0, (this.roundEndAt - now) / 1000));
+      : 9999;
     this.timeLeftV = timeLeft;
     if (timeLeft <= 0) {
       this.endRound();
@@ -2646,7 +2643,7 @@ class Component extends DCLogic {
     const ceilNow = Math.ceil(timeLeft), ceilPrev = Math.ceil(st.timeLeft);
     if (ceilNow !== ceilPrev) {
       if (ceilNow <= 5) this.sfxTick();
-      if (ceilPrev > 60 && ceilNow <= 60 && !this.puzzleOn()) { this.showBanner({ timeWarn: true }); this.sfxTimeWarn(); } // puzzle: no mid-round alarm — the clock is a boundary, not the antagonist
+      if (ceilPrev > 60 && ceilNow <= 60 && this.stacklOn()) { this.showBanner({ timeWarn: true }); this.sfxTimeWarn(); } // stacks: low-time cue on the live countdown
       this.setState({ timeLeft });
     }
     if (this.isV1()) {
@@ -2879,7 +2876,6 @@ class Component extends DCLogic {
       if (landings.length) this.enqueue(lastLandMs, () => this.sfxThud());
       // refill strictly AFTER the last landing — cascade visual + pips fire as ONE event
       this.enqueue(lastLandMs + 450, () => {
-        if (!this.puzzleOn() && this.timeLeftV <= 10.5) return; // classic final sprint: the hopper stays empty — no blocks left
         this.reloadAt = performance.now(); // roulette waits for the cascade to finish
         // hopSwap MUST clear here: a remembered swap re-triggers its pop animation on
         // the fresh slots mid-cascade (the "second load-in jank")
@@ -3245,19 +3241,13 @@ class Component extends DCLogic {
     // puzzle mode: hidden always — and the minefield ESCALATES as the budget drains:
     // 2 early, 3 mid-run, 4 for the last 3 words (comeback targets right when easy
     // words run dry; overlapping sonar patches finally produce real 2s and 3s)
-    if (this.puzzleOn()) {
-      if (this.state.over) return 0;
-      // BOMBS CUT from the live board (retention-thesis simplification) — every line of
-      // bomb/beacon/detonation code stays intact; they simply don't spawn. A dev can flip
-      // "Show mines" (debugMine) back on to exercise the whole system.
-      if (!this.optVal('debugMine', false)) return 0;
-      const gl = this.state.guessesLeft ?? this.parGuesses();
-      return this.state.tut ? 1 : gl <= 3 ? 4 : gl <= 9 ? 3 : 2;
-    }
-    const sm = this.streakMult(this.state.streak);
-    const base = sm >= 2 ? 2 : sm >= 1.5 ? 1 : 0;
-    // debug: keep one armed regardless of streak so testers can see it immediately
-    return this.optVal('debugMine', false) ? Math.max(1, base) : base;
+    if (this.state.over) return 0;
+    // BOMBS CUT from the live board (retention-thesis simplification) — every line of
+    // bomb/beacon/detonation code stays intact; they simply don't spawn. A dev can flip
+    // "Show mines" (debugMine) back on to exercise the whole system.
+    if (!this.optVal('debugMine', false)) return 0;
+    const gl = this.state.guessesLeft ?? this.parGuesses();
+    return this.state.tut ? 1 : gl <= 3 ? 4 : gl <= 9 ? 3 : 2;
   }
   syncMines() {
     if (this.state.over || this.state.screen === 'home') return;
@@ -3276,33 +3266,31 @@ class Component extends DCLogic {
     // TREASURE MAP: the first missing bomb buries on the FIRST letter of the board's best
     // findable word — the sonar numbers triangulate where the magic word BEGINS. The par
     // bot anchors by the same rule, so the daily map is identical for everyone (fair by construction).
-    if (this.puzzleOn()) {
-      try {
-        // NEVER trust a solve from a previous board — if any cached id is gone, re-solve
-        const liveIds = new Set(live.map(t => t.id));
-        if (this._bestSol && this._bestSol.ids && !this._bestSol.ids.every(id => liveIds.has(id))) { this.bestLen = null; this._bestSol = null; }
-        this.ensureWordExists();
-      } catch (e) {}
-      // B′ MULTI-BEACON: each bomb marks a DISTINCT top word's first letter. Beacons and
-      // decoys look identical, so knowing WHERE a word starts never tells you WHICH it is.
-      let starts = [];
-      try { starts = this.topWordStarts(live, want).map(s => s.startId).filter(id => id != null); } catch (e) {}
-      for (const id of starts) { // fill open slots with beacons
-        if (armed.length + picks.length >= want) break;
-        if (armed.some(t => t.id === id) || picks.includes(id)) continue;
-        const t = cand.find(x => x.id === id);
-        if (t) { picks.push(id); cand = cand.filter(x => x.id !== id); }
-      }
-      // quota already full but a top word is unmarked: relocate a DECOY onto it so the map
-      // stays honest as the board shifts (bombs are invisible — a move costs nothing)
-      if (!picks.length && armed.length >= want) {
-        const startSet = new Set(starts);
-        const uncovered = starts.filter(id => !armed.some(t => t.id === id) && cand.some(x => x.id === id));
-        let decoys = armed.filter(t => !startSet.has(t.id));
-        const off = new Set(), on = new Set();
-        for (const id of uncovered) { if (!decoys.length) break; off.add(decoys.pop().id); on.add(id); }
-        if (on.size) this.setState(s => ({ tiles: s.tiles.map(t => off.has(t.id) ? { ...t, mine: false } : on.has(t.id) ? { ...t, mine: true } : t) }));
-      }
+    try {
+      // NEVER trust a solve from a previous board — if any cached id is gone, re-solve
+      const liveIds = new Set(live.map(t => t.id));
+      if (this._bestSol && this._bestSol.ids && !this._bestSol.ids.every(id => liveIds.has(id))) { this.bestLen = null; this._bestSol = null; }
+      this.ensureWordExists();
+    } catch (e) {}
+    // B′ MULTI-BEACON: each bomb marks a DISTINCT top word's first letter. Beacons and
+    // decoys look identical, so knowing WHERE a word starts never tells you WHICH it is.
+    let starts = [];
+    try { starts = this.topWordStarts(live, want).map(s => s.startId).filter(id => id != null); } catch (e) {}
+    for (const id of starts) { // fill open slots with beacons
+      if (armed.length + picks.length >= want) break;
+      if (armed.some(t => t.id === id) || picks.includes(id)) continue;
+      const t = cand.find(x => x.id === id);
+      if (t) { picks.push(id); cand = cand.filter(x => x.id !== id); }
+    }
+    // quota already full but a top word is unmarked: relocate a DECOY onto it so the map
+    // stays honest as the board shifts (bombs are invisible — a move costs nothing)
+    if (!picks.length && armed.length >= want) {
+      const startSet = new Set(starts);
+      const uncovered = starts.filter(id => !armed.some(t => t.id === id) && cand.some(x => x.id === id));
+      let decoys = armed.filter(t => !startSet.has(t.id));
+      const off = new Set(), on = new Set();
+      for (const id of uncovered) { if (!decoys.length) break; off.add(decoys.pop().id); on.add(id); }
+      if (on.size) this.setState(s => ({ tiles: s.tiles.map(t => off.has(t.id) ? { ...t, mine: false } : on.has(t.id) ? { ...t, mine: true } : t) }));
     }
     if (armed.length >= want) return;
     // extras spread through the interior — unmarked wildcards (a corner mine's radius is
@@ -3396,10 +3384,9 @@ class Component extends DCLogic {
     const bestBonus = bestHit ? Math.round(base * lm * sm * 0.2 * Math.min(this.bestRun, 5)) : 0;
     // MINES: 4+ word through an armed mine detonates it — radius tiles pay value × streak
     // mult on top; a ≤3 word fizzles it for −5s (applied in the commit callback below)
-    const puz = this.puzzleOn();
     // ENDLESS DAILY: word budget removed \u2014 a valid word never spends a guess and never
     // ends the round. Warm-up graduation is the only per-word state transition left here.
-    if (puz && this.state.tut) {
+    if (this.state.tut) {
       // WARM-UP (first open ever): words are free; two good words graduate into the real round
       if (this.state.tut.step === 1) {
         this.setState({ tut: { step: 2 }, idleTip: { kind: 'copy', text: 'longer words score way more. one more', key: 'tut2' } });
@@ -4012,8 +3999,8 @@ class Component extends DCLogic {
   // one leaderboard bucket PER MODE: puzzle (3:00) and classic (2:00) scores are set
   // under different rules, so they must never share a board. The mode suffix on the
   // board id keeps them apart for the local stub; the Soomer API takes mode explicitly.
-  lbBoardId(date) { return date + (this.stacklOn() ? '|stackl' : (this.puzzleOn() ? '|puzzle' : '')); }
-  lbMode() { return this.stacklOn() ? 'stackl' : (this.puzzleOn() ? 'puzzle' : 'classic'); }
+  lbBoardId(date) { return date + (this.stacklOn() ? '|stackl' : '|puzzle'); }
+  lbMode() { return this.stacklOn() ? 'stackl' : 'puzzle'; }
   async lbSubmit(date, name, score) {
     if (!name || !score) return;
     // the local stub entry ALWAYS updates first — offline play keeps a live board
@@ -4042,9 +4029,7 @@ class Component extends DCLogic {
     const n = Math.min(pool.length, 16 + Math.floor(rnd() * 12));
     const entries = [];
     for (let i = 0; i < n; i++) {
-      let sc;
-      if (this.puzzleOn()) sc = Math.round(1200 + Math.pow(rnd(), 1.7) * 3200);
-      else sc = Math.round(250 + Math.pow(rnd(), 1.8) * 1600);
+      const sc = Math.round(1200 + Math.pow(rnd(), 1.7) * 3200);
       entries.push({ name: pool[i], score: sc });
     }
     let me = null; try { me = JSON.parse(LS.getItem(K.LB_ME_PREFIX + this.lbBoardId(date)) || 'null'); } catch (e) {}
@@ -4796,8 +4781,7 @@ class Component extends DCLogic {
   }
 
   overParVals(st, dailyOn) { // Par experience: end-of-round verdict, ± gauge, rank card (replaces the old tier system)
-        const puz = this.puzzleOn();
-        if (!puz || !dailyOn) return { parOverShow: false, classicOverShow: true, tierRailShow: false, overTierShow: false, botFindShow: false, homePuzzleShow: false };
+        if (!dailyOn) return { parOverShow: false, classicOverShow: true, tierRailShow: false, overTierShow: false, botFindShow: false, homePuzzleShow: false };
         const sc = st.score || 0;
         const fmt = n => Math.round(n).toLocaleString();
         // RESULT LADDER (canvas: Result Flow 1a-1d) — vs yourself first; podium/big-dawg
@@ -4896,7 +4880,7 @@ class Component extends DCLogic {
       }
 
   homeLeadersVals(st, dailyOn) {
-        const on = this.puzzleOn() && dailyOn && st.screen === 'home';
+        const on = dailyOn && st.screen === 'home';
         if (!on) return {};
         const fmt = n => (n == null ? '' : Number(n).toLocaleString('en-US'));
         const day = this.dailyKey || this.dayKey(new Date());
@@ -5152,7 +5136,7 @@ class Component extends DCLogic {
       // SONAR: how many hidden bombs touch this tile (Chebyshev 1, self included — a bomb
       // wears a "1" like its neighbors, so the number field never outs it). The numbers are
       // the player's ONLY signal: deduction, not luck.
-      const sonarN = (this.puzzleOn() && !t.clearing && !t.dead && !isBomb)
+      const sonarN = (!t.clearing && !t.dead && !isBomb)
         ? st.tiles.reduce((a, m) => a + ((m.mine && !m.dead && !m.clearing && Math.abs(m.row - t.row) <= 1 && Math.abs(m.col - t.col) <= 1) ? 1 : 0), 0) : 0;
       return {
         key: t.id,
@@ -5519,7 +5503,7 @@ class Component extends DCLogic {
       wordsBtnLabel: (() => { const p = (st.roundWords || []).length, m = (st.missedWords || []).length; if (!p) return m + ' MISSED WORD' + (m === 1 ? '' : 'S'); return p + ' WORD' + (p === 1 ? '' : 'S') + (m ? ' \u00b7 ' + m + ' MISSED' : ''); })(),
       openWords: () => this.goModal('words'),
       closeWords: () => { this.sfxClick(); this.closeModal(); },
-      htTimeLine: this.puzzleOn() ? 'You get ' + this.parGuesses() + ' words, no clock. Spend them on the biggest words you can find. Misses are free.' : 'Every word adds time. Keep the clock alive and rack up points.',
+      htTimeLine: 'You get ' + this.parGuesses() + ' words, no clock. Spend them on the biggest words you can find. Misses are free.',
       htBombShow: this.optVal('debugMine', false) || this.stacklOn(), // bombs live on stackl's themed board (and via dev debugMine elsewhere) — surface the how-to line there
       // SWORB home reveal (Task 11): pre-solve shows the X/5 clue-find progress; once solved,
       // reveals the theme word (from dailyEntry().sworb) + the guess bonus earned
@@ -5570,7 +5554,7 @@ class Component extends DCLogic {
       wbSearchBarStyle: { width: '100%', maxWidth: colW, boxSizing: 'border-box', pointerEvents: st.screen === 'wordbank' ? 'auto' : 'none', display: 'flex', alignItems: 'center', gap: 11, background: 'color-mix(in srgb, var(--card) 82%, transparent)', backdropFilter: 'blur(16px) saturate(1.5)', WebkitBackdropFilter: 'blur(16px) saturate(1.5)', borderRadius: 15, padding: '12px 15px', boxShadow: 'inset 0 0 0 1.5px var(--line), 0 8px 22px rgba(0,0,0,0.14)' },
       wbEyebrow: '',
       ...(() => { if (st.screen === 'wordbank') { this._wbCache = this.wordBankVals(); return this._wbCache; } return this._wbCache || {}; })(),
-      htBombLine: this.puzzleOn() ? 'The tiny corner numbers point to where the board\u2019s best words begin. Find a start, thread a long word out of it, and it blasts for a big bonus. More show up as your words run low.' : 'On a streak, a mine appears on the board. Catch it in a 4+ letter word for a blast bonus; hit it with a 3-letter word and lose 5s.',
+      htBombLine: 'The tiny corner numbers point to where the board\u2019s best words begin. Find a start, thread a long word out of it, and it blasts for a big bonus. More show up as your words run low.',
       isV1: this.isV1(),
       isV2Mode: this.isV2(),
       // ------- HOME screen -------
@@ -5767,7 +5751,6 @@ class Component extends DCLogic {
       })(),
       startDaily: (this._startDaily = () => {
         this.sfxClick();
-        if (this.dailyDone()) { if (this._startPractice) this._startPractice(); return; } // already played today — swipe/tap now launches practice
         // RESUME a live, unfinished daily run — you only paused it by visiting home. Never re-roll.
         if (this._dailyLive && !this.state.over && (this.state.tiles || []).length) {
           this.setState({ screen: 'game', paused: false, sworbTyping: false, stepperMode: 'play' });
@@ -5836,12 +5819,6 @@ class Component extends DCLogic {
       isDaily: dailyOn,
       dailyLabel: dailyOn ? 'ON' : 'OFF',
       dailyToggleStyle: this.toggleStyle(dailyOn),
-      toggleDaily: () => {
-        this.sfxClick();
-        const opts = { ...(this.state.opts || {}), dailyMode: !this.optVal('dailyMode', true) };
-        this.saveOpts(opts);
-        this.setState({ opts }, () => this.newGame(true));
-      },
       shareLabel: st.shareLabel || 'SHARE',
       shareDone: !!(st.shareLabel && st.shareLabel !== 'SHARE'),
       shareIdle: !(st.shareLabel && st.shareLabel !== 'SHARE'),
@@ -5982,8 +5959,8 @@ class Component extends DCLogic {
           animA: 'smokeDriftA 14s ease-in-out infinite', lightAnim: 'lightningFlash 9s ease-in-out infinite',
         };
       })(),
-      dailyIsDone: this.dailyDone(),
-      dailyNotDone: !this.dailyDone(),
+      dailyIsDone: false,
+      dailyNotDone: true,
       nextPuzzleIn: (() => { try { const now = new Date(); const mid = new Date(now); mid.setHours(24, 0, 0, 0); const ms = mid - now; const h = Math.floor(ms / 3600000); const m = Math.floor((ms % 3600000) / 60000); return h > 0 ? (h + 'h ' + m + 'm') : (m + 'm'); } catch (e) { return ''; } })(),
 
       bannerZoneStyle: {
@@ -6002,25 +5979,22 @@ class Component extends DCLogic {
         return Math.max(this._tb || 0, st.score).toLocaleString();
       })(),
       hopperMsgRef: this.hopperMsgRef,
-      timeHudLabel: this.stacklOn() ? 'TIME' : (this.puzzleOn() ? (st.tut ? 'WARMUP' : 'WORDS') : 'TIME'),
+      timeHudLabel: this.stacklOn() ? 'TIME' : (st.tut ? 'WARMUP' : 'WORDS'),
       timeText: (() => {
         if (this.stacklOn()) { const shown = Math.max(0, Math.ceil(st.timeLeft - (this.timeRoll || 0))); return Math.floor(shown / 60) + ':' + String(shown % 60).padStart(2, '0'); }
-        if (this.puzzleOn()) { if (st.tut) return '\u2014'; return String((this.state.roundWords || []).length); } // words found so far (no cap)
-        const shown = Math.max(0, Math.ceil(st.timeLeft - (this.timeRoll || 0))); // rolls up as the bonus lands
-        return Math.floor(shown / 60) + ':' + String(shown % 60).padStart(2, '0');
+        if (st.tut) return '\u2014';
+        return String((this.state.roundWords || []).length); // words found so far (no cap)
       })(),
-      timeKey: this.stacklOn() ? 'clock' : ((this.puzzleOn() && !st.tut) ? ('w' + (this.state.roundWords || []).length) : 'clock'), // remount per word — replays the pop
+      timeKey: this.stacklOn() ? 'clock' : (!st.tut ? ('w' + (this.state.roundWords || []).length) : 'clock'), // remount per word — replays the pop
       timeValStyle: {
         fontSize: valFont, fontWeight: 800, lineHeight: 1,
-        animation: this.puzzleOn() ? 'slotInA 0.28s ease-out' : 'none',
         color: (() => {
           if (this.stacklOn()) { return st.timeLeft <= 10 ? '#FF8A8E' : st.timeLeft <= 60 ? '#F5B84A' : 'var(--card-ink)'; }
-          if (this.puzzleOn()) { const g = st.guessesLeft ?? 15; return g <= 3 ? '#FF8A8E' : g <= 6 ? '#F5B84A' : 'var(--card-ink)'; }
-          return st.timeLeft <= 10 ? '#FF8A8E' : st.timeLeft <= 60 ? '#F5B84A' : 'var(--card-ink)';
+          const g = st.guessesLeft ?? 15; return g <= 3 ? '#FF8A8E' : g <= 6 ? '#F5B84A' : 'var(--card-ink)';
         })(),
         animation: payCelebrate && st.banner.timeBonus ? 'bestPop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.15s' : 'none',
       },
-      restart: () => { this.sfxClick(); if (this.optVal('dailyMode', true) && this.dailyDone()) { this.setState({ screen: 'home', over: false, paused: false, path: [], banner: null }); this.loadHomeLb(); return; } this.newGame(true); },
+      restart: () => { this.sfxClick(); this.newGame(true); },
       toggleMute: () => {
         const m = !this.state.muted;
         this.setState({ muted: m });
@@ -6501,7 +6475,7 @@ class Component extends DCLogic {
         this.saveOpts(opts);
         this.setState({ opts }, () => this.syncMines());
       },
-      puzzleOn: this.puzzleOn(),
+      puzzleOn: true,
       flagsChevStyle: { fontSize: 14, fontWeight: 800, color: 'var(--ghost)', transform: st.devFlagsOpen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.22s ease', display: 'inline-block' },
       flagsBoxStyle: { display: 'grid', gridTemplateRows: st.devFlagsOpen ? '1fr' : '0fr', opacity: st.devFlagsOpen ? 1 : 0, marginTop: -8, marginBottom: st.devFlagsOpen ? 0 : -8, transition: 'grid-template-rows 0.24s ease, opacity 0.2s ease, margin-bottom 0.24s ease' },
       toggleFlagsOpen: () => { this.sfxClick(); this.setState({ devFlagsOpen: !this.state.devFlagsOpen }); },
