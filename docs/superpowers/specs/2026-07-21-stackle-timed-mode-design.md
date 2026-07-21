@@ -15,12 +15,14 @@ on a **separate daily-seeded board** (non-theme — no sworb, no spoilers). The 
 — it starts at 2:00 and good words **add time**, while **bombs swing it up or down** — so a strong
 run extends itself and a sloppy one dies fast. You **blast through** as many high-scoring words as
 you can; **streak × length multipliers** reward speed and long words. You can **replay** today's
-board freely, and your **best score** is what ranks you on Stackle's **own daily leaderboard**.
+board freely, and your **best score** is what ranks you on Stackle's **own daily leaderboard**. And
+when you want fresh boards, **Stackle practice** serves up **random** boards with the same mechanics
+— endless free-play that never touches the leaderboard.
 
 This largely **promotes the existing timed run** (`!puzzleOn()` practice mode already has the 2:00
-dynamic clock, streak multiplier, and length multiplier) plus **re-enables the two bomb systems**
-(currently disabled/cut from the live board) and adds the daily-board seed, best-score storage, and
-a separate leaderboard.
+dynamic clock, streak multiplier, length multiplier, AND is a random-board timed run) plus
+**re-enables the two bomb systems** (currently disabled/cut from the live board) and adds the
+daily-board seed, best-score storage, and a separate leaderboard.
 
 ## Confirmed design decisions (from brainstorm 2026-07-21)
 
@@ -32,8 +34,9 @@ a separate leaderboard.
 - **Replay + best:** replay today's Stackle board freely; the **best** score for the day ranks.
 - **Leaderboard:** a **separate** Stackle daily leaderboard, distinct from the Word-of-the-Day
   standings.
-- **Practice mode:** Stackle subsumes the timed experience; free-play "practice" retires from the
-  user-facing surface (Stackle's replay covers "play again"). Warm-up/tutorial stays.
+- **Two Stackle sub-modes:** the **daily board** (deterministic, shared — best run ranks) AND
+  **Stackle practice** (endless **random** boards, same mechanics, **no leaderboard impact**) for
+  when you want fresh boards. Practice is kept and reframed as Stackle free-play (not retired).
 - **Home entry:** Phase 2 ships a **minimal launch path**; the polished **mode picker** (arm a mode,
   then "swipe up to play" launches it — same board engine, different context) is **Phase 3**.
 
@@ -89,12 +92,16 @@ a separate leaderboard.
   points (with multipliers) + bomb blast bonuses. No new scoring model — this is the arcade the
   engine already scores.
 
-### 6. Replay + best-score storage (new)
+### 6. Replay + best-score storage + practice (new)
 
 - New store key `K.STACKLE_BEST_PREFIX = 'sworble_stackle_best_'` — per-day best score
-  `{ best, runs }` (or just a number). On run-over, `best = max(best, runScore)`.
-- Replay: launching Stackle again re-deals the SAME daily board (deterministic) for a fresh 2:00.
-- The best score is the leaderboard-ranking value.
+  `{ best, runs }` (or just a number). On a **daily-board** run-over, `best = max(best, runScore)`.
+- Replay: launching the daily Stackle again re-deals the SAME daily board (deterministic) for a
+  fresh 2:00. The best score is the leaderboard-ranking value.
+- **Stackle practice:** launching practice deals a **random** board (session-only, non-deterministic
+  is fine here — reuses the existing practice deal) with the same clock/bombs/multipliers. Practice
+  runs **never** update `STACKLE_BEST_PREFIX` or the leaderboard — pure free-play. This is the one
+  functional split between the two sub-modes.
 
 ### 7. Stackle leaderboard (separate, prototype stub)
 
@@ -105,16 +112,17 @@ a separate leaderboard.
 
 ### 8. Home entry (Phase 2 minimal)
 
-- A minimal **Stackle launch card/button** on home that starts today's Stackle board. Enough to
-  play + iterate. The full two-section home + the **mode picker** ("arm" Word-of-the-Day or
-  Stackle, then the existing **swipe-up-to-play** launches the armed mode — same board engine,
-  different context) is **Phase 3**.
+- A minimal **Stackle launch card/button** on home that starts today's daily Stackle board, plus a
+  secondary **"random board" (practice)** launch. Enough to play + iterate. The full two-section
+  home + the **mode picker** ("arm" Word-of-the-Day or Stackle, then the existing
+  **swipe-up-to-play** launches the armed mode — same board engine, different context) is **Phase 3**.
 
-### 9. Retire free-play practice (user-facing)
+### 9. Stackle practice (reframed free-play)
 
-- The old `startPractice()` (random session board, no leaderboard) is removed from the
-  user-facing surface; Stackle's replay is the "play again." Keep the warm-up/tutorial path and
-  any dev hook. Do not delete the underlying timed engine — Stackle uses it.
+- The existing `startPractice()` (random session board, timed) IS Stackle practice — keep it,
+  enable the Stackle bombs + multipliers on it, and surface it as "Stackle practice / random
+  board." Practice runs are pure free-play: they never write `STACKLE_BEST_PREFIX` or hit the
+  leaderboard. Keep the warm-up/tutorial path. (Nothing is retired — practice is repurposed.)
 
 ## Determinism & persistence
 
@@ -138,5 +146,7 @@ a separate leaderboard.
    deterministic from the Stackle seed.
 3. **Best-score storage + replay** (STACKLE_BEST_PREFIX; replay re-deals the same board).
 4. **Stackle leaderboard stub** (separate surface, ranked by best score).
-5. **Retire free-play practice** from the user-facing surface.
-6. Browser-verify the full loop (play, bombs, clock, replay, best updates, leaderboard); commit.
+5. **Stackle practice** — surface the existing random-board timed run as Stackle free-play (same
+   bombs/multipliers), guaranteed to NEVER write the best score or hit the leaderboard.
+6. Browser-verify the full loop (daily play, bombs, clock, replay, best updates, leaderboard, AND
+   practice = random board that doesn't touch best/leaderboard); commit.
