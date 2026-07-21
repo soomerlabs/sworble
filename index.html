@@ -498,6 +498,8 @@
                       </button>
                     </div>
                   </sc-if>
+                  <!-- TEMPORARY (Task 1): reach Stackl until the polished home card lands (Task 7) -->
+                  <button onClick="{{ startStackl }}" aria-label="Launch Stackl, 2 minute timed mode" style="position:relative; z-index:1; margin-top:6px; background:transparent; border:none; padding:4px 10px; cursor:pointer; font-family:'Fredoka','Manrope',sans-serif; font-size:12px; font-weight:600; letter-spacing:0.3px; color:var(--ghost);" style-active="opacity:0.6">&#9201;&#65039; stackl (dev)</button>
                 </div>
         </div>
     </div>
@@ -1239,7 +1241,7 @@ class Component extends DCLogic {
     this.initOpts = opts;
     this.state = {
       tiles: [], nextRow: [], score: 0, best,
-      dropStamp: 0, prog: 0, paused: false, over: false, dropSoon: false,
+      dropStamp: 0, prog: 0, paused: false, over: false, dropSoon: false, stacklMode: false,
       path: [], banner: null, streak: 0, maxStreak: 0,
       scoreShown: 0, bestLit: false, roundWords: [],
       nextFresh: false, muted, opts, activeModal: null, modalStack: [], contentFading: false, heightAnim: false, modalW: 320, modalFromHome: false,
@@ -1359,6 +1361,9 @@ class Component extends DCLogic {
   // Puzzle mode (beta): the optimization-puzzle identity — fixed clock with no time
   // economy, visible word-fuse bombs, bot-anchored Bronze/Silver/Gold tiers on the daily.
   puzzleOn() { return true; } // BAKED: budget mode IS the game (classic fully retired)
+  // Stackl (2-minute timed mode): orthogonal to puzzleOn — a session-only run flag set
+  // at launch (startStackl). The daily/practice puzzle stays baked true and unaffected.
+  stacklOn() { return !!this.state.stacklMode; }
   // The Sworble Seven: 7 words per run (dev-tunable). Fewer picks = each one is high-stakes
   // (grab the safe word or hunt the monster?) — that agony IS the game.
   // Invalid words are free (they only break streak) — the skill is spending your seven well.
@@ -1375,7 +1380,7 @@ class Component extends DCLogic {
     }
     return Object.values(map).sort((a, b) => b - a).slice(0, 7).reduce((a, b) => a + b, 0);
   }
-  roundSecs() { return this.puzzleOn() ? 180 : this.optVal('gameSeconds', 120); }
+  roundSecs() { return this.stacklOn() ? 120 : (this.puzzleOn() ? 180 : this.optVal('gameSeconds', 120)); }
   isV1() { return !this.isV2(); }
   cols() { return Math.max(4, Math.min(9, Math.round(this.optVal('cols', 5)))); }
   rows() { return Math.max(4, Math.min(14, Math.round(this.optVal('rows', 6)))); }
@@ -2594,7 +2599,12 @@ class Component extends DCLogic {
       }
     }
     // --- round clock (classic only; par is guess-bound — endRound fires from clearWord) ---
-    const timeLeft = this.puzzleOn() ? 9999 : Math.max(0, (this.roundEndAt - now) / 1000);
+    // Stackl gets a LIVE countdown regardless of puzzleOn (which stays baked true for the
+    // daily); the daily/practice puzzle stays frozen at 9999 — the clock is a boundary,
+    // not the antagonist, for puzzle mode.
+    const timeLeft = this.stacklOn()
+      ? Math.max(0, (this.roundEndAt - now) / 1000)   // live countdown for Stackl
+      : (this.puzzleOn() ? 9999 : Math.max(0, (this.roundEndAt - now) / 1000));
     this.timeLeftV = timeLeft;
     if (timeLeft <= 0) {
       this.endRound();
@@ -4923,14 +4933,16 @@ class Component extends DCLogic {
     const opts = { ...(this.state.opts || {}), dailyMode: true };
     // leaving the board drops any in-progress sworb typing + returns the stepper to play
     const sworbReset = { sworbTyping: false, stepperMode: 'play', sworbSlots: [], sworbColors: null };
+    // a Stackl run never resumes from home (session-only) — clear the flag on the way out
+    // so the daily/practice never inherit a live countdown from a prior Stackl run.
     if (this._dailyLive && !this.state.over && this.optVal('dailyMode', true)) {
-      this.setState({ opts, screen: 'home', paused: true, path: [], banner: null, homeSeq: (this.state.homeSeq || 0) + 1, ...sworbReset });
+      this.setState({ opts, stacklMode: false, screen: 'home', paused: true, path: [], banner: null, homeSeq: (this.state.homeSeq || 0) + 1, ...sworbReset });
       this.loadHomeLb();
       return;
     }
     this.timeLeftV = this.roundSecs();
     this.progV = 0;
-    this.setState({ opts, screen: 'home', paused: false, over: false, tiles: [], path: [], banner: null, bombArmed: false, boom: null, rattle: 0, score: 0, scoreShown: 0, streak: 0, prog: 0, timeLeft: this.optVal('gameSeconds', 120), homeSeq: (this.state.homeSeq || 0) + 1, ...sworbReset });
+    this.setState({ opts, stacklMode: false, screen: 'home', paused: false, over: false, tiles: [], path: [], banner: null, bombArmed: false, boom: null, rattle: 0, score: 0, scoreShown: 0, streak: 0, prog: 0, timeLeft: this.optVal('gameSeconds', 120), homeSeq: (this.state.homeSeq || 0) + 1, ...sworbReset });
     this.loadHomeLb();
   }
   renderVals() {
@@ -5635,7 +5647,8 @@ class Component extends DCLogic {
         this._tutForce = false;
         const opts = { ...(this.state.opts || {}), dailyMode: true };
         this.saveOpts(opts); // also heals any stale dailyMode:false from the removed toggle
-        this.setState({ opts, screen: 'game', sworbTyping: false, stepperMode: 'play' }, () => {
+        // a prior Stackl run must never leak its live-countdown flag into the daily
+        this.setState({ opts, stacklMode: false, screen: 'game', sworbTyping: false, stepperMode: 'play' }, () => {
           this.newGame(true);
           if (this.firstRunPending) this.setState({ activeModal: 'howto', modalW: 350, paused: true });
         });
@@ -5644,8 +5657,21 @@ class Component extends DCLogic {
         this.sfxClick();
         // session-only: never persisted, so daily is always the default experience
         const opts = { ...(this.state.opts || {}), dailyMode: false };
-        // launched from settings now — close the sheet on the way out
-        this.setState({ opts, screen: 'game', activeModal: null, modalStack: [], endModal: false }, () => {
+        // launched from settings now — close the sheet on the way out; also clears any
+        // stale stacklMode from a prior Stackl run (practice is not Stackl)
+        this.setState({ opts, stacklMode: false, screen: 'game', activeModal: null, modalStack: [], endModal: false }, () => {
+          this.newGame(true);
+          if (this.firstRunPending) this.setState({ activeModal: 'howto', modalW: 350, paused: true });
+        });
+      }),
+      // Stackl (2-minute timed mode): TEMPORARY launch (Task 1) — mirrors startPractice but
+      // flips stacklMode on so frame()/roundSecs() revive the live countdown. The polished
+      // home card lands in a later task; this is just to reach the mode.
+      startStackl: (this._startStackl = () => {
+        this.sfxClick();
+        // session-only, like practice: never persisted
+        const opts = { ...(this.state.opts || {}), dailyMode: false };
+        this.setState({ opts, stacklMode: true, screen: 'game', activeModal: null, modalStack: [], endModal: false }, () => {
           this.newGame(true);
           if (this.firstRunPending) this.setState({ activeModal: 'howto', modalW: 350, paused: true });
         });
