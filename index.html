@@ -6007,17 +6007,19 @@ class Component extends DCLogic {
         return Math.max(this._tb || 0, st.score).toLocaleString();
       })(),
       hopperMsgRef: this.hopperMsgRef,
-      timeHudLabel: this.puzzleOn() ? (st.tut ? 'WARMUP' : 'WORDS') : 'TIME',
+      timeHudLabel: this.stacklOn() ? 'TIME' : (this.puzzleOn() ? (st.tut ? 'WARMUP' : 'WORDS') : 'TIME'),
       timeText: (() => {
+        if (this.stacklOn()) { const shown = Math.max(0, Math.ceil(st.timeLeft - (this.timeRoll || 0))); return Math.floor(shown / 60) + ':' + String(shown % 60).padStart(2, '0'); }
         if (this.puzzleOn()) { if (st.tut) return '\u2014'; return String((this.state.roundWords || []).length); } // words found so far (no cap)
         const shown = Math.max(0, Math.ceil(st.timeLeft - (this.timeRoll || 0))); // rolls up as the bonus lands
         return Math.floor(shown / 60) + ':' + String(shown % 60).padStart(2, '0');
       })(),
-      timeKey: (this.puzzleOn() && !st.tut) ? ('w' + (this.state.roundWords || []).length) : 'clock', // remount per word — replays the pop
+      timeKey: this.stacklOn() ? 'clock' : ((this.puzzleOn() && !st.tut) ? ('w' + (this.state.roundWords || []).length) : 'clock'), // remount per word — replays the pop
       timeValStyle: {
         fontSize: valFont, fontWeight: 800, lineHeight: 1,
         animation: this.puzzleOn() ? 'slotInA 0.28s ease-out' : 'none',
         color: (() => {
+          if (this.stacklOn()) { return st.timeLeft <= 10 ? '#FF8A8E' : st.timeLeft <= 60 ? '#F5B84A' : 'var(--card-ink)'; }
           if (this.puzzleOn()) { const g = st.guessesLeft ?? 15; return g <= 3 ? '#FF8A8E' : g <= 6 ? '#F5B84A' : 'var(--card-ink)'; }
           return st.timeLeft <= 10 ? '#FF8A8E' : st.timeLeft <= 60 ? '#F5B84A' : 'var(--card-ink)';
         })(),
