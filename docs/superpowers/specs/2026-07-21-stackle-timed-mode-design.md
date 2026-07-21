@@ -1,152 +1,135 @@
-# Stackle — 2-minute timed mode (Phase 2)
+# Sworbl daily — casual + stackl, one theme, two ways to play (Phase 2)
 
-Status: approved design, prototype scope (GitHub Pages, no backend).
-Date: 2026-07-21.
+Status: approved design (revised), prototype scope (GitHub Pages, no backend).
+Date: 2026-07-21. **Supersedes** the earlier "Stackl as a separate non-theme mode" version of this
+spec — the design converged on a UNIFIED daily instead.
 
-> **Part of the 3-phase pivot** to two audiences. Phase 1 (Word of the Day daily reframe) is
-> shipped. **This spec covers Phase 2 only** — the Stackle timed arcade mode. Phase 3 (the
-> two-section home + mode picker + the two real leaderboards, plus the Phase-1 score-banking /
-> theme-first standings follow-ups) is a separate spec and is **out of scope** here.
+> Part of the pivot. Phase 1 (the casual themed daily) is shipped. **This spec (Phase 2)** adds a
+> **timed "stackl" way to play the SAME themed daily**, sharing one sworb, with its own leaderboard,
+> plus a home mode-picker. Phase 3 (backend leaderboards, the Phase-1 score-banking follow-up,
+> polish) stays out of scope.
 
 ## Summary
 
-Stackle is the **arcade** counterpart to the casual Word of the Day: a fast, 2-minute time-attack
-on a **separate daily-seeded board** (non-theme — no sworb, no spoilers). The clock is **dynamic**
-— it starts at 2:00 and good words **add time**, while **bombs swing it up or down** — so a strong
-run extends itself and a sloppy one dies fast. You **blast through** as many high-scoring words as
-you can; **streak × length multipliers** reward speed and long words. You can **replay** today's
-board freely, and your **best score** is what ranks you on Stackle's **own daily leaderboard**. And
-when you want fresh boards, **Stackle practice** serves up **random** boards with the same mechanics
-— endless free-play that never touches the leaderboard.
+The daily has **one theme + one sworb of the day** on **one deterministic themed board**, playable
+**two ways** — the player picks:
 
-This largely **promotes the existing timed run** (`!puzzleOn()` practice mode already has the 2:00
-dynamic clock, streak multiplier, length multiplier, AND is a random-board timed run) plus
-**re-enables the two bomb systems** (currently disabled/cut from the live board) and adds the
-daily-board seed, best-score storage, and a separate leaderboard.
+- **Casual** *(already built, Phase 1)* — endless, no timer. Leisurely spell words, theme words
+  glow + bank as hints, guess the sworb.
+- **Stackl (timed)** *(this phase)* — **unlimited 2-minute arcade rounds** on the **same themed
+  board**: the clock starts at 2:00 and **good words add time**, **bombs** swing it, **streak ×
+  length multipliers** reward speed. The 2-minute pressure means you can't leisurely hunt every
+  theme word in one round, so you **collect hints across rounds through the day**.
 
-## Confirmed design decisions (from brainstorm 2026-07-21)
+**The sworb is shared:** one **sworb safe** (collected hints) + **5 guesses/day** (up from 3) + one
+solved flag. A hint found in *either* mode banks to the same safe; a guess in *either* mode counts
+against the same 5; solving it once (in either mode) solves it for the day. **The leaderboards are
+separate:** casual ranks **solve quality** (the theme-first rank basis already built); stackl ranks
+**best 2-minute round score**.
 
-- **Clock:** dynamic — starts 2:00, good words add time (length-scaled), bombs add/subtract time,
-  run ends at 0. (Not a hard cap; a skilled chain extends past 2:00.)
-- **Bombs:** BOTH systems, re-enabled and tuned **sparse** for a 2-minute sprint — the streak mine
-  (fast risk/reward) AND hidden sonar bombs (deduction).
-- **Board:** a **separate** daily-deterministic board (non-theme), shared by everyone, resets daily.
-- **Replay + best:** replay today's Stackle board freely; the **best** score for the day ranks.
-- **Leaderboard:** a **separate** Stackle daily leaderboard, distinct from the Word-of-the-Day
-  standings.
-- **Two Stackle sub-modes:** the **daily board** (deterministic, shared — best run ranks) AND
-  **Stackle practice** (endless **random** boards, same mechanics, **no leaderboard impact**) for
-  when you want fresh boards. Practice is kept and reframed as Stackle free-play (not retired).
-- **Home entry:** Phase 2 ships a **minimal launch path**; the polished **mode picker** (arm a mode,
-  then "swipe up to play" launches it — same board engine, different context) is **Phase 3**.
+The timer *creates* the "come back all day" collection loop, and the arcade + deduction audiences
+share one answer they chase their own way.
 
-## Core loop
+## Confirmed design decisions (brainstorm 2026-07-21)
 
-- Open today's Stackle board (deterministic, shared, non-theme).
-- Clock starts at 2:00, counting down.
-- Spell words: each scores (length × streak multiplier) and **adds time** (length-scaled).
-- **Streak mine:** on a hot streak a bomb spawns; sweep it into a **4+** word → time + score blast
-  (good); hit it with a **≤3** word or leave it too long → **lose time** (bad).
-- **Hidden sonar bombs:** sparse hidden bombs; corner sonar numbers hint their cells; thread a
-  **long** word through one → big time/score blast; whiff → penalty.
-- Run ends when the clock hits 0. Your run score is banked as today's **best** if it beats it.
-- **Replay** the same board as often as you like; best score ranks you.
+- **One themed board, two clocks:** stackl plays the SAME theme-seeded daily board as casual — NOT
+  a separate non-theme board (that earlier idea is dropped). Only the clock/bombs/scoring differ.
+- **Shared sworb, own bragging:** shared safe + 5 guesses + solved (solve once, either mode);
+  separate leaderboards (casual = solve quality, stackl = best round score).
+- **Stackl clock:** dynamic — starts 2:00, good words add time, bombs swing it, run ends at 0.
+  Unlimited replays of the same board through the day.
+- **Bombs:** re-enabled for stackl (on the themed board), tuned sparse. Casual stays bomb-free.
+- **Guesses:** 3 → 5 per day (shared).
+- **Home:** a **mode picker** — arm Casual or Stackl, then the existing **swipe-up-to-play** launches
+  the armed mode (same board engine, different context).
+- **Random-board pure-arcade practice:** deferred (optional side-thing later) — not in this phase.
+
+## Already done (carried over from the initial Stackl work)
+
+- `stacklOn()` mode flag + the revived **2:00 countdown clock** (commit 81bdbe9) and the
+  **words-add-time** clock bonus (commit 740ae6d). These are correct and reused as-is.
 
 ## Components (grounded in the current code)
 
-### 1. Stackle board seed (new, deterministic)
+### 1. Stackl runs the themed daily board (reuse Phase-1 seeding)
 
-- A separate daily board: `stackleKey = dayKey(date)`, seeded via
-  `mulberry32(SworbleCore.hashSeed(stackleKey + '|stackle'))` — a distinct salt so it never
-  matches the Word-of-the-Day board. Reuses the existing `newGame()` deal, **skipping** the theme
-  seeding branch (`themePool()` path).
-- Deterministic: identical board + bomb placement for everyone, every replay, resets daily.
+- On a stackl run, `newGame()` seeds the SAME theme board as the casual daily — reuse the Phase-1
+  theme-seeding path (`themePool()` → best-effort theme words on the deterministic
+  `hashSeed(dailyKey)` deal). Do NOT add a separate `|stackl` board seed; stackl and casual share
+  the board so the same hints are present. (The earlier Task-3 "separate non-theme seed" is removed.)
+- Stackl is `stacklOn()`; casual is the existing daily. Both are `dailyKey`-seeded + theme-seeded.
 
-### 2. Game mode flag
+### 2. Shared sworb state (reuse Phase-1 plumbing)
 
-- Today's game distinguishes three contexts: Word-of-the-Day daily (`puzzleOn()` + theme),
-  Stackle (`stackleOn()` — new), and warm-up/tutorial. Add a `stackleOn()` predicate and a
-  `mode` notion the run carries so scoring/clock/board branch correctly. Stackle is timed
-  (`!puzzleOn()`-style clock) but daily-seeded (unlike old random practice).
+- Theme-word finds in stackl bank to the SAME `K.FOUND_PREFIX + dailyKey` (the shared safe) via the
+  existing `SworbleDaily.isClue` + found-tracking in `clearWord()` — it already keys off
+  `this.dailyEntry()`, so it works in stackl unchanged. A theme find in stackl also pays the existing
+  **+50%** (on top of the arcade score) AND ticks the shared counter.
+- The sworb guess flow (`guessSworb`, the board-morph keyboard, `SWORB_PREFIX` state) is shared —
+  one solved/guesses blob per `dailyKey`, used by both modes. **Bump the guess cap 3 → 5** (in
+  `guessSworb`'s `guessesUsed >= 3` check and `dailyStatus().sworb.guessesLeft = 3 - used`
+  → `5 - used`; grep the `3` literals tied to sworb guesses).
 
-### 3. Dynamic clock + time-adds (reuse)
+### 3. Stackl arcade layer (bombs + multipliers)
 
-- Reuse the existing timed-run clock (`timeLeft`, the per-word time bonus, the countdown in
-  `frame()`). Confirm the 2:00 start (`gameSeconds` default) and the length-scaled `+time` on
-  commit apply in Stackle. Run-over on `timeLeft <= 0` (the existing `endRound()` clock trigger)
-  — this is the mode that KEEPS the auto-end (Phase 1 removed it only for the endless daily).
+- **Multipliers:** the existing streak × length multipliers in `clearWord()` already apply — no
+  change; they're the arcade scoring.
+- **Bombs:** re-enable both bomb systems for `stacklOn()` only (the themed board), tuned sparse —
+  `mineQuota()` returns a small positive count for stackl; `syncMines()` plants them; the existing
+  catch-blast/fizzle in `clearWord()` fires. Casual stays bomb-free (`mineQuota()` returns 0 for the
+  non-stackl daily, unchanged). Bomb placement is deterministic from the day seed.
+- Sonar-number/glyph rendering + bomb help copy: enable for `stacklOn()`.
 
-### 4. Bombs — re-enable both, tuned sparse
+### 4. Stackl best score + leaderboard (separate)
 
-- **Streak mine:** the existing streak-triggered mine (spawn on streak; 4+ catch = blast bonus;
-  ≤3 hit = −5s). Re-enable for `stackleOn()`; tune spawn rate for a 2-min sprint.
-- **Hidden sonar bombs:** the existing hidden-bomb + sonar-number system (`mineQuota`, sonar
-  counts, thread-through blast). Re-enable for `stackleOn()`, **sparse** (a low quota) so the
-  sprint isn't noisy. Both were disabled/cut from the live board — this restores them **only**
-  in Stackle (Word-of-the-Day stays bomb-free).
-- Determinism: bomb placement is a function of the Stackle day seed.
+- New store key `K.STACKL_BEST_PREFIX = 'sworble_stackl_best_'` — per-day best stackl round score.
+  On a stackl run-over (`endRound()` when `stacklOn()`), `best = max(best, score)`.
+- Stackl leaderboard: a SEPARATE surface ranked by best score, partitioned from casual via a
+  `|stackl` board id (`lbBoardId`/`lbMode`), its own `K.LB_ME_PREFIX` slot. Prototype stub modeled
+  on the existing `lbStub`; backend later.
+- Casual leaderboard: the theme-first solve-quality basis (already computed in
+  `dailyStatus().sworb.rank`) — its full standings-screen wiring is Phase 3, but the two boards must
+  not collide (distinct partitions).
 
-### 5. Multipliers + scoring (reuse)
+### 5. Home mode picker (Phase 2)
 
-- Keep the existing **streak multiplier** and **length multiplier**. Run score = sum of word
-  points (with multipliers) + bomb blast bonuses. No new scoring model — this is the arcade the
-  engine already scores.
-
-### 6. Replay + best-score storage + practice (new)
-
-- New store key `K.STACKLE_BEST_PREFIX = 'sworble_stackle_best_'` — per-day best score
-  `{ best, runs }` (or just a number). On a **daily-board** run-over, `best = max(best, runScore)`.
-- Replay: launching the daily Stackle again re-deals the SAME daily board (deterministic) for a
-  fresh 2:00. The best score is the leaderboard-ranking value.
-- **Stackle practice:** launching practice deals a **random** board (session-only, non-deterministic
-  is fine here — reuses the existing practice deal) with the same clock/bombs/multipliers. Practice
-  runs **never** update `STACKLE_BEST_PREFIX` or the leaderboard — pure free-play. This is the one
-  functional split between the two sub-modes.
-
-### 7. Stackle leaderboard (separate, prototype stub)
-
-- A **separate** daily leaderboard surface for Stackle, distinct from the Word-of-the-Day
-  standings. Prototype: a local stub (like the existing standings stub) ranked by best score;
-  backend later (rides the existing submit/queue seam when it exists).
-- Resets daily.
-
-### 8. Home entry (Phase 2 minimal)
-
-- A minimal **Stackle launch card/button** on home that starts today's daily Stackle board, plus a
-  secondary **"random board" (practice)** launch. Enough to play + iterate. The full two-section
-  home + the **mode picker** ("arm" Word-of-the-Day or Stackle, then the existing
-  **swipe-up-to-play** launches the armed mode — same board engine, different context) is **Phase 3**.
-
-### 9. Stackle practice (reframed free-play)
-
-- The existing `startPractice()` (random session board, timed) IS Stackle practice — keep it,
-  enable the Stackle bombs + multipliers on it, and surface it as "Stackle practice / random
-  board." Practice runs are pure free-play: they never write `STACKLE_BEST_PREFIX` or hit the
-  leaderboard. Keep the warm-up/tutorial path. (Nothing is retired — practice is repurposed.)
+- A **mode picker** on home: two selectable cards/toggles — **Casual** and **Stackl** — that "arm"
+  the chosen mode; the existing **swipe-up-to-play** dock then launches the armed mode
+  (`startDaily()` for casual, `startStackl()` for stackl). Show the shared sworb progress + each
+  mode's own stat (casual: solve state; stackl: today's best). Keep it minimal but real (this is the
+  mode's front door); deeper home polish is Phase 3.
 
 ## Determinism & persistence
 
-- Board + bombs are a function of `(stackle day seed)`; every player + every replay gets the same
-  board. Best score persists per day under `STACKLE_BEST_PREFIX`. Server replay-verification holds
-  (score is deterministic from board + moves), consistent with the existing model.
+- Both modes share the deterministic themed board (`dailyKey` seed) + shared sworb state. Stackl
+  bombs are a function of the day seed. Stackl best persists under `STACKL_BEST_PREFIX`; the shared
+  sworb safe/guesses persist under the existing `FOUND_PREFIX`/`SWORB_PREFIX`. Stackl runs are
+  session-only otherwise (no mid-run resume needed for a 2-min sprint). No existing-data migration
+  needed (pre-release).
 
 ## Out of scope (this phase)
 
-- The **two-section home + mode picker + swipe-to-arm** launch (Phase 3).
-- The **real** (backend) leaderboards for either mode; the Phase-1 score-banking + theme-first
+- Random-board pure-arcade practice (deferred).
+- Backend leaderboards; the polished two-mode home + the Phase-1 daily score-banking / theme-first
   standings-sort follow-ups (Phase 3).
-- Authoring/curating Stackle boards (they're deterministic deals — no content authoring needed).
-- Any new bomb *mechanics* — only re-enabling + tuning the two that already exist.
+- The visible `sworble` → `sworbl` rebrand (separate quick pass).
 
 ## Build order (highest-risk first)
 
-1. **`stackleOn()` mode + daily board seed** — a separate deterministic non-theme board, launched
-   from a minimal home entry; confirm it's timed (2:00 dynamic clock) and NOT theme-seeded.
-2. **Re-enable + tune the bombs** (streak mine + sparse hidden sonar) for `stackleOn()` only,
-   deterministic from the Stackle seed.
-3. **Best-score storage + replay** (STACKLE_BEST_PREFIX; replay re-deals the same board).
-4. **Stackle leaderboard stub** (separate surface, ranked by best score).
-5. **Stackle practice** — surface the existing random-board timed run as Stackle free-play (same
-   bombs/multipliers), guaranteed to NEVER write the best score or hit the leaderboard.
-6. Browser-verify the full loop (daily play, bombs, clock, replay, best updates, leaderboard, AND
-   practice = random board that doesn't touch best/leaderboard); commit.
+1. **Stackl runs the themed board + shares the sworb** — confirm a stackl run seeds the theme board
+   (not a separate one), theme finds bank to the shared safe + pay +50%, and the sworb guess flow
+   works from stackl. Bump guesses 3 → 5.
+2. **Re-enable bombs for stackl** (sparse, themed board, deterministic) — casual stays bomb-free.
+3. **Stackl best-score + separate leaderboard** (`STACKL_BEST_PREFIX`, `|stackl` partition).
+4. **Home mode picker** — arm Casual/Stackl → swipe up to play; show shared sworb + per-mode stat.
+5. Browser-verify the full unified loop (both modes on one board/sworb; shared safe + 5 guesses;
+   separate leaderboards; determinism); commit.
+
+## Notes for the implementer
+
+- The clock + words-add-time are DONE (`stacklOn()`, commits 81bdbe9 / 740ae6d). This phase adds the
+  theme-board sharing, bombs, best/leaderboard, and the picker.
+- The sworb theme layer (isClue/found-safe/guess) already keys off `dailyEntry()`, so it "just works"
+  in stackl once stackl seeds the theme board — the main care is the SHARED state (one safe, 5
+  guesses, one solved) across both modes.
+- Casual stays exactly as shipped (endless, no timer, no bombs). Stackl is additive.
