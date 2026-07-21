@@ -806,6 +806,14 @@
                   <span style="font-size:14px; font-weight:700; color:var(--sheet-sub);">Show best word</span>
                   <button onClick="{{ toggleBestDbg }}" style="{{ bestDbgToggleStyle }}">{{ bestDbgLabel }}</button>
                 </div>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 0;">
+                  <div style="font-size:13px; font-weight:700; color:var(--sheet-sub);">THEME WORDS</div>
+                  <div style="display:flex; align-items:center; gap:12px;">
+                    <button onClick="{{ themeTargetDec }}" style="background:transparent; border:none; color:var(--sheet-ink); font-size:18px; font-weight:800; cursor:pointer;">&minus;</button>
+                    <div style="font-size:14px; font-weight:800; color:var(--sheet-ink); min-width:20px; text-align:center;">{{ themeTargetLabel }}</div>
+                    <button onClick="{{ themeTargetInc }}" style="background:transparent; border:none; color:var(--sheet-ink); font-size:18px; font-weight:800; cursor:pointer;">+</button>
+                  </div>
+                </div>
               </div>
               </div>
             </div>
@@ -1830,10 +1838,25 @@ class Component extends DCLogic {
   async loadDailies() {
     try { const r = await fetch('./dailies.json'); if (r.ok) { this._dailies = await r.json(); this.forceUpdate(); } } catch (e) { this._dailies = null; }
   }
-  dailyEntry() {
+  // the day's theme POOL (all curated candidates), parsed once
+  themePool() {
     if (typeof SworbleDaily === 'undefined' || !this._dailies) return null;
     return SworbleDaily.parseEntry(this._dailies, this.dailyKey || this.dayKey(new Date()));
   }
+  // the ACTIVE themed entry for today: sworb + the REALIZED theme set (words actually on the
+  // board). Falls back to the first-N of the pool before a board is seeded (e.g. on home).
+  dailyEntry() {
+    const pool = this.themePool();
+    if (!pool) return null;
+    const day = this.dailyKey || this.dayKey(new Date());
+    let realized = null;
+    try { realized = JSON.parse(LS.getItem(K.THEME_PREFIX + day) || 'null'); } catch (e) {}
+    const themeWords = (Array.isArray(realized) && realized.length) ? realized : pool.themeWords.slice(0, this.themeTarget());
+    return { sworb: pool.sworb, themeWords };
+  }
+  // dev-only density knob: how many of the day's theme-word pool to attempt seeding onto the
+  // board (best-effort packs what fits — ~7 pure words is the realistic ceiling on 30 cells).
+  themeTarget() { const n = parseInt(this.optVal('themeTarget', 8), 10); return (n >= 1 && n <= 20) ? n : 8; }
   // sworb-of-the-day guess state, per day: { guessesUsed, solved, correct, bonus }
   sworbState() {
     const d = this.dailyKey || this.dayKey(new Date());
@@ -2188,27 +2211,23 @@ class Component extends DCLogic {
     this.bombRun = 0;            // consecutive caught mines — drives the chain multiplier
     this.feverUntil = 0;         // mine-catch fever window
     this.juiceNext = 0;          // pending friendly deals
-    // SWORB day: stamp the 5 clue words onto the opening board (guaranteed findable).
-    // Mutate tile letters in place, verify all clues findable, revert + reseed on failure.
-    const _entry = this.dailyEntry();
-    if (_entry && this.optVal('dailyMode', true)) {
+    // SWORB day: best-effort pack up to themeTarget() theme words onto the opening board.
+    // Packing is deterministic and never fails (unlike the old all-or-nothing retry loop) —
+    // the REALIZED set (words that packed AND verify findable) is the source of truth.
+    const _pool = this.themePool();
+    if (_pool && this.optVal('dailyMode', true)) {
+      const wanted = _pool.themeWords.slice(0, this.themeTarget());
       const byCell = {}; tiles.forEach(t => { byCell[t.row + ',' + t.col] = t; });
-      let placed = null;
-      for (let attempt = 0; attempt < 8 && !placed; attempt++) {
-        const rng = mulberry32((SworbleCore.hashSeed(this.dailyKey + '|sworb') ^ (attempt * 0x9E3779B1)) >>> 0);
-        const cand = SworbleSeed.seedClueLetters({ clues: _entry.clues, cols: this.cols(), rows: this.rows(), rng });
-        if (!cand) continue;
-        const reverts = [];
-        Object.keys(cand.letters).forEach(k => { const [r, c] = k.split(',').map(Number); const t = byCell[r + ',' + c]; if (t) { reverts.push([t, t.letter]); t.letter = cand.letters[k]; } });
-        const ok = _entry.clues.every(w => SworbleSolver.findWord(tiles, { word: w, expand: SworbleCore.expandLetter, diag: this.diag() }));
-        if (ok) { placed = cand; this._cluePaths = cand.cluePaths; }
-        else { reverts.forEach(([t, l]) => { t.letter = l; }); } // revert, retry with next seed
-      }
-      if (placed) {
-        // clue tiles must be INDISTINGUISHABLE from normal tiles — recolor each to match its
-        // new letter (v2 colors encode letter class; a stale color is an accidental "clue tell")
-        Object.keys(placed.letters).forEach(k => { const [r, cc] = k.split(',').map(Number); const t = byCell[r + ',' + cc]; if (t) t.color = this.tileColorFor(t.letter, t.id); });
-        try { LS.setItem(K.TARGETS_PREFIX + this.dailyKey, JSON.stringify(_entry.clues)); } catch (e) {}
+      const rng = mulberry32(SworbleCore.hashSeed(this.dailyKey + '|sworb') >>> 0);
+      const cand = SworbleSeed.seedClueLettersBestEffort({ clues: wanted, cols: this.cols(), rows: this.rows(), rng });
+      Object.keys(cand.letters).forEach(k => { const [r, c] = k.split(',').map(Number); const t = byCell[r + ',' + c]; if (t) t.letter = cand.letters[k]; });
+      // realized = the packed words that verify findable on the real board (all should, by construction)
+      const realized = Object.keys(cand.cluePaths).filter(w => SworbleSolver.findWord(tiles, { word: w, expand: SworbleCore.expandLetter, diag: this.diag() }));
+      if (realized.length) {
+        this._activeTheme = realized;
+        this._cluePaths = cand.cluePaths;
+        try { LS.setItem(K.THEME_PREFIX + this.dailyKey, JSON.stringify(realized)); } catch (e) {}
+        try { LS.setItem(K.TARGETS_PREFIX + this.dailyKey, JSON.stringify(realized)); } catch (e) {} // reuse existing found/targets UI
       }
     }
     this.scrubTiles(tiles, null, this._eggIds); // opening board: everything is fresh, scrub freely
@@ -3961,7 +3980,7 @@ class Component extends DCLogic {
   // everyone that day). Solve once and cache; found words persist separately per day.
   ensureDailyTargets() {
     if (!this.optVal('dailyMode', true) || !this.openingSnapshot) return;
-    if (this.dailyEntry()) return; // sworb day: targets ARE the clue words, written at seed time
+    if (this.themePool()) return; // theme day: targets ARE the realized theme words, written at seed time
     const key = K.TARGETS_PREFIX + this.dailyKey;
     try { if (LS.getItem(key)) return; } catch (e) { return; }
     const snap = this.openingSnapshot, day = this.dailyKey;
@@ -6393,6 +6412,9 @@ class Component extends DCLogic {
         this.saveOpts(opts);
         this.setState({ opts });
       },
+      themeTargetLabel: String(this.themeTarget()),
+      themeTargetDec: () => { this.sfxClick(); const opts = { ...(this.state.opts || {}), themeTarget: Math.max(1, this.themeTarget() - 1) }; this.saveOpts(opts); this.setState({ opts }, () => this.newGame(true)); },
+      themeTargetInc: () => { this.sfxClick(); const opts = { ...(this.state.opts || {}), themeTarget: Math.min(20, this.themeTarget() + 1) }; this.saveOpts(opts); this.setState({ opts }, () => this.newGame(true)); },
 
       mineDbgLabel: this.optVal('debugMine', false) ? 'ON' : 'OFF',
       mineDbgToggleStyle: this.toggleStyle(this.optVal('debugMine', false)),
