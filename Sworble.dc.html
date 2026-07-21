@@ -3490,7 +3490,7 @@ class Component extends DCLogic {
       if (newBest) this.bestFlashed = true;
       // v2: words BUY time — +1s per letter beyond two, straight onto the clock
       let timeBonus = 0;
-      if (this.isV2() && !this.state.over && !puz) { // puzzle: words don't buy time, fizzles don't cut it — the clock is fixed
+      if (this.isV2() && !this.state.over && this.stacklOn()) { // stackl: words BUY time, fizzles cost it — daily/puzzle clock stays fixed
         if (mineTripped) {
           this.roundEndAt -= 3000; // the fizzle COSTS time — softened; the point hit is the main bite now
         } else {
