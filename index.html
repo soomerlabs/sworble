@@ -5932,7 +5932,7 @@ class Component extends DCLogic {
         if (dt >= 800) return;
         const scr = this.state.screen;
         if (Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx) * 1.4) {
-          if (scr === 'home' && dy < 0 && (!el || el.scrollTop <= 4) && this._startDaily) this._startDaily();
+          if (scr === 'home' && dy < 0 && (!el || el.scrollTop <= 4) && this._startDaily) { (this.state.armedMode === 'stackl' && this._startStackl ? this._startStackl : this._startDaily)(); } // swipe-up GESTURE must honor the armed mode picker, same as the dock BUTTON's launchArmed
           return;
         }
         if (scr === 'wordbank' && dx > 55 && Math.abs(dx) > Math.abs(dy) * 1.4) { this.sfxClick(); this.setState({ screen: 'home' }); }
