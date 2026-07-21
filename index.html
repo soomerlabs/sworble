@@ -404,6 +404,22 @@
                 <div style="{{ homeMorphStyle }}">
                 <div style="width:100%; display:flex; flex-direction:column; align-items:stretch; text-align:left; gap:11px; box-sizing:border-box; padding:0 2px;">
                   <div style="display:flex; flex-direction:column; gap:14px;">
+                    <div style="{{ modePicker.cardStyle }}">
+                      <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                        <div style="font-size:9px; font-weight:800; letter-spacing:1.5px; color:var(--ghost);">MODE</div>
+                        <div style="{{ modePicker.sworbTagStyle }}">{{ modePicker.sworbTag }}</div>
+                      </div>
+                      <div style="display:flex; gap:8px; width:100%;">
+                        <button onClick="{{ armCasual }}" style="{{ modePicker.casualBtnStyle }}">
+                          <span style="{{ modePicker.casualLabelStyle }}">casual</span>
+                          <span style="{{ modePicker.casualStatStyle }}">{{ modePicker.casualStat }}</span>
+                        </button>
+                        <button onClick="{{ armStackl }}" style="{{ modePicker.stacklBtnStyle }}">
+                          <span style="{{ modePicker.stacklLabelStyle }}">stackl</span>
+                          <span style="{{ modePicker.stacklStatStyle }}">{{ modePicker.stacklStat }}</span>
+                        </button>
+                      </div>
+                    </div>
                     <sc-if value="{{ homeSworb.active }}" hint-placeholder-val="{{ false }}">
                       <div style="{{ homeSworb.cardStyle }}">
                         <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
@@ -480,7 +496,7 @@
                         <div style="position:absolute; inset:0; filter:blur(17px); background:radial-gradient(34px 27px at 36% 52%, rgba(8,6,16,0.92) 0%, transparent 70%), radial-gradient(26px 22px at 58% 46%, rgba(8,6,16,0.86) 0%, transparent 70%), radial-gradient(24px 20px at 82% 60%, rgba(8,6,16,0.82) 0%, transparent 70%), radial-gradient(22px 18px at 14% 46%, rgba(8,6,16,0.8) 0%, transparent 70%); animation:smokeDriftB 17s ease-in-out infinite;"></div>
                         <div style="position:absolute; inset:0; filter:blur(11px); background:radial-gradient(48px 32px at 52% 42%, rgba(233,240,255,0.95) 0%, transparent 62%); opacity:0; animation:{{ storm.lightAnim }};"></div>
                       </div>
-                      <button onClick="{{ startDaily }}" aria-label="{{ homeSwipeLabel }}" style="position:relative; z-index:1; width:100%; box-sizing:border-box; background:transparent; border:none; padding:8px 0 4px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; font-family:inherit; transition:transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);" style-active="transform:translateY(-5px)">
+                      <button onClick="{{ launchArmed }}" aria-label="{{ homeSwipeLabel }}" style="position:relative; z-index:1; width:100%; box-sizing:border-box; background:transparent; border:none; padding:8px 0 4px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; font-family:inherit; transition:transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);" style-active="transform:translateY(-5px)">
                         <span style="font-family:'Material Symbols Rounded'; font-weight:normal; font-size:30px; line-height:0.7; color:#8971FF; font-feature-settings:'liga'; -webkit-font-feature-settings:'liga'; -webkit-font-smoothing:antialiased; animation:swipeUpHint 1.7s ease-in-out infinite, arrowHue 7.2s linear infinite;">keyboard_arrow_up</span>
                         <span style="font-family:'Fredoka','Manrope',sans-serif; font-size:15px; font-weight:600; letter-spacing:0.3px; color:var(--sheet-ink);">{{ homeSwipeLabel }}</span>
                       </button>
@@ -498,8 +514,6 @@
                       </button>
                     </div>
                   </sc-if>
-                  <!-- TEMPORARY (Task 1): reach Stackl until the polished home card lands (Task 7) -->
-                  <button onClick="{{ startStackl }}" aria-label="Launch Stackl, 2 minute timed mode" style="position:relative; z-index:1; margin-top:6px; background:transparent; border:none; padding:4px 10px; cursor:pointer; font-family:'Fredoka','Manrope',sans-serif; font-size:12px; font-weight:600; letter-spacing:0.3px; color:var(--ghost);" style-active="opacity:0.6">&#9201;&#65039; stackl (dev)</button>
                 </div>
         </div>
     </div>
@@ -1255,6 +1269,7 @@ class Component extends DCLogic {
     this.state = {
       tiles: [], nextRow: [], score: 0, best,
       dropStamp: 0, prog: 0, paused: false, over: false, dropSoon: false, stacklMode: false,
+      armedMode: 'casual', // home mode picker: 'casual' (endless, no timer) or 'stackl' (2-min timed) — swipe-up launches whichever is armed
       path: [], banner: null, streak: 0, maxStreak: 0,
       scoreShown: 0, bestLit: false, roundWords: [],
       nextFresh: false, muted, opts, activeModal: null, modalStack: [], contentFading: false, heightAnim: false, modalW: 320, modalFromHome: false,
@@ -5716,6 +5731,42 @@ class Component extends DCLogic {
         // glows this word's tiles). Closes settings first so the board is visible; auto-clears after ~3.6s.
         onTap: () => { this.closeModal(); this.later(() => { this.setState({ debugBestIds: w.ids }); this.later(() => this.setState(s => (s.debugBestIds === w.ids ? { debugBestIds: null } : null)), 3600); }, 260); },
       })),
+      // ---- Home mode picker (Task 4): arm casual or stackl; swipe-up launches whichever is armed.
+      // armedMode lives in state (session-only, resets to 'casual' on reload — casual stays the
+      // default experience). The shared sworb progress + each mode's own best surface on the card.
+      armCasual: () => { this.sfxClick(); this.setState({ armedMode: 'casual' }); },
+      armStackl: () => { this.sfxClick(); this.setState({ armedMode: 'stackl' }); },
+      modePicker: (() => {
+        const casualArmed = (st.armedMode || 'casual') !== 'stackl';
+        const stacklArmed = !casualArmed;
+        const ds = this.dailyStatus();
+        const sw = ds.sworb;
+        const sworbShow = !!(sw && sw.active);
+        const sworbTag = sworbShow ? (sw.solved ? 'sworb solved' : (sw.foundCount + '/' + sw.total + ' clues')) : '';
+        const dayKey = this.dailyKey || this.dayKey(new Date());
+        let stacklBest = 0;
+        try { stacklBest = parseInt(LS.getItem(K.STACKL_BEST_PREFIX + dayKey) || '0', 10) || 0; } catch (e) {}
+        const casualStat = ds.played ? ('best ' + ds.bestToday.toLocaleString()) : 'not played yet';
+        const stacklStat = stacklBest > 0 ? ('best ' + stacklBest.toLocaleString()) : 'not played yet';
+        const armedBtnStyle = { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '10px 8px', borderRadius: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit', background: '#8971FF', boxShadow: '0 3px 0 #5A43C9' };
+        const idleBtnStyle = { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '10px 8px', borderRadius: 12, border: '1.5px solid var(--line)', cursor: 'pointer', fontFamily: 'inherit', background: 'transparent', boxShadow: 'none' };
+        const armedLabelStyle = { fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 13, fontWeight: 800, letterSpacing: '0.4px', color: '#FFFFFF', textTransform: 'uppercase' };
+        const idleLabelStyle = { fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 13, fontWeight: 800, letterSpacing: '0.4px', color: 'var(--sheet-ink)', textTransform: 'uppercase' };
+        const armedStatStyle = { fontSize: 10.5, fontWeight: 700, color: 'rgba(255,255,255,0.85)' };
+        const idleStatStyle = { fontSize: 10.5, fontWeight: 700, color: 'var(--ghost)' };
+        return {
+          cardStyle: { display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--card)', borderRadius: 16, padding: '13px 14px', boxShadow: '0 4px 0 var(--card-edge)' },
+          sworbTag,
+          sworbTagStyle: sworbShow ? { fontSize: 11, fontWeight: 800, letterSpacing: '0.5px', color: 'var(--ghost)' } : { display: 'none' },
+          casualBtnStyle: casualArmed ? armedBtnStyle : idleBtnStyle,
+          stacklBtnStyle: stacklArmed ? armedBtnStyle : idleBtnStyle,
+          casualLabelStyle: casualArmed ? armedLabelStyle : idleLabelStyle,
+          stacklLabelStyle: stacklArmed ? armedLabelStyle : idleLabelStyle,
+          casualStatStyle: casualArmed ? armedStatStyle : idleStatStyle,
+          stacklStatStyle: stacklArmed ? armedStatStyle : idleStatStyle,
+          casualStat, stacklStat,
+        };
+      })(),
       startDaily: (this._startDaily = () => {
         this.sfxClick();
         if (this.dailyDone()) { if (this._startPractice) this._startPractice(); return; } // already played today — swipe/tap now launches practice
@@ -5747,9 +5798,9 @@ class Component extends DCLogic {
           if (this.firstRunPending) this.setState({ activeModal: 'howto', modalW: 350, paused: true });
         });
       }),
-      // Stackl (2-minute timed mode): TEMPORARY launch (Task 1) — mirrors startPractice but
-      // flips stacklMode on so frame()/roundSecs() revive the live countdown. The polished
-      // home card lands in a later task; this is just to reach the mode.
+      // Stackl (2-minute timed mode): mirrors startPractice but flips stacklMode on so
+      // frame()/roundSecs() revive the live countdown. Reached via the home mode picker
+      // (armStackl) + swipe-up (launchArmed), same as casual's startDaily.
       startStackl: (this._startStackl = () => {
         this.sfxClick();
         // session-only, like practice: never persisted
@@ -5759,6 +5810,10 @@ class Component extends DCLogic {
           if (this.firstRunPending) this.setState({ activeModal: 'howto', modalW: 350, paused: true });
         });
       }),
+      // dock swipe-up routes to whichever mode is armed on the home picker — casual (endless)
+      // by default, or stackl (2-min timed) once armed. Reads live state, not the render-start
+      // snapshot, so it always launches whatever's armed at the moment of the tap.
+      launchArmed: () => (this.state.armedMode === 'stackl' ? this._startStackl() : this._startDaily()),
       goHome: () => this._exitGame(),
       onGameDismissDown: (e) => {
         if (this.state.screen !== 'game') { this._gh = null; return; }
@@ -5778,7 +5833,7 @@ class Component extends DCLogic {
       // only surfaces on the shared practice/stackl result sheet, and only for an actual stackl run
       ...(() => { const v = this.stacklLbVals(); return { ...v, stacklLbShow: this.stacklOn() && v.stacklLbShow }; })(),
       ...(this.dailyStatus().resumable && this.optVal('dailyMode', true) ? { homePlayLabel: 'RESUME' } : {}), // a paused live run resumes on PLAY, it never restarts — even across a reload (the selector knows both)
-      homeSwipeLabel: 'swipe up to play',
+      homeSwipeLabel: st.armedMode === 'stackl' ? 'swipe up · stackl' : 'swipe up to play',
       againLabel: dailyOn ? 'REPLAY' : 'PLAY AGAIN',
       isDaily: dailyOn,
       dailyLabel: dailyOn ? 'ON' : 'OFF',
