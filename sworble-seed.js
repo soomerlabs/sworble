@@ -87,6 +87,26 @@
     return { letters: letters, cluePaths: cluePaths };
   }
 
+  // Best-effort variant of seedClueLetters: greedily place as many clue words as FIT (crossing
+  // earlier ones via stampWord's `letters` option), SKIPPING any that don't, instead of the
+  // all-or-nothing null. Returns { letters, cluePaths }; cluePaths keys are the REALIZED set.
+  // Never null (may place zero). Deterministic given rng + word order.
+  function seedClueLettersBestEffort(opts) {
+    var clues = opts.clues || [], cols = opts.cols, rows = opts.rows, rng = opts.rng;
+    var cells = [];
+    for (var c = 0; c < cols; c++) for (var r = 0; r < rows; r++) cells.push({ r: r, c: c });
+    var letters = {}, cluePaths = {};
+    for (var i = 0; i < clues.length; i++) {
+      var w = String(clues[i]).toLowerCase();
+      if (cluePaths[w]) continue; // dedupe
+      var path = stampWord(cells, { word: w, rng: rng, letters: letters });
+      if (!path) continue; // doesn't fit alongside what's placed — skip it, keep going
+      cluePaths[w] = path.map(function (p) { return { r: p.r, c: p.c }; });
+      for (var j = 0; j < path.length; j++) { var k = path[j].r + ',' + path[j].c; letters[k] = path[j].letter; }
+    }
+    return { letters: letters, cluePaths: cluePaths };
+  }
+
   // Re-stamp unfindable clues broken by play. For each unfound clue where isFindable(word)
   // is false, stamp it onto the current board's cells, avoiding reserve + other unfound
   // clues' chosen cells this pass. Returns flat list of cell changes [{r,c,letter}].
@@ -111,7 +131,7 @@
     return changes;
   }
 
-  var API = { stampWord: stampWord, seedClueLetters: seedClueLetters, reseedBroken: reseedBroken, _shuffle: shuffle };
+  var API = { stampWord: stampWord, seedClueLetters: seedClueLetters, seedClueLettersBestEffort: seedClueLettersBestEffort, reseedBroken: reseedBroken, _shuffle: shuffle };
   root.SworbleSeed = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

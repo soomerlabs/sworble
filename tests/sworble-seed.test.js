@@ -105,6 +105,27 @@ console.log('sworble-seed: stampWord passed');
 }
 console.log('sworble-seed: seedClueLetters passed');
 
+// best-effort: packs as many as FIT, skips the rest, never null; realized = what placed
+{
+  const ocean = ['tide','coral','wave','reef','salt','shore','kelp','surf','foam','brine','pearl','shell'];
+  const out = Seed.seedClueLettersBestEffort({ clues: ocean, cols: 5, rows: 6, rng: Core.mulberry32(Core.hashSeed('ocean|be')) });
+  assert.ok(out, 'best-effort never returns null');
+  const realized = Object.keys(out.cluePaths);
+  assert.ok(realized.length >= 5, 'packs a healthy number (>=5) of the pool, got ' + realized.length);
+  assert.ok(realized.length <= ocean.length, 'never more than the pool');
+  const tiles = tilesFromLetters(out.letters, 5, 6);
+  for (const w of realized) {
+    assert.strictEqual(out.cluePaths[w].map(p => out.letters[p.r + ',' + p.c]).join(''), w, w + ' spelled on its path');
+    assert.ok(Solver.findWord(tiles, { word: w, expand, diag: true }), w + ' findable');
+  }
+  // deterministic
+  const out2 = Seed.seedClueLettersBestEffort({ clues: ocean, cols: 5, rows: 6, rng: Core.mulberry32(Core.hashSeed('ocean|be')) });
+  assert.deepStrictEqual(out.cluePaths, out2.cluePaths, 'same seed -> same realized packing');
+  // over-target: a pool of 12 packs FEWER than 12 (proves it skips, does not choke)
+  assert.ok(realized.length < ocean.length, 'a 12-word pool packs fewer than 12 on 30 cells (skips the overflow)');
+}
+console.log('sworble-seed: seedClueLettersBestEffort passed');
+
 // reseedBroken: re-stamp unfindable clues
 {
   // 5x6 grid, all 'x' except a broken clue. Every clue is "unfindable" per the stub predicate,
