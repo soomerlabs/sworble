@@ -1815,12 +1815,12 @@ class Component extends DCLogic {
     catch (e) { return { guessesUsed: 0, solved: false, correct: false, bonus: 0 }; }
   }
   saveSworb(st) { try { LS.setItem(K.SWORB_PREFIX + (this.dailyKey || this.dayKey(new Date())), JSON.stringify(st)); } catch (e) {} }
-  // the sworb-of-the-day guess action: 3 guesses, locks on solve/exhaustion, awards a
+  // the sworb-of-the-day guess action: 5 guesses, locks on solve/exhaustion, awards a
   // clue-scaled bonus that rides today's competitive score (there is no par target to distort).
   guessSworb(input) {
     const e = this.dailyEntry(); if (!e) return { ok: false };
     const st = this.sworbState();
-    if (st.solved || st.guessesUsed >= 3) return { ok: false, done: true };
+    if (st.solved || st.guessesUsed >= 5) return { ok: false, done: true };
     const correct = SworbleDaily.checkGuess(input, e);
     st.guessesUsed += 1;
     if (correct) {
@@ -1837,7 +1837,7 @@ class Component extends DCLogic {
     }
     this.saveSworb(st);
     this.forceUpdate();
-    return { ok: true, correct, guessesLeft: Math.max(0, 3 - st.guessesUsed), bonus: st.bonus };
+    return { ok: true, correct, guessesLeft: Math.max(0, 5 - st.guessesUsed), bonus: st.bonus };
   }
   // guess-sheet submit: UI-only wrapper around guessSworb — validates non-empty input,
   // clears the field either way, and shakes (via sworbShake, a bump counter so repeated
@@ -1847,7 +1847,7 @@ class Component extends DCLogic {
     const raw = (this.state.sworbInput || '').trim().toLowerCase().replace(/[^a-z]/g, '');
     if (!raw || !e) return;
     // the guess must be the full length of the sworb (the blocks show how many) — a short
-    // guess just nudges (shake) rather than burning one of your three guesses
+    // guess just nudges (shake) rather than burning one of your five guesses
     if (raw.length !== e.sworb.length) { this.setState(s => ({ sworbShake: (s.sworbShake || 0) + 1 })); return; }
     const colors = SworbleDaily.scoreGuess(raw, e.sworb); // Wordle green/yellow/gray for the blocks
     const res = this.guessSworb(raw);
@@ -2094,7 +2094,7 @@ class Component extends DCLogic {
     // daily mode: everyone gets the same letter sequence for the calendar day
     const d = new Date();
     this.dailyKey = SworbleCore.dayKey(d);
-    if (this.optVal('dailyMode', true)) {
+    if (this.optVal('dailyMode', true) || this.stacklOn()) {
       const seedN = SworbleCore.hashSeed(this.dailyKey);
       this.seedN = seedN;                     // profanity scrub reads this so its fixes are identical for every player
       // every seeded stream is wrapped in a call counter (_rngN) so a mid-run snapshot can
@@ -2166,7 +2166,7 @@ class Component extends DCLogic {
     // Packing is deterministic and never fails (unlike the old all-or-nothing retry loop) —
     // the REALIZED set (words that packed AND verify findable) is the source of truth.
     const _pool = this.themePool();
-    if (_pool && this.optVal('dailyMode', true)) {
+    if (_pool && (this.optVal('dailyMode', true) || this.stacklOn())) {
       const wanted = _pool.themeWords.slice(0, this.themeTarget());
       const byCell = {}; tiles.forEach(t => { byCell[t.row + ',' + t.col] = t; });
       const rng = mulberry32(SworbleCore.hashSeed(this.dailyKey + '|sworb') >>> 0);

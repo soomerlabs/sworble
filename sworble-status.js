@@ -73,7 +73,7 @@
       var themeList = sw.entry.themeWords || sw.entry.clues || [];
       var total = themeList.length;
       var foundCount = Array.isArray(sw.cluesFound) ? sw.cluesFound.length : 0;
-      var guessesLeft = Math.max(0, 3 - (num(sw.guessesUsed) || 0));
+      var guessesLeft = Math.max(0, 5 - (num(sw.guessesUsed) || 0));
       var solved = !!sw.solved;
       sworb = {
         active: true, total: total, foundCount: foundCount, guessesLeft: guessesLeft, solved: solved,

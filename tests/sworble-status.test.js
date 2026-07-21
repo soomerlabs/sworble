@@ -110,12 +110,12 @@ function st(over) { return S.dailyStatus(Object.assign({}, BASE, over)); }
   assert.strictEqual(on.active, true);
   assert.strictEqual(on.total, 5);
   assert.strictEqual(on.foundCount, 2);
-  assert.strictEqual(on.guessesLeft, 2);
+  assert.strictEqual(on.guessesLeft, 4);
   assert.strictEqual(on.solved, false);
   assert.strictEqual(on.canGuess, true);
   const solved = S.dailyStatus(Object.assign({}, base, { sworb: { entry, cluesFound: ['tide'], guessesUsed: 1, solved: true } })).sworb;
   assert.strictEqual(solved.canGuess, false, 'solved -> cannot guess');
-  const spent = S.dailyStatus(Object.assign({}, base, { sworb: { entry, cluesFound: [], guessesUsed: 3, solved: false } })).sworb;
+  const spent = S.dailyStatus(Object.assign({}, base, { sworb: { entry, cluesFound: [], guessesUsed: 5, solved: false } })).sworb;
   assert.strictEqual(spent.guessesLeft, 0);
   assert.strictEqual(spent.canGuess, false, 'no guesses left -> cannot guess');
 }
