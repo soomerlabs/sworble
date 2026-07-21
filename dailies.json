@@ -1,4 +1,4 @@
 {
-  "2026-07-20": { "sworb": "ocean", "clues": ["tide", "coral", "wave", "reef", "salt"] },
-  "2026-07-21": { "sworb": "kitchen", "clues": ["oven", "fork", "pan", "dish", "spoon"] }
+  "2026-07-20": { "sworb": "ocean", "themeWords": ["sea","bay","ebb","tide","wave","reef","salt","kelp","and","are","shore","foam","coral","pearl","shell"] },
+  "2026-07-21": { "sworb": "kitchen", "themeWords": ["oven","fork","pan","dish","spoon","and","are","all","pot","cup","plate","knife","bowl","mug","tray"] }
 }
