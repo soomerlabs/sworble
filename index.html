@@ -2529,12 +2529,7 @@ class Component extends DCLogic {
       wbQuery: st.wbQuery || '', wbHasQuery: searching, wbQueryUpper: q.toUpperCase(),
     };
   }
-  // one run per day: once a daily run has ended it's locked for the day (Practice stays unlimited)
-  dailyDone(day) {
-    if (!this.optVal('dailyMode', true)) return false;
-    const d = day || this.dailyKey || this.dayKey(new Date());
-    try { return LS.getItem(K.DONE_PREFIX + d) === '1'; } catch (e) { return false; }
-  }
+  dailyDone() { return false; } // endless daily: never hard-locks; resumes within the day (resets at the next daily)
   // season "IQ": average efficiency (your best-7 vs the bot's optimal) across every daily you've finished
   seasonIQ() {
     let sum = 0, n = 0;
@@ -2954,7 +2949,6 @@ class Component extends DCLogic {
   boardDown(e) {
     if (this.state.paused || this.state.over) return;
     if (this.state.sworbTyping) return; // board is an A-Z keyboard right now — keys own their taps
-    if (this.puzzleOn() && (this.state.guessesLeft ?? 1) <= 0) return; // budget spent: round is ending
     // a tap during the stack demo dismisses the coach AND selects the tapped tile in one
     // motion (the setState at the end of this handler clears idleTip) — no dead first tap
     if (this.state.idleTip) this.lastActiveAt = performance.now();
@@ -3411,8 +3405,8 @@ class Component extends DCLogic {
     // MINES: 4+ word through an armed mine detonates it — radius tiles pay value × streak
     // mult on top; a ≤3 word fizzles it for −5s (applied in the commit callback below)
     const puz = this.puzzleOn();
-    // PAR: a valid word spends one guess; hitting 0 ends the round once this word's
-    // cascade + any fuse detonation settle (never mid-celebration)
+    // ENDLESS DAILY: word budget removed \u2014 a valid word never spends a guess and never
+    // ends the round. Warm-up graduation is the only per-word state transition left here.
     if (puz && this.state.tut) {
       // WARM-UP (first open ever): words are free; two good words graduate into the real round
       if (this.state.tut.step === 1) {
@@ -3422,10 +3416,6 @@ class Component extends DCLogic {
         this.setState({ idleTip: { kind: 'copy', text: 'you\u2019re ready. 7 words, make them count', key: 'tut3' } });
         this.later(() => { if (this.state.tut) { this.setState({ tut: null, idleTip: null }); this.newGame(true); } }, 2600);
       }
-    } else if (puz) {
-      const gl = Math.max(0, (this.state.guessesLeft ?? this.parGuesses()) - 1);
-      this.setState({ guessesLeft: gl });
-      if (gl <= 0) this.enqueue(1900, () => this.endRound());
     }
     // HIDDEN BOMBS (minesweeper rules): bombs never show themselves — the sonar numbers
     // are the only signal. ANY word through one triggers it: 4+ letters = defuse (payout),
@@ -5932,11 +5922,11 @@ class Component extends DCLogic {
       hopperMsgRef: this.hopperMsgRef,
       timeHudLabel: this.puzzleOn() ? (st.tut ? 'WARMUP' : 'WORDS') : 'TIME',
       timeText: (() => {
-        if (this.puzzleOn()) return st.tut ? '\u2014' : String(st.guessesLeft ?? this.parGuesses()); // tries remaining
+        if (this.puzzleOn()) { if (st.tut) return '\u2014'; return String((this.state.roundWords || []).length); } // words found so far (no cap)
         const shown = Math.max(0, Math.ceil(st.timeLeft - (this.timeRoll || 0))); // rolls up as the bonus lands
         return Math.floor(shown / 60) + ':' + String(shown % 60).padStart(2, '0');
       })(),
-      timeKey: (this.puzzleOn() && !st.tut) ? ('w' + (st.guessesLeft ?? this.parGuesses())) : 'clock', // remount per word — replays the pop
+      timeKey: (this.puzzleOn() && !st.tut) ? ('w' + (this.state.roundWords || []).length) : 'clock', // remount per word — replays the pop
       timeValStyle: {
         fontSize: valFont, fontWeight: 800, lineHeight: 1,
         animation: this.puzzleOn() ? 'slotInA 0.28s ease-out' : 'none',
