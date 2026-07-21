@@ -77,7 +77,24 @@ Priority order. All line refs `index.html`; mirror to `Sworble.dc.html`.
    `sworble-status`). Convert those reads to `themeWords`, then remove the alias.
 9. **Duplicate `animation` key** in `timeValStyle` (`~6020`/`6026`) — second silently wins.
 
-## Decisions to settle BEFORE the redesign commits (need the design owner)
+## LOCKED decisions (design owner, 2026-07-21)
+
+- **A = CUMULATIVE scoring (retire best-7).** Every word adds its points (× streak/length
+  multipliers + bomb blasts). Casual = a running cumulative total (personal stat; rank stays
+  theme-first). Stacks = the cumulative 2-min total, and the best run banks `STACKL_BEST_PREFIX` +
+  ranks the stacks board. **Retire the whole "seven" scoring spine** (`bestSevenTotal` `1401`,
+  `mergeDailySeven` `2438`, `dailySeven` `2449`, `sevenFromWords`, `SEVEN_PREFIX`). Implementation:
+  `clearWord` sets `score += pts` (cumulative) instead of `score = bestSevenTotal(roundWords)`
+  (`3506`). This also RESOLVES decision **C** (the sworb solve-bonus is no longer recomputed away —
+  it just adds to the cumulative score and persists).
+- **B = THEME-FIRST casual leaderboard + BEST-SCORE stacks leaderboard.** Casual ranks by the
+  already-built `dailyStatus().sworb.rank = {solved, solveTier, themeFound}` (currently read by ZERO
+  UI — wire it into `homeLeadersVals`/the podium/the full LB in place of the points/`bestToday`
+  sort). Stacks ranks by best cumulative round score (`STACKL_BEST_PREFIX`, `|stackl` partition).
+  Unify the two boards' visual system in the redesign (today: casual podium-graph vs the stacks
+  best-score stub buried in the over-sheet).
+
+## Still-open decisions (clarity — settle during the redesign)
 
 - **A. What is a "stacks score"?** Today, because `puzzleOn()` is baked true, `clearWord` computes
   `score = bestSevenTotal(...)` for BOTH modes — so a 2-minute stacks sprint only counts your **top-7
