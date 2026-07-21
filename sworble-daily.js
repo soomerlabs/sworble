@@ -13,20 +13,23 @@
     if (!e || typeof e !== 'object') return null;
     var sworb = typeof e.sworb === 'string' ? e.sworb.trim().toLowerCase() : '';
     if (!sworb) return null;
-    if (!Array.isArray(e.clues) || !e.clues.length || e.clues.length > 5) return null;
-    var clues = [];
-    for (var i = 0; i < e.clues.length; i++) {
-      var w = typeof e.clues[i] === 'string' ? e.clues[i].trim().toLowerCase() : '';
+    // accept a theme-word POOL (new) or the legacy `clues` array (back-compat); no upper cap
+    var raw = Array.isArray(e.themeWords) ? e.themeWords : (Array.isArray(e.clues) ? e.clues : null);
+    if (!raw || !raw.length) return null;
+    var themeWords = [];
+    for (var i = 0; i < raw.length; i++) {
+      var w = typeof raw[i] === 'string' ? raw[i].trim().toLowerCase() : '';
       if (!w) return null;
-      clues.push(w);
+      themeWords.push(w);
     }
-    return { sworb: sworb, clues: clues };
+    return { sworb: sworb, themeWords: themeWords };
   }
 
   function isClue(word, entry) {
     if (!entry || !word) return false;
+    var list = entry.themeWords || entry.clues || [];
     var w = String(word).toLowerCase();
-    return entry.clues.indexOf(w) >= 0;
+    return list.indexOf(w) >= 0;
   }
 
   function normalize(s) { return String(s || '').toLowerCase().replace(/[^a-z]/g, ''); }

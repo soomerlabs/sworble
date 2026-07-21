@@ -4,7 +4,7 @@ const D = require('../sworble-daily.js');
 const dailies = { '2026-07-21': { sworb: 'ocean', clues: ['tide', 'coral', 'wave', 'reef', 'salt'] } };
 
 const e = D.parseEntry(dailies, '2026-07-21');
-assert.deepStrictEqual(e, { sworb: 'ocean', clues: ['tide', 'coral', 'wave', 'reef', 'salt'] });
+assert.deepStrictEqual(e, { sworb: 'ocean', themeWords: ['tide', 'coral', 'wave', 'reef', 'salt'] });
 assert.strictEqual(D.parseEntry(dailies, '2026-07-22'), null, 'missing day -> null');
 assert.strictEqual(D.parseEntry({ '2026-07-21': { sworb: '', clues: [] } }, '2026-07-21'), null, 'empty -> null');
 assert.strictEqual(D.parseEntry({ '2026-07-21': { sworb: 'x', clues: 'nope' } }, '2026-07-21'), null, 'bad clues -> null');
@@ -28,4 +28,25 @@ assert.deepStrictEqual(D.scoreGuess('ocxxx', 'ocean'), ['green','green','gray','
 // duplicate-letter handling — answer 'reef' has E at positions 1 and 2:
 assert.deepStrictEqual(D.scoreGuess('eeee', 'reef'), ['gray','green','green','gray'], 'both middle Es green; the two extra guess-Es have no answer-E left = gray');
 assert.deepStrictEqual(D.scoreGuess('erxx', 'reef'), ['yellow','yellow','gray','gray'], 'E and R both present but misplaced = yellow; X absent = gray');
+
+// --- NEW: theme-word pool (relax 5-clue cap) + back-compat clues ---
+{
+  // NEW shape: a pool of theme words, no 5-cap
+  const pool = { '2026-08-01': { sworb: 'ocean', themeWords: ['tide','coral','wave','reef','salt','shore','kelp','surf','foam','brine','pearl','shell'] } };
+  const e = D.parseEntry(pool, '2026-08-01');
+  assert.strictEqual(e.sworb, 'ocean');
+  assert.strictEqual(e.themeWords.length, 12, 'pool larger than 5 is accepted (cap relaxed)');
+  assert.strictEqual(e.themeWords[0], 'tide');
+  // BACK-COMPAT: legacy `clues` still parses, surfaced as themeWords
+  const legacy = { '2026-08-02': { sworb: 'kitchen', clues: ['oven','fork','pan','dish','spoon'] } };
+  const l = D.parseEntry(legacy, '2026-08-02');
+  assert.deepStrictEqual(l, { sworb: 'kitchen', themeWords: ['oven','fork','pan','dish','spoon'] });
+  // normalization + validation
+  assert.deepStrictEqual(D.parseEntry({ x: { sworb: ' Ocean ', themeWords: [' Tide ', 'CORAL'] } }, 'x'), { sworb: 'ocean', themeWords: ['tide','coral'] });
+  assert.strictEqual(D.parseEntry({ x: { sworb: 'ocean', themeWords: [] } }, 'x'), null, 'empty pool -> null');
+  assert.strictEqual(D.parseEntry({ x: { sworb: 'ocean', themeWords: 'nope' } }, 'x'), null, 'non-array -> null');
+  assert.strictEqual(D.parseEntry({ x: { sworb: '', themeWords: ['a'] } }, 'x'), null, 'empty sworb -> null');
+  assert.strictEqual(D.parseEntry({ x: { sworb: 'ocean', themeWords: ['tide', 7] } }, 'x'), null, 'non-string entry -> null');
+}
+
 console.log('sworble-daily: all passed');
