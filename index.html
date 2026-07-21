@@ -1033,6 +1033,19 @@
         <sc-if value="{{ endRound.rankShow }}" hint-placeholder-val="{{ false }}">
           <span style="position:relative; font-size:12px; font-weight:800; letter-spacing:0.5px; color:#8971FF; margin-top:5px;">you&rsquo;re {{ endRound.rank }} today</span>
         </sc-if>
+        <!-- Stackl's OWN leaderboard stub (Task 3) — separate `|stackl` partition, distinct from casual's standings; only ever shows for an actual stackl run -->
+        <sc-if value="{{ stacklLbShow }}" hint-placeholder-val="{{ false }}">
+          <div style="position:relative; width:100%; box-sizing:border-box; margin-top:14px; display:flex; flex-direction:column; gap:5px;">
+            <span style="font-size:10px; font-weight:800; letter-spacing:1.5px; color:var(--ghost);">STACKL BOARD &middot; {{ stacklLbCount }}</span>
+            <sc-for list="{{ stacklLbRows }}" as="row" hint-placeholder-count="5">
+              <div style="{{ row.rowStyle }}">
+                <div style="{{ row.rankStyle }}">{{ row.rank }}</div>
+                <div style="{{ row.nameStyle }}">{{ row.name }}</div>
+                <div style="{{ row.scoreStyle }}">{{ row.score }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
         <button onClick="{{ finishToLb }}" style="position:relative; width:100%; box-sizing:border-box; margin-top:16px; background:#8971FF; color:#fff; border:none; border-radius:14px; padding:13px 0; font-family:'Fredoka','Manrope',sans-serif; font-size:16px; font-weight:600; letter-spacing:0.5px; cursor:pointer; box-shadow:0 4px 0 #5A43C9;" style-active="transform:translateY(2px); box-shadow:0 2px 0 #5A43C9;">leaderboard</button>
         <div style="position:relative; display:flex; gap:10px; width:100%; margin-top:10px;">
           <button onClick="{{ startPractice }}" style="flex:1; box-sizing:border-box; background:color-mix(in srgb, var(--sheet-ink) 8%, transparent); color:var(--sheet-ink); border:none; border-radius:12px; padding:11px 0; font-family:'Fredoka','Manrope',sans-serif; font-size:14px; font-weight:600; cursor:pointer;" style-active="transform:scale(0.97)">practice</button>
@@ -1245,7 +1258,7 @@ class Component extends DCLogic {
       path: [], banner: null, streak: 0, maxStreak: 0,
       scoreShown: 0, bestLit: false, roundWords: [],
       nextFresh: false, muted, opts, activeModal: null, modalStack: [], contentFading: false, heightAnim: false, modalW: 320, modalFromHome: false,
-      lbData: null, homeLb: null, nameInput: '', nameError: '', sheetH: 0,
+      lbData: null, homeLb: null, stacklLb: null, nameInput: '', nameError: '', sheetH: 0,
       sworbInput: '', sworbShake: 0, sworbColors: null, clueGlowIds: null, // sworb guess: current typed letters, wrong-guess shake counter, last-guess Wordle colors (UI-only)
       stepperMode: 'play', sworbTyping: false, sworbWin: false, sworbFlipKey: 0, // stepper flip (play<->sworb), board-morph keyboard open, win-flash, flip-anim rekey
       sworbSlots: [], // position-addressable guess slots (Wordle-persistence: green/yellow letters stay after a miss)
@@ -2523,6 +2536,15 @@ class Component extends DCLogic {
     // par home reads a per-day best so the return visit works even before a name/leaderboard submit
     if (this.puzzleOn() && this.optVal('dailyMode', true)) {
       try { const d = this.dailyKey || this.dayKey(new Date()), k = K.PUZZLE_BEST_PREFIX + d, p = Number(LS.getItem(k) || 0) || 0; if ((this.state.score || 0) > p) LS.setItem(k, String(this.state.score || 0)); } catch (e) {}
+    }
+    // stackl (2-min timed) per-day best: own prefix, own board — never touches puzzle's best/leaderboard
+    if (this.stacklOn()) {
+      try {
+        const k = K.STACKL_BEST_PREFIX + this.dailyKey;
+        const prev = parseInt(LS.getItem(k) || '0', 10) || 0;
+        if ((this.state.score || 0) > prev) LS.setItem(k, String(this.state.score));
+        this.loadStacklLb(); // refresh the stub so the result sheet's stackl board reflects THIS run
+      } catch (e) {}
     }
     // PERFECT RUN: every word of a full budget was a best word (legendary, crowned on the result sheet)
     this._lastRunPerfect = this.puzzleOn() && (this._bestHits || 0) >= this.parGuesses();
@@ -3977,8 +3999,8 @@ class Component extends DCLogic {
   // one leaderboard bucket PER MODE: puzzle (3:00) and classic (2:00) scores are set
   // under different rules, so they must never share a board. The mode suffix on the
   // board id keeps them apart for the local stub; the Soomer API takes mode explicitly.
-  lbBoardId(date) { return date + (this.puzzleOn() ? '|puzzle' : ''); }
-  lbMode() { return this.puzzleOn() ? 'puzzle' : 'classic'; }
+  lbBoardId(date) { return date + (this.stacklOn() ? '|stackl' : (this.puzzleOn() ? '|puzzle' : '')); }
+  lbMode() { return this.stacklOn() ? 'stackl' : (this.puzzleOn() ? 'puzzle' : 'classic'); }
   async lbSubmit(date, name, score) {
     if (!name || !score) return;
     // the local stub entry ALWAYS updates first — offline play keeps a live board
@@ -4026,6 +4048,34 @@ class Component extends DCLogic {
     const date = this.dailyKey || this.dayKey(new Date());
     this.setState({ homeLb: this.lbStub(date) }); // local renders NOW
     this.lbRemote(date).then(remote => { if (remote) this.setState({ homeLb: remote }); });
+  }
+  // ===== Stackl (2-min timed) leaderboard — a SEPARATE stub board, own `|stackl` partition =====
+  // Ranked by K.STACKL_BEST_PREFIX (banked in endRound), NOT K.LB_ME_PREFIX — stackl has no
+  // submit flow yet, so "me" reads straight from the per-day best rather than a submitted score.
+  // Parallel to lbStub() on purpose: lbStub's "me" and score range are wired to the puzzle/classic
+  // submit path, which stackl doesn't use, so reusing it here would show a permanently-empty "me" row.
+  lbStubStackl(date) {
+    const boardId = date + '|stackl';
+    const seed = SworbleCore.hashSeed('lb' + boardId);
+    const rnd = mulberry32(seed >>> 0);
+    const POOL = ['ORDA','MILO','JUNO','PIXL','NOVA','ZEKE','FINN','REMY','ODIE','WREN','QUILL','TOVA','KAII','BIRD','SAGE','ELIO','MARLO','POPPY','DASH','LUMA','OTTO','MAVE','CLEO','IGGY','ROON','VESP','BODE','NELL'];
+    const pool = POOL.filter(n => n !== (this.playerName || '').toUpperCase());
+    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
+    const n = Math.min(pool.length, 16 + Math.floor(rnd() * 12));
+    const entries = [];
+    for (let i = 0; i < n; i++) entries.push({ name: pool[i], score: Math.round(150 + Math.pow(rnd(), 1.8) * 950) }); // stackl's own 2-min score range (distinct from puzzle/classic)
+    let me = null;
+    try {
+      const best = parseInt(LS.getItem(K.STACKL_BEST_PREFIX + date) || '0', 10) || 0;
+      if (best > 0 && this.playerName) me = { name: this.playerName, score: best }; // no name yet → not a "you" row (matches how the rest of the app treats an unnamed player)
+    } catch (e) {}
+    return { entries, me, count: entries.length + (me ? 1 : 0) };
+  }
+  // stub for the minimal Stackl result-sheet card (Task 3) — local-only for now; a real
+  // remote submit/fetch for stackl rides on a later task, same as puzzle's lbRemote did
+  loadStacklLb() {
+    const date = this.dailyKey || this.dayKey(new Date());
+    this.setState({ stacklLb: this.lbStubStackl(date) });
   }
   submitDaily() {
     if (!this.playerName || !this.optVal('dailyMode', true)) return;
@@ -4934,6 +4984,33 @@ class Component extends DCLogic {
         };
       }
 
+  // Minimal Stackl leaderboard card (Task 3) — DISTINCT from casual's standings above:
+  // reads state.stacklLb (loadStacklLb, own `|stackl`-partitioned stub), not state.homeLb/lbData.
+  // Deliberately plain rows (no podium/graph) — a real surface lands in a later task.
+  stacklLbVals() {
+    const data = this.state.stacklLb;
+    if (!data) return { stacklLbShow: false, stacklLbRows: [], stacklLbCount: '' };
+    const dark = this.isDark();
+    const all = data.entries.slice();
+    if (data.me) all.push({ name: data.me.name, score: data.me.score, you: true });
+    all.sort((a, b) => b.score - a.score || (a.name < b.name ? -1 : 1));
+    const ranked = all.map((e, i) => ({ ...e, rank: i + 1 }));
+    const rowFor = (e) => ({
+      rank: '#' + e.rank, name: e.name, score: e.score.toLocaleString(),
+      rowStyle: { display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', borderRadius: 10,
+        background: e.you ? (dark ? 'rgba(137,113,255,0.16)' : '#ECE7FF') : 'color-mix(in srgb, var(--sheet-ink) 4%, transparent)' },
+      rankStyle: { width: 22, flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: e.you ? '#8971FF' : 'var(--ghost)' },
+      nameStyle: { flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800, textTransform: 'lowercase', color: e.you ? '#8971FF' : 'var(--sheet-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+      scoreStyle: { fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 13, fontWeight: 600, color: e.you ? '#8971FF' : 'var(--sheet-ink)' },
+    });
+    const rows = ranked.slice(0, 5).map(rowFor);
+    return {
+      stacklLbShow: rows.length > 0,
+      stacklLbRows: rows,
+      stacklLbCount: (data.count || ranked.length) + ' today',
+    };
+  }
+
   _exitGame() {
     this.sfxClick();
     const opts = { ...(this.state.opts || {}), dailyMode: true };
@@ -5697,6 +5774,9 @@ class Component extends DCLogic {
       ...(this._ov = this.overParVals(st, dailyOn)),
       // Quiet home: top-3 leaders (your row folds in, highlighted) — no target on the front door
       ...this.homeLeadersVals(st, dailyOn),
+      // Stackl's OWN minimal leaderboard card (separate partition from casual's standings above);
+      // only surfaces on the shared practice/stackl result sheet, and only for an actual stackl run
+      ...(() => { const v = this.stacklLbVals(); return { ...v, stacklLbShow: this.stacklOn() && v.stacklLbShow }; })(),
       ...(this.dailyStatus().resumable && this.optVal('dailyMode', true) ? { homePlayLabel: 'RESUME' } : {}), // a paused live run resumes on PLAY, it never restarts — even across a reload (the selector knows both)
       homeSwipeLabel: 'swipe up to play',
       againLabel: dailyOn ? 'REPLAY' : 'PLAY AGAIN',

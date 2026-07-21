@@ -48,6 +48,7 @@
     SEVEN_PREFIX: 'sworble_seven_',
     RUNS_PREFIX: 'sworble_runs_',
     PUZZLE_BEST_PREFIX: 'sworble_puzzle_best_',
+    STACKL_BEST_PREFIX: 'sworble_stackl_best_', // per-day Stackl (2-min timed) best score — separate from puzzle's, banked on every stackl run-over
     PUZZLE_PAR_PREFIX: 'sworble_puzzle_par_',
     TARGETS_PREFIX: 'sworble_targets_',
     FOUND_PREFIX: 'sworble_found_',
