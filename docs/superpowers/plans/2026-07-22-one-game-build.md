@@ -263,6 +263,27 @@ Audit-then-delete, grep-verified, one commit per cluster. Inventory (from ledger
 - [ ] (Separate, pre-launch) the internal identifier rename sworble*/stackl* → sworbl (files,
   storage keys, globals) — still its own logged TODO, not this task.
 
+**Test-gap hardening (same task — extract pure, then test):**
+- [ ] `restoreRun` remaining-time arithmetic: extract `remainingSecs(roundSecs, boardElapsedMs)`
+  into sworble-run.js + unit tests (expired→0, partial, null-safe). The T1 Critical lived exactly
+  here and only a reviewer caught it — it deserves a pinned test.
+- [ ] `finalePending`/day-state: extract `dayState({done, solved, guessesUsed}) ->
+  'fresh'|'live'|'finale'|'done'` as a pure fn (sworble-status.js) + tests; index.html delegates.
+  The T3 re-entry Critical lived in this state machine.
+- [ ] Countdown-to-next-day math: extract + test (DST day, midnight boundary).
+- [ ] Slim-strip pct/hit math: extract `progressToTop(you, top) -> {pct, hit}` + tests
+  (top=0, you>top, rounding).
+- [ ] FOUND_PREFIX banking dedup (checkTargetCatch): add a pure helper for
+  `bankClue(found[], clue) -> found'[]` + tests (dedupe, extension-banks-clue) — the split-brain
+  glow/bank class of bug has bitten twice; pin it.
+- [ ] Count-in/pause invariants (post-5c): at minimum a pure test for the pause-shift math if
+  extractable; else document the manual test matrix in the E2E task.
+
+**Crap-logic audit (final whole-branch review directive):** the T8-adjacent final review must
+explicitly hunt: baked switches (dailyMode), duplicated logic between home/finale guess paths,
+setState-in-loops, listener/timer leaks (countdown, auto-pause, clue-highlight), and stale
+comments that lie about behavior. Minor-findings ledger from Tasks 1-6 feeds it.
+
 ## Self-Review
 
 - **Spec coverage:** game mechanics T1-T4, home T5, storm T6, E2E T7; finale reuse (morph,
