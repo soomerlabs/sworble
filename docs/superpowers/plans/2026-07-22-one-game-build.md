@@ -248,6 +248,21 @@ spec: blob sizes/positions/orbits/durations, mask, 12px blur, NO lightning.
   reload after finale lands on after-state. Determinism: two hard-reload deals identical.
 - [ ] Ledger notes + commit `test: one-game loop verified end-to-end`.
 
+### Task 8: Dead-code & shim sweep (post-E2E — same playbook as the foundation cleanup)
+
+Audit-then-delete, grep-verified, one commit per cluster. Inventory (from ledger + reviews):
+- [ ] Collapse the `dailyMode` opt (baked true; practice becomes an explicit context) → the boot
+  heal shim deletes itself. Same treatment as puzzleOn/dailyDone before it.
+- [ ] `themeTarget` knob (inert for seed), `gameSeconds` opt (superseded by roundSecs — verify
+  practice), `parGuesses()`/bumpOpt branch (recheck post-warmup), `doGuessSworb` orphan,
+  `seasonIQ`/`EFF_PREFIX` (bot-era, no writers).
+- [ ] `clues` alias in dailyEntry: convert remaining readers to themeWords, delete alias.
+- [ ] Legacy full-LB screen + overParVals: retire or re-rank solved-first (decide with the
+  results-screen rework — may be superseded entirely).
+- [ ] Comments referencing stackl/casual/seven-as-score: sweep stale prose.
+- [ ] (Separate, pre-launch) the internal identifier rename sworble*/stackl* → sworbl (files,
+  storage keys, globals) — still its own logged TODO, not this task.
+
 ## Self-Review
 
 - **Spec coverage:** game mechanics T1-T4, home T5, storm T6, E2E T7; finale reuse (morph,
