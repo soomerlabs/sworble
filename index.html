@@ -2731,7 +2731,7 @@ class Component extends DCLogic {
   }
   saveRunState() { // flush the live run to LS (cheap; called throttled + on tab-hide)
     try {
-      if (!this._dailyLive || this.state.over || this.practiceMode()) return;
+      if (!this._dailyLive || this.state.over || this.practiceMode() || this.dailyConsumed()) return; // consumed: a resolved day never re-grows a snapshot (zombie-run guard)
       let elapsed = this._boardElapsedMs || 0;
       if (this._boardTickAt != null) elapsed += performance.now() - this._boardTickAt;
       const snap = SworbleRun.serializeRun({
@@ -2828,6 +2828,11 @@ class Component extends DCLogic {
     this.reloadTimer = null;
     this.dragging = false;
     this.dailyKey = SworbleCore.dayKey(new Date());
+    // ZOMBIE-RUN GUARD (live bug, 2026-07-22): a RESOLVED day must never rehydrate a run
+    // snapshot — a stale snapshot (e.g. saved by a since-fixed broken exit path) would
+    // resurrect a "live round" on a day whose result is already banked. Consumed = the
+    // snapshot is garbage by definition: discard it and stay wherever we are.
+    if (this.dailyConsumed()) { this.clearRunState(); this._dailyLive = false; return; }
     const stale = run.day !== this.dailyKey // midnight passed between save and restore
       || (run.cols != null && run.cols !== this.cols()) || (run.rows != null && run.rows !== this.rows());
     if (stale) { this.clearRunState(); if (!atBoot) this.newGame(true); return; }
@@ -6575,6 +6580,14 @@ class Component extends DCLogic {
         // The player is already guessing right where they are — no-op.
         if (this.state.finale && this.state.screen === 'home') return;
         this.sfxClick();
+        // DAY CONSUMED — checked FIRST (zombie-run fix): if the day is resolved, no branch
+        // below may run, ESPECIALLY not the in-memory resume (a stale rehydrated snapshot
+        // once matched it and opened a ghost round on a finished day). Kill any such
+        // zombie state on the way out.
+        if (this.dailyConsumed()) {
+          if (this._dailyLive || (this.state.tiles || []).length) { this.clearRunState(); this._dailyLive = false; }
+          return;
+        }
         // RESUME a live, unfinished daily run — you only paused it by visiting home (or the
         // tab auto-paused). Never re-roll. Task 5c: this is now a FAIR resume, not instant —
         // land on the game screen already showing the blurred pause overlay (gamePaused) so
@@ -6588,9 +6601,6 @@ class Component extends DCLogic {
         // RE-ENTER a pending finale — leaving it early (back/swipe-down) never forfeits it;
         // PLAY picks the SAME unresolved guess back up instead of dealing a fresh round.
         if (this.finalePending()) { this.enterFinale(); return; }
-        // DAY CONSUMED: the run ended AND there's no finale left pending — one-shot day, no
-        // replay. Stay on home (there's nothing to deal); the after-state IS the result.
-        if (this.dailyConsumed()) return;
         // (reload-resume happens at BOOT now — componentDidMount rehydrates the saved run
         // into memory, so the in-memory branch above already covers the reload case)
         // defensive: home implies daily — heals any missed home-return path. practiceMode is
