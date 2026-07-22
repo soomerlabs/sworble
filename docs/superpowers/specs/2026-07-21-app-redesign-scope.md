@@ -117,6 +117,12 @@ a purchasable top-up would be a business toggle, and even then aimed at practice
 ## AWAITING OWNER DESIGNS (2026-07-22 — do NOT build ahead)
 Owner has updated designs coming for: PROFILE, LEADERBOARD, SETTINGS (new full screen), and
 DAILY-SCORE SHARING. Hold these surfaces until the mocks arrive; current versions are placeholders.
+FEED INTO THE SHARE DESIGN (owner idea, locked as direction 2026-07-22): after the day resolves,
+show the sworb's DEFINITION under the revealed word ("word of the day" payoff — definitions now
+ship in dailies.json, backfilled + required by the generation prompt). The share is Wordle-style
+spoiler-free text: sworbl №N + the six finale guess rows as 🟩🟨⬜ emoji + score + clues found
+(e.g. "sworbl №214 🌱 / 🟨⬜🟨⬜⬜ / 🟩🟩🟩🟩🟩 / 448 pts · 4/6 clues"). Build lands WITH the
+owner's share/results design.
 
 ## NEW SCREENS / SYSTEMS (backlog — decompose into sub-projects)
 - **First-time interactive tutorial** (full screen, minimal words, not annoying/confusing):
