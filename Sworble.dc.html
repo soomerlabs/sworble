@@ -301,6 +301,11 @@
                   <div style="{{ b.style }}">{{ b.ch }}</div>
                 </sc-for>
               </div>
+              <sc-if value="{{ sworbGuess.burstOn }}" hint-placeholder-val="{{ false }}">
+                <sc-for list="{{ sworbGuess.burst }}" as="sp" hint-placeholder-count="0">
+                  <div key="{{ sp.k }}" style="{{ sp.style }}"></div>
+                </sc-for>
+              </sc-if>
             </div>
             <div style="{{ sworbGuess.captionStyle }}">{{ sworbGuess.caption }}</div>
           </div>
@@ -454,6 +459,11 @@
                         <sc-for list="{{ homeSworb.blocks }}" as="b" hint-placeholder-count="5">
                           <div style="{{ b.style }}">{{ b.ch }}</div>
                         </sc-for>
+                        <sc-if value="{{ homeSworb.burstOn }}" hint-placeholder-val="{{ false }}">
+                          <sc-for list="{{ homeSworb.burst }}" as="sp" hint-placeholder-count="0">
+                            <div key="{{ sp.k }}" style="{{ sp.style }}"></div>
+                          </sc-for>
+                        </sc-if>
                       </div>
                       <sc-if value="{{ homeSworb.guessing }}" hint-placeholder-val="{{ false }}">
                         <div style="font-family:'Fredoka','Manrope',sans-serif; font-size:10px; font-weight:800; letter-spacing:1px; color:var(--ghost); text-transform:uppercase;">{{ homeSworb.guessCaption }}</div>
@@ -1105,19 +1115,6 @@
       <span style="position:absolute; left:72%; top:-5%; width:7px; height:11px; background:#F58A66; border-radius:2px; animation:confFall 2.8s linear -1.4s infinite;"></span>
       <span style="position:absolute; left:85%; top:-5%; width:8px; height:12px; background:#F5B84A; border-radius:2px; animation:confFall 2.5s linear -0.6s infinite;"></span>
       <span style="position:absolute; left:92%; top:-5%; width:7px; height:11px; background:#5BC8F5; border-radius:2px; animation:confFall 3s linear -1.7s infinite;"></span>
-    </div>
-  </sc-if>
-
-  <sc-if value="{{ resultToastShow }}" hint-placeholder-val="{{ false }}">
-    <div style="position:fixed; top:calc(12px + env(safe-area-inset-top)); left:0; right:0; z-index:58; display:flex; justify-content:center; padding:0 14px; box-sizing:border-box; pointer-events:none;">
-      <div style="pointer-events:auto; position:relative; width:100%; max-width:360px; display:flex; align-items:center; gap:11px; padding:11px 12px 11px 15px; box-sizing:border-box; border-radius:16px; background:color-mix(in srgb, var(--sheet) 80%, transparent); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); box-shadow:0 12px 34px rgba(0,0,0,0.42); border:1px solid color-mix(in srgb, var(--sheet-ink) 9%, transparent); animation:sheetIn 0.4s ease;">
-        <div style="display:flex; flex-direction:column; gap:2px; flex:1; min-width:0;">
-          <span style="font-family:'Fredoka','Manrope',sans-serif; font-size:14.5px; font-weight:600; color:var(--sheet-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ resultToast.head }}</span>
-          <span style="font-size:12px; font-weight:800; letter-spacing:0.3px; color:var(--sheet-sub); white-space:nowrap;"><span style="color:#5FD6A8;">{{ resultToast.score }}</span> pts{{ resultToast.rankSuffix }}</span>
-        </div>
-        <button onClick="{{ doShare }}" aria-label="Share" style="flex:none; width:38px; height:38px; border-radius:11px; display:flex; align-items:center; justify-content:center; background:#8971FF; border:none; cursor:pointer; box-shadow:0 3px 0 #5A43C9;" style-active="transform:translateY(2px); box-shadow:0 1px 0 #5A43C9;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 15V3.5 M8 7l4-4 4 4 M5 12v7a1 1 0 001 1h12a1 1 0 001-1v-7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
-        <button onClick="{{ dismissEnd }}" aria-label="Dismiss" style="flex:none; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:color-mix(in srgb, var(--sheet-ink) 8%, transparent); border:none; cursor:pointer;" style-active="transform:scale(0.9)"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M1 1 L11 11 M11 1 L1 11" stroke="var(--sheet-sub)" stroke-width="2" stroke-linecap="round"></path></svg></button>
-      </div>
     </div>
   </sc-if>
 
@@ -2077,6 +2074,36 @@ class Component extends DCLogic {
   // until the very end (paired with over:true) — over is false for the whole finale by design
   // (see endRound), so sworbTyping is the only thing keeping the frozen board's taps blocked;
   // dropping it early would re-arm a "dead" board for a couple seconds.
+  // THE SOLVE DETONATES: candy-block confetti erupting from the guess row on a correct sworb
+  // finish — same recipe as the mine-explosion boomSparks (rounded PALETTE squares + a ledge
+  // shadow, riding the existing boomConfetti keyframe via --cx2/--cy2/--cr2), just bigger and
+  // longer (a "shower", not a puff) and centered on the guess blocks instead of a board tile.
+  // `seed` keys the particles so the two anchor points (in-game stepper card + the home hero
+  // row, when the finale is continued from home) never collide on the same k.
+  sworbBurstSparks(seed) {
+    const n = 26;
+    return Array.from({ length: n }, (v, i) => {
+      const ang = (i / n) * Math.PI * 2 + (i % 5) * 0.13;
+      const dist = 30 + (i % 6) * 10;
+      const dx = Math.cos(ang) * dist;
+      const dy = Math.sin(ang) * dist * 0.55 + 26 + (i % 4) * 10; // downward bias — falls, doesn't just scatter
+      const csz = 5 + (i % 4) * 2;
+      const pal = PALETTE[i % PALETTE.length];
+      return {
+        k: seed + i,
+        style: {
+          position: 'absolute', left: 'calc(50% - ' + (csz / 2) + 'px)', top: 'calc(46% - ' + (csz / 2) + 'px)',
+          width: csz, height: csz, borderRadius: Math.max(1, Math.round(csz * 0.28)),
+          background: pal.bg, boxShadow: '0 1px 0 ' + pal.edge,
+          '--cx2': Math.round(dx) + 'px', '--cy2': Math.round(dy) + 'px',
+          '--cr2': ((i % 2 ? 1 : -1) * (130 + i * 19)) + 'deg',
+          opacity: 0, pointerEvents: 'none', zIndex: 56,
+          // fires after the 5 blocks finish their ~0.06s-staggered pop (last one lands ~0.3s in)
+          animation: 'boomConfetti ' + (1.2 + (i % 5) * 0.1).toFixed(2) + 's cubic-bezier(0.2, 0.55, 0.4, 1) ' + (0.32 + (i % 4) * 0.03).toFixed(2) + 's forwards',
+        },
+      };
+    });
+  }
   sworbSubmit() {
     const e = this.dailyEntry();
     const slots = (this.state.sworbSlots || []);
@@ -2095,7 +2122,7 @@ class Component extends DCLogic {
           this.bankFinaleBonus(); // score just grew (guess bonus) — re-merge/re-submit before landing home
           this.setState({ sworbWin: false, finale: false, over: true, sworbTyping: false, stepperMode: 'play', sworbSlots: [], sworbColors: null, sworbFlipKey: (this.state.sworbFlipKey || 0) + 1 });
           this.homeReturnAfterRound();
-        }, 2400);
+        }, 3000); // was 2400 — the block pop + confetti burst need the extra beat to land before the home-hop
       } else {
         this.setState({ sworbColors: colors, sworbTyping: false, sworbWin: true });
         try { this.sfxWin ? this.sfxWin() : this.sfxOver(); } catch (x) {}
@@ -2779,21 +2806,20 @@ class Component extends DCLogic {
     this.sfxOver();
     this.prepareRecap(); // words you missed + pre-rendered share image
     this.submitDaily(); // push today's best to the daily leaderboard
-    // NEW daily flow (Option A — home-native result): the board CELEBRATES in place (confetti rains over
+    // ONE-SHOT daily flow (home-native result): the board CELEBRATES in place (confetti rains over
     // the frozen board — boardCelebrateShow) for a beat, THEN dismisses → lands on HOME, where the done-state
-    // IS the result (your seven fills, score, YOU on the standing graph) + a slim result ribbon (resultToastShow)
-    // confirms it, auto-clearing after ~7s. Practice keeps its own on-board modal. The finale skips this landing
-    // entirely — sworbSubmit calls homeReturnAfterRound() itself once the finale resolves.
+    // IS the result (your seven fills, score, YOU on the standing graph — no separate result surface needed).
+    // Practice keeps its own on-board modal. The finale skips this landing entirely — sworbSubmit calls
+    // homeReturnAfterRound() itself once the finale resolves.
     if (dailyMode && !enteringFinale) this.homeReturnAfterRound();
   }
   // shared "round -> home" landing (the board celebrates in place for a beat, then the screen
-  // hops to home where the result toast confirms it). Used by endRound's non-finale exit AND
+  // hops to home, where the done-state IS the result). Used by endRound's non-finale exit AND
   // both finale resolutions (solve / 6th miss) in sworbSubmit, so every daily round — a timed
   // hunt alone, or a hunt that ran into the finale — ends on the exact same home landing.
   homeReturnAfterRound() {
     this.later(() => {
-      this.setState({ screen: 'home', endModal: true });
-      this.later(() => this.setState(s => (s.endModal ? { endModal: false } : null)), 7000);
+      this.setState({ screen: 'home' });
     }, 1100);
   }
   // FINALE SOLVE only: guessSworb's bonus lands AFTER endRound's banking already ran (the
@@ -4418,7 +4444,7 @@ class Component extends DCLogic {
   // Phase 8: game-over hands off here — submit already ran in endRun; land on the Leaderboard with the post-game result banner.
   finishToLb() {
     if (!this.playerName) { this.setState({ nameInput: '', justFinished: true }); this.goModal('name'); return; }
-    this.setState({ screen: 'lb', lbData: null, activeModal: null, modalStack: [], justFinished: true, endModal: false }, () => this.loadLb());
+    this.setState({ screen: 'lb', lbData: null, activeModal: null, modalStack: [], justFinished: true }, () => this.loadLb());
   }
   doSaveName() {
     const raw = (this.state.nameInput || '').trim();
@@ -5177,7 +5203,7 @@ class Component extends DCLogic {
           classicOverShow: false, parOverShow: true,
           parScoreText: fmt(sc),
           parScoreStyle: { fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 54, fontWeight: 600, color: 'var(--sheet-ink)', lineHeight: 1 },
-          ldHead: sc <= 0 ? 'empty run' : perfect ? 'perfect run' : firstRun ? 'your first run' : heads[tier], // no false celebration on run one — the chip carries the target story
+          ldHead: sc <= 0 ? 'empty run' : perfect ? 'perfect run' : heads[tier], // one-shot day: every run IS your first — "first run" copy is meaningless noise, so the headline just reads the tier
           ldHeadStyle: { fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 27, fontWeight: 600, color: perfect ? '#F5B84A' : 'var(--sheet-sub)', letterSpacing: '0.3px', lineHeight: 1.1, textAlign: 'center', padding: '0 30px', boxSizing: 'border-box' }, // one step softer than the score — the NUMBER owns the sheet
           ldChip: chip,
           ldChipStyle: !chip ? { display: 'none' } : { fontSize: 12, fontWeight: 800, borderRadius: 8, padding: '4px 10px',
@@ -5877,7 +5903,8 @@ class Component extends DCLogic {
           if (!e || !sw.active) return off;
           const answer = String(e.sworb || '').toUpperCase();
           const len = answer.length;
-          const solved = !!sw.solved || !!st.sworbWin;
+          const winning = !!st.sworbWin; // the transient win-flash instant (never true on a miss) — distinct from sw.solved, which stays true on every later home revisit
+          const solved = !!sw.solved || winning;
           const failed = !solved && sw.guessesLeft <= 0;
           const guessing = !solved && !failed && !!st.finale;
           const tappable = !solved && !failed && this.finalePending();
@@ -5896,7 +5923,10 @@ class Component extends DCLogic {
               // standings ✓/✗ already carries solved-vs-failed, no gray "you lost" tell needed
               // here. Gray stays reserved for missed CLUE pills only (see homeClueFan below).
               const pal = PALETTE[this.tileColorFor(answer[i].toLowerCase(), i)] || PALETTE[0];
-              blocks.push({ k: 'hh' + i, ch: answer[i], style: box + ' color:#1F1442; background:' + pal.bg + '; box-shadow:inset 0 -4px 0 ' + pal.edge + ', ' + blockShadow + ';' });
+              // THE SOLVE DETONATES (home context — finale continued from home): same fast
+              // 60ms-staggered pop as the in-game stepper, gated to the transient win instant only.
+              const pop = winning ? ('animation:bombIn 0.3s cubic-bezier(0.34, 1.5, 0.55, 1) ' + (i * 0.06).toFixed(2) + 's backwards;') : '';
+              blocks.push({ k: 'hh' + i, ch: answer[i], style: box + ' color:#1F1442; background:' + pal.bg + '; box-shadow:inset 0 -4px 0 ' + pal.edge + ', ' + blockShadow + ';' + pop });
             } else if (guessing) {
               const ch = (slots[i] || '').toUpperCase();
               const col = colors ? colors[i] : null;
@@ -5913,7 +5943,7 @@ class Component extends DCLogic {
             }
           }
           const guessCaption = guessing ? (sw.guessesLeft + ' guess' + (sw.guessesLeft === 1 ? '' : 'es') + ' left · ' + sw.foundCount + '/' + sw.total + ' clues') : '';
-          return { active: true, blocks, tappable, guessing, guessCaption };
+          return { active: true, blocks, tappable, guessing, guessCaption, burstOn: winning, burst: winning ? this.sworbBurstSparks('hhb') : [] };
         } catch (e) { return off; }
       })(),
       // tap the word-of-the-day hero blocks: on a finale-pending day (round played, sworb
@@ -5928,7 +5958,7 @@ class Component extends DCLogic {
         this.sfxClick();
         this.setState({ finale: true, sworbTyping: true, sworbSlots: [], sworbColors: null, sworbShake: 0, sworbWin: false });
       },
-      homeHeroWrapStyle: (() => { let c = 'default'; try { c = (!st.finale && this.finalePending()) ? 'pointer' : 'default'; } catch (e) {} return { display: 'flex', gap: 7, cursor: c }; })(),
+      homeHeroWrapStyle: (() => { let c = 'default'; try { c = (!st.finale && this.finalePending()) ? 'pointer' : 'default'; } catch (e) {} return { display: 'flex', gap: 7, cursor: c, position: 'relative' }; })(),
       // ---- HOME CLUE FAN (v18): 6 slots, 4 top row / 2 bottom row — the home hero's OWN
       // layout, but the pills themselves are the SAME idiom as the in-game `clueFan` (bobbing
       // tokens under the board): both read clueToken() above, so the pill styling (padding/
@@ -6198,7 +6228,7 @@ class Component extends DCLogic {
         this._tb = 0; this._tbKey = null; // clear header "today's best" cache
         const opts = { ...(this.state.opts || {}), practiceMode: false }; // unsticks practice-only, back to daily
         this.saveOpts(opts);
-        this.setState({ opts, over: false, endModal: false, homeLb: null, devResetDone: true }, () => {
+        this.setState({ opts, over: false, homeLb: null, devResetDone: true }, () => {
           this.loadHomeLb(); // rebuild standing WITHOUT the cleared "me" entry
           this.later(() => {
             this.setState({ activeModal: null, modalStack: [], dbgOpen: false, devResetDone: false }, () => {
@@ -6325,7 +6355,7 @@ class Component extends DCLogic {
         // session-only: never persisted, so daily is always the default experience
         const opts = { ...(this.state.opts || {}), practiceMode: true };
         // launched from settings now — close the sheet on the way out
-        this.setState({ opts, screen: 'game', activeModal: null, modalStack: [], endModal: false }, () => {
+        this.setState({ opts, screen: 'game', activeModal: null, modalStack: [] }, () => {
           this.newGame(true);
         });
       }),
@@ -6642,7 +6672,12 @@ class Component extends DCLogic {
         background: 'var(--card)', borderRadius: 16, padding: 10, margin: '11px auto 0',
         boxShadow: '0 4px 0 var(--card-edge)', display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', width: boardW + 24, minHeight: 74, boxSizing: 'border-box',
-        position: 'relative', overflow: 'hidden', // anchors the message pill; clips celebration bits so nothing escapes the card; minHeight keeps play/sworb faces the same size (no jump on flip)
+        position: 'relative',
+        // clips celebration bits so nothing escapes the card (anchors the message pill; minHeight
+        // keeps play/sworb faces the same size, no jump on flip) — EXCEPT the solve-burst confetti,
+        // which is deliberately BIG: the card un-clips for the sworbWin window so it can spill past
+        // the card edge, same trick boardCardStyle uses to let a flying word escape its clip.
+        overflow: st.sworbWin ? 'visible' : 'hidden',
       },
       boardCardStyle: {
         background: 'var(--card)', borderRadius: 20, padding: '12px 12px ' + (12 + Math.max(3, Math.round(st.tileSize * 0.08))) + 'px', margin: '12px auto 0',
@@ -6911,7 +6946,7 @@ class Component extends DCLogic {
       fillLabel: live.length + ' / ' + capacity,
       dictNote: st.dictNote,
       justFinished: !!st.justFinished, finBannerShow: !!st.justFinished && !!(this._ov && this._ov.parOverShow),
-      endRoundShow: !!st.over && st.screen === 'game' && this.practiceMode(), boardCelebrateShow: !!st.over && st.screen === 'game' && !this.practiceMode(), resultToastShow: !!st.endModal && st.screen === 'home', resultToast: { head: (this._ov && this._ov.ldHead) || 'nice run', score: (st.score || 0).toLocaleString(), rankSuffix: (this._ov && this._ov.parOverShow && this._ov.parRankText) ? (' \u00b7 ' + this._ov.parRankText + ' today') : '' }, dismissEnd: () => { this.sfxClick(); this.setState({ endModal: false }); }, endRound: { head: (this._ov && this._ov.ldHead) || 'round over', score: (st.score || 0).toLocaleString(), rank: (this._ov && this._ov.parRankText) || '', rankShow: !!(this._ov && this._ov.parOverShow && this._ov.parRankText) },
+      endRoundShow: !!st.over && st.screen === 'game' && this.practiceMode(), boardCelebrateShow: !!st.over && st.screen === 'game' && !this.practiceMode(), endRound: { head: (this._ov && this._ov.ldHead) || 'round over', score: (st.score || 0).toLocaleString(), rank: (this._ov && this._ov.parRankText) || '', rankShow: !!(this._ov && this._ov.parOverShow && this._ov.parRankText) },
       modalOpen: !!st.activeModal,
       isSettings: st.activeModal === 'settings',
       isHowto: st.activeModal === 'howto',
@@ -7002,7 +7037,11 @@ class Component extends DCLogic {
           else { bg = null; edge = null; ink = 'var(--ghost)'; }
           const box = 'flex:none; width:38px; height:42px; box-sizing:border-box; border-radius:10px; display:flex; align-items:center; justify-content:center; font-family:\'Fredoka\',\'Manrope\',sans-serif; font-size:21px; font-weight:600; color:' + ink + ';';
           const skin = bg ? ('background:' + bg + '; box-shadow:inset 0 -3px 0 ' + edge + ';') : 'background:transparent; border:2px dashed var(--line);';
-          blocks.push({ k: 'sg' + i, ch, style: box + skin });
+          // THE SOLVE DETONATES: the five blocks pop in a fast 60ms stagger the instant sworbWin
+          // flips true (reusing bombIn — no new keyframe needed) — the burst (below) fires once
+          // the pop finishes landing.
+          const pop = winning ? ('animation:bombIn 0.3s cubic-bezier(0.34, 1.5, 0.55, 1) ' + (i * 0.06).toFixed(2) + 's backwards;') : '';
+          blocks.push({ k: 'sg' + i, ch, style: box + skin + pop });
         }
         const caption = solved
           ? ('SOLVED  +' + (this.sworbState().bonus || 0).toLocaleString())
@@ -7015,7 +7054,8 @@ class Component extends DCLogic {
           caption,
           captionStyle: { marginTop: 7, textAlign: 'center', fontSize: 10, fontWeight: 800, letterSpacing: '1px', color: solved ? '#5FD6A8' : 'var(--ghost)', textTransform: 'uppercase', pointerEvents: 'none' },
           shakeKey: 'sg' + (st.sworbShake || 0),
-          wrapStyle: { display: 'inline-block', animation: (st.sworbShake || 0) > 0 ? 'shakeX 0.4s ease-out' : 'none' },
+          wrapStyle: { display: 'inline-block', position: 'relative', animation: (st.sworbShake || 0) > 0 ? 'shakeX 0.4s ease-out' : 'none' },
+          burstOn: winning, burst: winning ? this.sworbBurstSparks('sgb') : [],
         };
       })(),
       // stepper flip: tap the strip to turn PLAY <-> SWORB (only meaningful on a sworb day).
