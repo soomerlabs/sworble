@@ -150,7 +150,25 @@
     return { pct, hit };
   }
 
-  const API = { sevenFromWords, cumulativeTotal, rankFor, dailyStatus, dayState, progressToTop };
+  // bankFinaleBonus's score-banking math: the finale solve's bonus rides today's live
+  // state.score, but state.score doesn't survive a mid-finale re-entry (exiting resets it,
+  // and a reload lands on the fresh-boot default) — either way it's reconstructable from
+  // sources that DO survive: the standing daily best (storedBest) + the persisted solve
+  // bonus. Uninterrupted play has stateScore == storedBest+bonus already (equal either
+  // way); re-entry has stateScore == bonus alone (storedBest+bonus must win) — Math.max
+  // is correct for both. `runsLast` (the RUNS history's last entry) ratchets up to the
+  // banked total but is never regressed downward by a reconstructed re-entry read.
+  function reconcileFinaleScore(input) {
+    const i = input || {};
+    const stateScore = num(i.stateScore);
+    const storedBest = num(i.storedBest);
+    const bonus = num(i.bonus);
+    const runsLast = num(i.runsLast);
+    const banked = Math.max(stateScore, storedBest + bonus);
+    return { banked, runsLast: Math.max(runsLast, banked) };
+  }
+
+  const API = { sevenFromWords, cumulativeTotal, rankFor, dailyStatus, dayState, progressToTop, reconcileFinaleScore };
   root.SworbleStatus = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

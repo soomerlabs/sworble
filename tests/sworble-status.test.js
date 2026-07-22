@@ -212,4 +212,52 @@ console.log('sworble-status: dayState passed');
 }
 console.log('sworble-status: progressToTop passed');
 
+// --- reconcileFinaleScore: bankFinaleBonus's score-banking math (extracted, pinning
+// TODAY's behavior). banked = max(live state.score, storedBest+bonus) — covers both the
+// uninterrupted-play path (state.score already equals storedBest+bonus) and the mid-finale
+// re-entry path (state.score resets to bonus-only, so storedBest+bonus must win). The RUNS
+// history entry is separately ratcheted up to `banked` but never regressed downward.
+{
+  assert.strictEqual(typeof S.reconcileFinaleScore, 'function', 'reconcileFinaleScore exported');
+
+  // uninterrupted path: state.score already carries roundScore+bonus == storedBest+bonus
+  assert.deepStrictEqual(
+    S.reconcileFinaleScore({ stateScore: 1150, storedBest: 1100, bonus: 50, runsLast: 0 }),
+    { banked: 1150, runsLast: 1150 },
+    'uninterrupted: state.score and storedBest+bonus agree'
+  );
+
+  // re-entry path: state.score was reset (finale re-entered), so it's bonus-ONLY —
+  // storedBest+bonus must win over the deflated live score
+  assert.deepStrictEqual(
+    S.reconcileFinaleScore({ stateScore: 50, storedBest: 1100, bonus: 50, runsLast: 0 }),
+    { banked: 1150, runsLast: 1150 },
+    're-entry: storedBest+bonus wins over the bonus-only live score'
+  );
+
+  // runs never regress: a higher pre-existing runsLast survives even though banked is lower
+  assert.deepStrictEqual(
+    S.reconcileFinaleScore({ stateScore: 900, storedBest: 800, bonus: 50, runsLast: 2000 }),
+    { banked: 900, runsLast: 2000 },
+    'runs history never regresses below a higher prior entry'
+  );
+
+  // runs ratchet UP to a new banked high
+  assert.deepStrictEqual(
+    S.reconcileFinaleScore({ stateScore: 500, storedBest: 400, bonus: 100, runsLast: 300 }),
+    { banked: 500, runsLast: 500 },
+    'runs history ratchets up to the new banked total'
+  );
+
+  // zero/null safety: every field defaults safely, never throws, never negative
+  assert.deepStrictEqual(S.reconcileFinaleScore({}), { banked: 0, runsLast: 0 }, 'empty input -> all zero');
+  assert.deepStrictEqual(S.reconcileFinaleScore(null), { banked: 0, runsLast: 0 }, 'null input -> all zero, never throws');
+  assert.deepStrictEqual(
+    S.reconcileFinaleScore({ stateScore: null, storedBest: undefined, bonus: NaN, runsLast: -5 }),
+    { banked: 0, runsLast: 0 },
+    'malformed fields sanitize to 0, never NaN/negative'
+  );
+}
+console.log('sworble-status: reconcileFinaleScore passed');
+
 console.log('sworble-status: all tests passed');

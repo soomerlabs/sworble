@@ -2860,14 +2860,19 @@ class Component extends DCLogic {
     // FINALE RE-ENTRY: exiting mid-finale resets state.score to 0 (_exitGame's home reset),
     // and a reload lands enterFinale on the fresh-boot default — either way state.score at
     // solve time is bonus-ONLY (guessSworb does `score = (s.score||0) + bonus`), not the true
-    // day total. Reconstruct it from sources that survive re-entry: the standing daily best
-    // (same value mergeDailySeven/dailySeven read) + the persisted bonus (sw.bonus, saved by
-    // guessSworb — read it directly rather than inferring from score deltas). Uninterrupted
-    // play has state.score == storedBest + bonus already (they're equal); re-entry has
-    // state.score == bonus alone (storedBest + bonus wins) — Math.max is correct either way.
+    // day total. SworbleStatus.reconcileFinaleScore (sworble-status.js) reconstructs the true
+    // banked total from sources that survive re-entry: the standing daily best + the
+    // persisted bonus (sw.bonus, saved by guessSworb) — see its own comment for the full
+    // derivation. RUNS history: endRound already pushed the pre-finale score at 0:00; the
+    // same reconcile call also ratchets that entry up to the banked total, never downward.
     const storedBest = parseInt(LS.getItem(K.DAILY_PREFIX + d) || '0', 10) || 0;
     const bonus = this.sworbState().bonus || 0;
-    const banked = Math.max(this.state.score || 0, storedBest + bonus);
+    const rk = K.RUNS_PREFIX + d;
+    let runs = null;
+    try { runs = JSON.parse(LS.getItem(rk) || '[]'); } catch (e) {}
+    const runsLast = (Array.isArray(runs) && runs.length) ? (runs[runs.length - 1] || 0) : 0;
+    const rec = SworbleStatus.reconcileFinaleScore({ stateScore: this.state.score, storedBest, bonus, runsLast });
+    const banked = rec.banked;
     try {
       const best = this.mergeDailySeven(this.state.roundWords, banked);
       this._tb = best; this._tbKey = this.dailyKey;
@@ -2876,15 +2881,12 @@ class Component extends DCLogic {
       const k = K.PUZZLE_BEST_PREFIX + d, p = Number(LS.getItem(k) || 0) || 0;
       if (banked > p) LS.setItem(k, String(banked));
     } catch (e) {}
-    // RUNS history: endRound already pushed the pre-finale score at 0:00 — replace that same
-    // entry with the banked total, but never DOWNWARD (re-entry's banked total is reconstructed,
-    // not authoritative over an already-correct entry) — one run per day, never regressed.
-    try {
-      const rk = K.RUNS_PREFIX + d;
-      const runs = JSON.parse(LS.getItem(rk) || '[]');
-      if (runs.length) runs[runs.length - 1] = Math.max(runs[runs.length - 1] || 0, banked);
-      LS.setItem(rk, JSON.stringify(runs.slice(-40)));
-    } catch (e) {}
+    if (Array.isArray(runs)) {
+      try {
+        if (runs.length) runs[runs.length - 1] = rec.runsLast;
+        LS.setItem(rk, JSON.stringify(runs.slice(-40)));
+      } catch (e) {}
+    }
     this.submitDaily();
   }
   // RELOAD / MANUAL-EXIT MID-FINALE: is there an unresolved finale waiting for today? Checked
