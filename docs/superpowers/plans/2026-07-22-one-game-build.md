@@ -168,11 +168,11 @@ skeleton (no layout shift between them).
   dashed-block knob (candy `hit` when you ≥ top) / small crown+topScore. NO chase line, NO
   percentage, NO big score. Under the fan:
   **superlatives** — ghosted lowercase Fredoka label (left-aligned) + top 5 distinct words by pts
-  as candy word-blocks (word + small pts, PALETTE colors + ledge) in a LEFT-aligned 2-row flex
-  wrap (max-width forces the wrap; rows uneven by design); pre-play = 5 dashed ghost blocks. The
-  standings graph gets the same ghosted left label ("standings"). Data: `dailyStatus().seven.words.slice(0,5)` (the words-list machinery —
+  as candy word-blocks (word + small pts, PALETTE colors + ledge) in a CENTERED 2-row flex wrap
+  (max-width forces 3+2); pre-play = 5 dashed ghost blocks. Standings gets the same ghosted left
+  label — and the graph DROPS the x/y axes entirely (constellation only: trail+blocks+crown+✓). Data: `dailyStatus().seven.words.slice(0,5)` (the words-list machinery —
   this is its NEW home surface). Dormant styling pre-play.
-- [ ] Step 3: standings graph — add the mint ✓ mini-tile on solver nodes; order from Task 4.
+- [ ] Step 3: standings — REMOVE the x/y axes + italic x/y labels from the home graph (keep trail/blocks/crown/confetti); add the mint ✓ mini-tile on solver nodes; order from Task 4.
 - [ ] Step 4: dock — before: chevron + Fredoka "swipe up to play"; after: countdown ONLY
   (`H:MM:SS` to next dailyKey, ticking). Entrance stagger (`rise` pattern) on all sections.
 - [ ] Step 5: floaters — middle additions, dimmer (mock values).

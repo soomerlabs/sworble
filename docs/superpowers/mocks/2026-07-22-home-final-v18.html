@@ -107,7 +107,7 @@
   .knob.hit{border:none;background:#A78BFA;box-shadow:inset 0 -3px 0 #7C5CE0, 0 0 14px -2px #A78BFA}
   /* best words — one horizontal-scroll row of candy word blocks */
   .seclab{text-align:left;font-family:'Fredoka','Manrope',sans-serif;font-size:13px;font-weight:600;color:var(--ghost);opacity:.8;margin-bottom:9px}
-  .bw{display:flex;flex-wrap:wrap;gap:9px;justify-content:flex-start;max-width:300px}
+  .bw{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;max-width:300px;margin-left:auto;margin-right:auto}
   .bwb{flex:none;display:flex;align-items:baseline;gap:7px;padding:9px 15px;border-radius:12px;
     font-family:'Fredoka','Manrope',sans-serif;font-weight:600;font-size:15.5px;color:#1F1442}
   .bwb small{font-size:11.5px;font-weight:700;opacity:.65}
@@ -196,7 +196,7 @@
         <div class="slim rise d1">
           <div class="slimScore"><b style="color:#4A4A56">0</b><small>pts</small></div>
           <div class="slimTrack"><div class="slimFill" style="width:0%"></div><div class="slimKnob" style="left:2%;opacity:.45"></div></div>
-          <div class="slimTop"><svg width="14" height="10" viewBox="0 0 34 24" fill="none"><path d="M3 21 L2 7 L10 13 L17 3 L24 13 L32 7 L31 21 Z" fill="#8971FF" stroke="#6A4FE0" stroke-width="1.5" stroke-linejoin="round"/><circle cx="2" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="32" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="17" cy="2.6" r="2.4" fill="#8971FF"/></svg><span>1,480</span></div>
+          <div class="slimTop"><svg width="14" height="10" viewBox="0 0 34 24" fill="none"><circle cx="2" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="32" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="17" cy="2.6" r="2.4" fill="#8971FF"/></svg><span>1,480</span></div>
         </div>
 
         <div class="sworb rise d2" style="margin-top:26px">
@@ -217,13 +217,7 @@
         <div class="stand rise d4">
           <div class="seclab">standings</div>
           <div class="graph">
-            <span class="axlbl" style="left:2px;top:-6px">y</span>
-            <span class="axlbl" style="right:30px;bottom:-4px">x</span>
             <svg width="100%" height="100%" viewBox="0 0 282 210" preserveAspectRatio="none" style="position:absolute;inset:0;z-index:0;overflow:visible">
-              <path d="M5 194 Q3 98 7 4" fill="none" stroke="var(--ghost)" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.5"/>
-              <path d="M3 10 L7 3.5 L11 9.5" fill="none" stroke="var(--ghost)" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.5"/>
-              <path d="M5 194 Q128 196 246 191" fill="none" stroke="var(--ghost)" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.5"/>
-              <path d="M239.5 186.5 L247 191 L239.5 195.5" fill="none" stroke="var(--ghost)" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.5"/>
               <line x1="209" y1="44" x2="130" y2="102" style="fill:none;stroke:color-mix(in srgb,#5BC8F5 88%,transparent);stroke-width:6;stroke-linecap:round;filter:blur(2px)"/>
               <line x1="130" y1="102" x2="52" y2="150" style="fill:none;stroke:color-mix(in srgb,#F5B84A 88%,transparent);stroke-width:6;stroke-linecap:round;filter:blur(2px)"/>
             </svg>
@@ -233,7 +227,7 @@
             <div class="conf" style="left:74%;top:-6px;background:#5FD6A8;animation-delay:-3.2s"></div>
             <div class="slot bob1" style="left:74%;top:8px">
               <div class="pod" style="width:64px;height:64px;border-radius:16px;background:#5FD6A8;box-shadow:inset 0 -6px 0 #38AD7F;font-size:30px">
-                <svg width="32" height="21" viewBox="0 0 34 24" fill="none" style="position:absolute;top:-24px;left:50%;transform:translateX(-50%)"><path d="M3 21 L2 7 L10 13 L17 3 L24 13 L32 7 L31 21 Z" fill="#8971FF" stroke="#6A4FE0" stroke-width="1.5" stroke-linejoin="round"/><circle cx="2" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="32" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="17" cy="2.6" r="2.4" fill="#8971FF"/></svg>
+                <svg width="32" height="21" viewBox="0 0 34 24" fill="none" style="position:absolute;top:-24px;left:50%;transform:translateX(-50%)"><circle cx="2" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="32" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="17" cy="2.6" r="2.4" fill="#8971FF"/></svg>
                 <div class="aura" style="background:radial-gradient(circle,#5FD6A8 0%,transparent 66%);filter:blur(14px)"></div>
                 <span class="badge">1</span><span class="check">check</span>M
               </div>
@@ -287,7 +281,7 @@
         <div class="slim rise d1">
           <div class="slimScore"><b>1,240</b><small>pts</small></div>
           <div class="slimTrack"><div class="slimFill" style="width:84%"></div><div class="slimKnob" style="left:84%"></div></div>
-          <div class="slimTop"><svg width="14" height="10" viewBox="0 0 34 24" fill="none"><path d="M3 21 L2 7 L10 13 L17 3 L24 13 L32 7 L31 21 Z" fill="#8971FF" stroke="#6A4FE0" stroke-width="1.5" stroke-linejoin="round"/><circle cx="2" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="32" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="17" cy="2.6" r="2.4" fill="#8971FF"/></svg><span style="color:var(--sheet-ink)">1,480</span></div>
+          <div class="slimTop"><svg width="14" height="10" viewBox="0 0 34 24" fill="none"><circle cx="2" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="32" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="17" cy="2.6" r="2.4" fill="#8971FF"/></svg><span style="color:var(--sheet-ink)">1,480</span></div>
         </div>
 
         <div class="sworb rise d3" style="margin-top:26px">
@@ -315,10 +309,6 @@
           <div class="seclab">standings</div>
           <div class="graph" style="aspect-ratio:282/188">
             <svg width="100%" height="100%" viewBox="0 0 282 188" preserveAspectRatio="none" style="position:absolute;inset:0;z-index:0;overflow:visible">
-              <path d="M5 172 Q3 88 7 4" fill="none" stroke="var(--ghost)" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.5"/>
-              <path d="M3 10 L7 3.5 L11 9.5" fill="none" stroke="var(--ghost)" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.5"/>
-              <path d="M5 172 Q128 174 246 169" fill="none" stroke="var(--ghost)" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.5"/>
-              <path d="M239.5 164.5 L247 169 L239.5 173.5" fill="none" stroke="var(--ghost)" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.5"/>
               <line x1="209" y1="38" x2="130" y2="88" style="fill:none;stroke:color-mix(in srgb,#A78BFA 88%,transparent);stroke-width:6;stroke-linecap:round;filter:blur(2px)"/>
               <line x1="130" y1="88" x2="52" y2="132" style="fill:none;stroke:color-mix(in srgb,#F5B84A 88%,transparent);stroke-width:6;stroke-linecap:round;filter:blur(2px)"/>
             </svg>
@@ -327,7 +317,7 @@
             <div class="conf" style="left:62%;top:14px;background:#5BC8F5;animation-delay:-2.6s"></div>
             <div class="slot bob1" style="left:74%;top:6px">
               <div class="pod" style="width:60px;height:60px;border-radius:15px;background:#5FD6A8;box-shadow:inset 0 -6px 0 #38AD7F;font-size:28px">
-                <svg width="30" height="20" viewBox="0 0 34 24" fill="none" style="position:absolute;top:-23px;left:50%;transform:translateX(-50%)"><path d="M3 21 L2 7 L10 13 L17 3 L24 13 L32 7 L31 21 Z" fill="#8971FF" stroke="#6A4FE0" stroke-width="1.5" stroke-linejoin="round"/><circle cx="2" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="32" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="17" cy="2.6" r="2.4" fill="#8971FF"/></svg>
+                <svg width="30" height="20" viewBox="0 0 34 24" fill="none" style="position:absolute;top:-23px;left:50%;transform:translateX(-50%)"><circle cx="2" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="32" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="17" cy="2.6" r="2.4" fill="#8971FF"/></svg>
                 <div class="aura" style="background:radial-gradient(circle,#5FD6A8 0%,transparent 66%);filter:blur(14px)"></div>
                 <span class="badge">1</span><span class="check">check</span>M
               </div>

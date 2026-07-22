@@ -50,15 +50,15 @@ title — it flows directly) → storm + dock.
   `1,240 pts`, crown + `1,480` + leader name right — NO "TOP·" prefix, NO chase line, NO
   percentage; glowing violet **link-line** drawn proportionally over the dashed path, **dashed
   block riding the head** — fills candy violet with ledge only when you ACTUALLY beat the top
-  (`hit` state)); **superlatives**: top-5 best words as candy word-blocks (word + small pts) in a left-aligned
-  2-row wrap under a ghosted label (pre-play: 5 dashed ghost blocks, same layout); YOU ringed violet on the
+  (`hit` state)); **superlatives**: top-5 best words as candy word-blocks (word + small pts) in a CENTERED
+  2-row wrap under a ghosted left label (pre-play: 5 dashed ghost blocks, same layout); YOU ringed violet on the
   graph with your mint ✓; storm **dim/desaturated** (it did its job); dock = countdown timer ONLY
   (`14:32:11`, Fredoka violet — no label).
 - **After play (not solved):** identical, except the word reveals in **GRAY blocks** (candy colors
   are earned by solving) and no ✓ on your graph node.
-- **Standings graph = the existing hand-drawn x/y standard:** quadratic pencil axes + arrowheads,
-  italic x/y labels, ember-trail segments in player colors, candy rank blocks with auras/bob,
-  rank badges, crown + confetti on #1, YOU ring `#8971FF`. NEW: a **mint ✓ mini-tile**
+- **Standings = the rank constellation (NO x/y axes — dropped; they confused players):**
+  ember-trail segments in player colors connecting candy rank blocks (auras/bob) that ascend to
+  #1 at top-right, rank badges, crown + confetti on #1, YOU ring `#8971FF`. NEW: a **mint ✓ mini-tile**
   (`#5FD6A8`/`#38AD7F`) on the block corner = cracked the word; rank order puts solvers first.
 - **Floating-block background:** PALETTE-colored ghost tiles, heavy at the edges, sparse+dimmer in
   the middle.
