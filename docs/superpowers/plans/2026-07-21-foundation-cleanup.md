@@ -1,5 +1,7 @@
 # Foundation Cleanup Implementation Plan (pre-redesign)
 
+> **SUPERSEDED (2026-07-22):** the `Sworble.dc.html` mirror workflow this plan describes is gone — `index.html` is the single source now, no mirror, no `tests/mirror-check.js`. Read for historical context only; don't follow the mirror steps.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to
 > implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

@@ -1314,7 +1314,9 @@ const SWORB_CLUE_COUNT = 6;
 const SOOMER_APP = { appId: '', environment: 'prod', appVersion: '0.1.0' };
 const LS = SworbleStore.LS; // safe storage shim + key registry live in sworble-store.js (unit-tested)
 const K = SworbleStore.K;   // every storage key name in ONE place (rename-safe)
-// public-name profanity gate (display names are shown to everyone)
+// public-name profanity gate (display names are shown to everyone). Matched via
+// SworbleCore.containsFoulTerm (word-boundary, not naive substring — see its comment for why:
+// naive .includes() flagged "SCUNTHORPE"/"ESSEX" as profane).
 const FOUL = ['nig','negro','fag','kike','spic','chink','gook','coon','dyke','trann','cunt','fuck','shit','rape','nazi','jap','slut','whore','homo','tard','cock','dick','piss','anus','sex','damn'];
 // deterministic RNG for daily mode — same seed, same letters, everywhere
 function shuffledBag(str, rng) { return SworbleCore.shuffledBag(str, rng); }
@@ -1411,7 +1413,6 @@ class Component extends DCLogic {
     this.sheetRef = React.createRef();
     this.contentRef = React.createRef();
     this.rand = Math.random; // daily mode swaps in a seeded generator
-    SworbleStore.migrateLegacy(); // one-time: heal stackle_*-era player data orphaned by the sworble_* rename — MUST run before the first read below
     try { this.netApi(); } catch (e) {} // best-effort warm-up; real config happens lazily (helmet scripts load async)
     try { this.bestWordEver = JSON.parse(LS.getItem(K.BESTWORD) || 'null'); } catch (e) { this.bestWordEver = null; }
     try { this.wordsTotal = parseInt(LS.getItem(K.WORDS_TOTAL) || '0', 10) || 0; } catch (e) { this.wordsTotal = 0; }
@@ -4803,7 +4804,7 @@ class Component extends DCLogic {
     const raw = (this.state.nameInput || '').trim();
     const name = raw.toUpperCase().replace(/[^A-Z0-9 ]/g, '').replace(/\s+/g, ' ').trim().slice(0, 12);
     if (name.length < 2) { this.setState({ nameError: 'at least 2 characters' }); return; }
-    if (FOUL.some(w => name.toLowerCase().includes(w))) { this.setState({ nameError: 'pick another name' }); return; }
+    if (SworbleCore.containsFoulTerm(name, FOUL)) { this.setState({ nameError: 'pick another name' }); return; }
     this.playerName = name;
     try { LS.setItem(K.NAME, name); } catch (e) {}
     this.sfxClick();

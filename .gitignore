@@ -1,3 +1,8 @@
 node_modules/
 .DS_Store
 coverage/
+# agent scratch (SDD task/review artifacts) — already self-ignored via its own nested
+# .superpowers/sdd/.gitignore ("*"); listed here too so the root .gitignore is the one place
+# that documents "this whole tree is never tracked" (Road-to-9 Sprint 1 #6d verified none of
+# it — nor .git/sdd, which can't be tracked at all — was ever committed).
+.superpowers/

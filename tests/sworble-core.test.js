@@ -91,4 +91,26 @@ assert.strictEqual(C.streakMult(30), 2, 'streak multiplier caps at 2x');
   }
 }
 
+// --- containsFoulTerm: word-boundary matching, not naive substring (Scunthorpe problem) ---
+{
+  const FOUL = ['nig', 'fag', 'cunt', 'sex', 'cock', 'tard', 'damn'];
+  // classic false positives a plain .includes(w) would trip — none of these are profane
+  assert.strictEqual(C.containsFoulTerm('SCUNTHORPE', FOUL), false, '"cunt" mid-word (preceded by s) must not flag Scunthorpe');
+  assert.strictEqual(C.containsFoulTerm('ESSEX', FOUL), false, '"sex" mid-word (preceded by s) must not flag Essex');
+  assert.strictEqual(C.containsFoulTerm('HITCHCOCK', FOUL), false, '"cock" mid-word (preceded by h) must not flag Hitchcock');
+  assert.strictEqual(C.containsFoulTerm('KNIGHT', FOUL), false, '"nig" mid-word (preceded by k) must not flag Knight');
+  assert.strictEqual(C.containsFoulTerm('CUSTARD', FOUL), false, '"tard" mid-word (preceded by s) must not flag Custard');
+  // the list's deliberately-truncated stems still catch their real variants (boundary at
+  // the START of the match is enough — nothing requires the WHOLE word to be the stem)
+  assert.strictEqual(C.containsFoulTerm('FAGGOT', FOUL), true, 'stem "fag" at the start of a word must still be caught');
+  assert.strictEqual(C.containsFoulTerm('DAMNIT', FOUL), true, 'stem "damn" at the start of a word must still be caught');
+  assert.strictEqual(C.containsFoulTerm('SEX', FOUL), true, 'the bare term itself must always be caught');
+  assert.strictEqual(C.containsFoulTerm('MY SEX NAME', FOUL), true, 'a term as its own word mid-string (real boundary) is still caught');
+  // case-insensitive, empty/null-safe
+  assert.strictEqual(C.containsFoulTerm('fAgGoT', FOUL), true, 'case-insensitive');
+  assert.strictEqual(C.containsFoulTerm('', FOUL), false);
+  assert.strictEqual(C.containsFoulTerm(null, FOUL), false);
+  assert.strictEqual(C.containsFoulTerm('CLEANNAME', FOUL), false);
+}
+
 console.log('sworble-core: all tests passed');

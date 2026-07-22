@@ -5,7 +5,10 @@
 // module.exports for tests. The game does `const LS = SworbleStore.LS, K = SworbleStore.K;`.
 //
 // ⚠ Key names are a COMPATIBILITY CONTRACT — renaming one orphans real player data.
-// The Jul-2026 clean break (worddrop_* → sworble_*) deliberately spared `worddrop_muted`.
+// (Pre-release exception, owner-sanctioned 2026-07-22: no real player data exists yet, so the
+// migration debt from the Jul-2026 worddrop_* -> sworble_* rename — the stackle_* legacy-copy
+// heal and the `worddrop_muted` holdout name it spared — was wiped outright rather than kept
+// forever. Once this ships, key renames go back to being a real compatibility contract.)
 (function (root) {
   'use strict';
 
@@ -45,7 +48,7 @@
     // entirely (onboarding is the future tutorial, backlogged). Not reused: any orphaned
     // sworble_tut_done in a returning player's storage is simply inert.
     AUDIO_CLAIM: 'sworble_audio_claim',
-    MUTED: 'worddrop_muted', // legacy name kept ON PURPOSE (the rename spared it)
+    MUTED: 'sworble_muted', // was the legacy 'worddrop_muted' name, pre-release-wiped 2026-07-22
     // per-day / per-board PREFIXES — `K.DAILY_PREFIX + dayKey`, `K.LB_ME_PREFIX + boardId`:
     DAILY_PREFIX: 'sworble_daily_',
     ATT_PREFIX: 'sworble_att_',
@@ -65,7 +68,6 @@
     SWORB_PREFIX: 'sworble_sworb_', // per-day sworb state: { guessesUsed, solved, correct, bonus, found:[] }
     HINT_TOKENS_PREFIX: 'sworble_hint_tokens_', // per-day HINT AIDS token bank: { count, granted } — granted guards the one-per-round hintTokenEvents() grant (see sworble-daily.js)
     THEME_PREFIX: 'sworble_theme_', // per-day realized theme set (words actually seeded on the board): string[]
-    MIGRATED_STACKLE: 'sworble_migrated_stackle', // one-time flag: stackle_*-era data has been copied over
     PLAYER_ID: 'sworble_player_id', // stable per-device UUID sent with Soomer submits (claimable by an account later)
     PENDING_SUBMITS: 'sworble_pending_submits', // SworbleApi's durable submit outbox — value must match QUEUE_KEY in sworble-net.js
     TIME_PREFIX: 'sworble_time_', // per-day seconds actively on the board (freezes when you leave the board)
@@ -81,32 +83,6 @@
   function setJSON(k, v) { try { LS.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function remove(k) { try { LS.removeItem(k); } catch (e) {} }
   function keys() { const out = []; try { for (let i = 0; i < LS.length; i++) { const kk = LS.key(i); if (kk) out.push(kk); } } catch (e) {} return out; }
-
-  // One-time heal for the stackle_* -> sworble_* rename: the Jul-2026 clean break orphaned
-  // returning players' progress (name, best, streaks all "wiped"). Copies every stackle_*
-  // value to its sworble_* twin — but ONLY where the twin is absent, so progress made since
-  // the rename always wins. Originals stay in place (rollback-safe, a few KB at most).
-  // Returns the number of keys copied; 0 on any repeat run (flag-guarded).
-  function migrateLegacy() {
-    try {
-      if (LS.getItem(K.MIGRATED_STACKLE)) return 0;
-      const legacy = [];
-      for (let i = 0; i < LS.length; i++) {
-        const k = LS.key(i);
-        if (k && k.indexOf('stackle_') === 0) legacy.push(k);
-      }
-      let moved = 0;
-      for (const k of legacy) {
-        const target = 'sworble_' + k.slice(8);
-        if (LS.getItem(target) == null) {
-          const v = LS.getItem(k);
-          if (v != null) { LS.setItem(target, v); moved++; }
-        }
-      }
-      LS.setItem(K.MIGRATED_STACKLE, '1');
-      return moved;
-    } catch (e) { return 0; }
-  }
 
   // ---- age-based GC for per-day-keyed entries ------------------------------------
   // Every PREFIX in K whose suffix names a calendar day (`PREFIX + 'YYYY-MM-DD'`, one —
@@ -159,7 +135,7 @@
     return out;
   }
 
-  const API = { LS, K, getInt, getJSON, set, setJSON, remove, keys, migrateLegacy,
+  const API = { LS, K, getInt, getJSON, set, setJSON, remove, keys,
     dayKeyAgeDays, agedDayKeys, AGE_GC_MAX_DAYS };
   root.SworbleStore = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

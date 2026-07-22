@@ -82,9 +82,24 @@
   // Streak multiplier: every 3 consecutive words +0.5x, capped at 2x.
   function streakMult(streak) { return Math.min(2, 1 + Math.floor(streak / 3) * 0.5); }
 
+  // ---- Public-name profanity gate -------------------------------------------------
+  // Word-boundary matching, not naive substring — the classic Scunthorpe problem: a plain
+  // `.includes(w)` flags "SCUNTHORPE" for containing "cunt" and "ESSEX" for containing "sex".
+  // Fix: require a word boundary immediately BEFORE the term (regex `\b`), but NOT after —
+  // so a term must START a word, matching "Scunthorpe" (cunt mid-word, preceded by 's', no
+  // boundary -> not flagged) and "Essex" (sex mid-word, preceded by 's' -> not flagged) while
+  // STILL catching the list's deliberately-truncated stems against their real variants
+  // ("fag" still flags "faggot" — the boundary only needs to hold at the front; nothing
+  // requires the stem to be the WHOLE word). The list itself is untouched — only the matcher.
+  function escapeRegExp(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  function containsFoulTerm(name, foulList) {
+    const s = String(name == null ? '' : name);
+    return (foulList || []).some(w => new RegExp('\\b' + escapeRegExp(w), 'i').test(s));
+  }
+
   const API = { mulberry32, hashSeed, dayKey, msToNextDay,
     VALUES, BAG, VOWELS, FRIENDLY, shuffledBag,
-    expandLetter, dispLetter, letterVal, lenMult, streakMult };
+    expandLetter, dispLetter, letterVal, lenMult, streakMult, containsFoulTerm };
   root.SworbleCore = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

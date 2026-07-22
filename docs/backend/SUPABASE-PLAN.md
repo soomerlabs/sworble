@@ -95,7 +95,7 @@ a rewrite.
 | `sworble_run_<day>` | live mid-run snapshot | **stays local** (ephemeral, per-device resume) |
 | `sworble_done_<day>` / `sworble_att_<day>` / `sworble_time_<day>` | day-run state | **stays local** (day mechanics); `time` may ride the submit for plausibility only |
 | `sworble_targets_*` / `sworble_theme_*` / `sworble_hint_tokens_*` | realized board / aids | **stays local** (recomputable from the seed) |
-| `worddrop_muted` / `sworble_audio_claim` | device audio prefs | **stays local** |
+| `sworble_muted` / `sworble_audio_claim` | device audio prefs | **stays local** |
 | `sworble_pending_submits` | the outbox | **stays local** (it *is* the offline queue) |
 
 Rule of thumb: **scores, profile, settings, and the sworb solve fields go server-side; run

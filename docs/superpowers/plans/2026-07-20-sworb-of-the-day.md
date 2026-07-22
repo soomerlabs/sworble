@@ -1,5 +1,7 @@
 # Sworb of the Day Implementation Plan
 
+> **SUPERSEDED (2026-07-22):** the `Sworble.dc.html` mirror workflow this plan describes is gone — `index.html` is the single source now, no mirror, no `tests/mirror-check.js`. Read for historical context only; don't follow the mirror steps.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a daily theme layer — 5 clue words seeded onto the board that glow + pay a bonus and teach a hidden "sworb" the player guesses — on top of the existing scoring run, with no backend.

@@ -1,5 +1,7 @@
 # Word of the Day — Daily Reframe (Phase 1) Implementation Plan
 
+> **SUPERSEDED (2026-07-22):** the `Sworble.dc.html` mirror workflow this plan describes is gone — `index.html` is the single source now, no mirror, no `tests/mirror-check.js`. Read for historical context only; don't follow the mirror steps.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Reframe the daily from a capped, "seven"-scored run into an endless, theme-first word hunt — a themed board packed with many interwoven theme words (configurable density), theme-first ranking, no word cap.

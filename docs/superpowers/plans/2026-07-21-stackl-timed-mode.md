@@ -1,5 +1,7 @@
 # Stackl — timed mode on the themed daily (Phase 2, unified) Implementation Plan
 
+> **SUPERSEDED (2026-07-22):** the `Sworble.dc.html` mirror workflow this plan describes is gone — `index.html` is the single source now, no mirror, no `tests/mirror-check.js`. Read for historical context only; don't follow the mirror steps.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement task-by-task. Steps use checkbox (`- [ ]`) syntax.
 >
 > **REVISED:** design converged on a UNIFIED daily — stackl (timed) plays the SAME theme-seeded board as casual, shares one sworb (safe + 5 guesses + solved), separate leaderboards. The earlier "separate non-theme stackl board" tasks are removed. The revived clock + words-add-time are already committed (81bdbe9, 740ae6d) and carry over.
