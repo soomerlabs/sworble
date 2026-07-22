@@ -1340,7 +1340,11 @@ class Component extends DCLogic {
   }
   closeModal(after) {
     const inGame = this.state.screen === 'game';
-    this.fadeClose({ activeModal: null, modalStack: [], contentFading: false, heightAnim: false, nameError: '', modalFromHome: false, paused: inGame ? false : this.state.paused }, after);
+    // never unpause mid count-in (numerals still showing): leave `paused` true and let the
+    // in-flight armCountIn chain's own activeModal-aware final step resolve it — clearing
+    // activeModal here means that step will see none and unpause normally when the beat ends.
+    const unpause = inGame && this.state.countIn == null;
+    this.fadeClose({ activeModal: null, modalStack: [], contentFading: false, heightAnim: false, nameError: '', modalFromHome: false, paused: unpause ? false : this.state.paused }, after);
   }
   backModal() {
     const stack = (this.state.modalStack || []).slice();
@@ -1385,7 +1389,7 @@ class Component extends DCLogic {
   // round IS the one timed game now. stacklOn()/stacklMode are gone; liveDaily() alone judges
   // the live countdown.
   // A daily round is "live" while it's actually running — dealt, on the game screen, not
-  // yet ended, and past the throwaway warm-up. This is the TIME HUD / low-time warning's key.
+  // yet ended. This is the TIME HUD / low-time warning's key.
   liveDaily(st) { st = st || this.state; return st.screen === 'game' && this.optVal('dailyMode', true) && !st.over; }
   // A live "hunt" is any in-progress timed round on the board — daily OR practice, both now
   // share one clock (see frame()'s ONE-GAME pivot note) — not yet over, not the untimed finale.
@@ -1801,11 +1805,13 @@ class Component extends DCLogic {
   // AUTO-PAUSE (Task 5c): the one entry point visibilitychange/pagehide/blur all call while a
   // hunt is live. Cancels any in-flight count-in (never let it silently unpause a backgrounded
   // tab) and drops into the SAME fair-pause the manual pause button uses — gamePaused arms the
-  // blurred/obscured overlay, `paused` freezes the clock (frame()'s existing idiom). A no-op
-  // once already paused/counting-in, or off a live hunt (finale/home/over) — cheap to call from
-  // every listener without each one re-deriving the guard.
+  // blurred/obscured overlay, `paused` freezes the clock (frame()'s existing idiom). Must still
+  // run DURING a count-in (count-in holds `paused` true but not `gamePaused`) — a background tab
+  // mid-3·2·1 needs this to cancel the chain and arm the overlay, not no-op. A no-op once already
+  // fair-paused (`gamePaused`), or off a live hunt (finale/home/over) — cheap to call from every
+  // listener without each one re-deriving the guard.
   forceFairPause() {
-    if (!this.liveHunt(this.state) || this.state.paused) return;
+    if (!this.liveHunt(this.state) || this.state.gamePaused) return;
     if (this.pausedAt == null) this.pausedAt = performance.now(); // freeze the anchor NOW — rAF may not tick again before the setState below commits
     this.cancelCountIn();
     this.setState({ paused: true, gamePaused: true, countIn: null });
@@ -6138,7 +6144,7 @@ class Component extends DCLogic {
         // on a finale-pending day — see homeHeroTap below) — dock PLAY / swipe-up must never
         // bounce this to the game screen; enterFinale() would wipe the letters mid-guess.
         // The player is already guessing right where they are — no-op.
-        if (st.finale && st.screen === 'home') return;
+        if (this.state.finale && this.state.screen === 'home') return;
         this.sfxClick();
         // RESUME a live, unfinished daily run — you only paused it by visiting home (or the
         // tab auto-paused). Never re-roll. Task 5c: this is now a FAIR resume, not instant —
