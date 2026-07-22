@@ -78,13 +78,34 @@
     @keyframes swipeUpHint { 0%, 100% { transform: translateY(3px); opacity: 0.55; } 50% { transform: translateY(-3px); opacity: 1; } }
     @keyframes homeRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
     @keyframes arrowHue { 0% { color:#5FD6A8; } 16.6% { color:#5BC8F5; } 33.3% { color:#A78BFA; } 50% { color:#F5B84A; } 66.6% { color:#F58FB8; } 83.3% { color:#F58A66; } 100% { color:#5FD6A8; } }
-    @keyframes smokeDriftA { 0%,100% { transform:translate(-7px,2px) scale(1.05); } 33% { transform:translate(9px,-3px) scale(1.14); } 66% { transform:translate(-3px,4px) scale(1.0); } }
-    @keyframes smokeDriftB { 0%,100% { transform:translate(8px,-2px) scale(1.12); } 40% { transform:translate(-9px,3px) scale(1.0); } 70% { transform:translate(5px,-1px) scale(1.18); } }
-    @keyframes auroraDrift { 0%,100% { transform:translateX(-9px) scaleY(1); } 50% { transform:translateX(9px) scaleY(1.14); } }
-    @keyframes auroraDrift2 { 0%,100% { transform:translateX(7px) scaleY(1.1); } 50% { transform:translateX(-8px) scaleY(0.94); } }
-    @keyframes lightningFlash { 0%,7.5%,100% { opacity:0; } 8% { opacity:0.78; } 9% { opacity:0.12; } 10.5% { opacity:0.92; } 12% { opacity:0; } 46% { opacity:0; } 47% { opacity:0.6; } 49% { opacity:0; } }
-    @keyframes lightning2 { 0%,5%,100% { opacity:0; } 6% { opacity:0.85; } 7% { opacity:0.2; } 9% { opacity:1; } 11% { opacity:0; } 30% { opacity:0; } 31% { opacity:0.7; } 33% { opacity:0.12; } 34% { opacity:0.85; } 36% { opacity:0; } 62% { opacity:0; } 63% { opacity:0.9; } 65% { opacity:0; } }
-    @keyframes lightning3 { 0%,17%,100% { opacity:0; } 18% { opacity:0.9; } 20% { opacity:0.1; } 21% { opacity:0.75; } 23% { opacity:0; } 72% { opacity:0; } 73% { opacity:0.85; } 74% { opacity:0.2; } 76% { opacity:0; } }
+    /* Task 6: aurora-of-blocks storm — candy tileblobs (PALETTE colors) drifting as metaball
+       goo (bridge + split), blurred ~12px into northern-lights light. Bell layout: small/low
+       blobs hug BOTH edges, big/high-rising in the center under the chevron. Static CSS (no
+       {{ }} holes) — colors/positions/durations are fixed per the v11 mock spec; only the wrap's
+       opacity/filter (brewing vs resting) is driven by day-state via stormWrapStyle. */
+    .stormAura { position:absolute; inset:0; overflow:hidden;
+      -webkit-mask-image:radial-gradient(135% 96% at 50% 112%, #000 34%, rgba(0,0,0,.5) 66%, transparent 88%);
+              mask-image:radial-gradient(135% 96% at 50% 112%, #000 34%, rgba(0,0,0,.5) 66%, transparent 88%); }
+    .stormHaze { position:absolute; left:50%; bottom:-70px; transform:translateX(-50%); width:220px; height:190px;
+      background:radial-gradient(closest-side, color-mix(in srgb, #A78BFA 22%, transparent), transparent 74%);
+      animation:stormHaze 20s ease-in-out infinite; }
+    @keyframes stormHaze { 0%,100% { opacity:0.4; } 50% { opacity:0.62; } }
+    .stormBlockwrap { position:absolute; inset:0; filter:blur(12px); }
+    .stormGoo { position:absolute; inset:0; filter:url(#stormGoo); }
+    .stormBlob { position:absolute; border-radius:22px; mix-blend-mode:screen; will-change:transform; }
+    /* bell: edges small + low rise, centre big + high rise — durations 15-23s, never synced */
+    .stormB1 { left:1%;  bottom:-2px;  width:44px; height:44px; background:#A78BFA; animation:stormEdgeL 17s ease-in-out infinite; }
+    .stormB2 { left:19%; bottom:-12px; width:54px; height:54px; background:#5BC8F5; animation:stormMidB 19s ease-in-out infinite; }
+    .stormB3 { left:38%; bottom:-22px; width:68px; height:68px; background:#5FD6A8; animation:stormCoreA 15s ease-in-out infinite; }
+    .stormB4 { left:55%; bottom:-20px; width:64px; height:64px; background:#F58FB8; animation:stormCoreB 21s ease-in-out infinite; }
+    .stormB5 { left:74%; bottom:-12px; width:54px; height:54px; background:#F5B84A; animation:stormMidA 18s ease-in-out infinite; }
+    .stormB6 { right:1%; bottom:-2px;  width:44px; height:44px; background:#F58A66; animation:stormEdgeR 22s ease-in-out infinite; }
+    @keyframes stormEdgeL { 0%{transform:translate(-4px,5px) scale(.9)} 50%{transform:translate(10px,-9px) scale(1.02)} 100%{transform:translate(-4px,5px) scale(.9)} }
+    @keyframes stormEdgeR { 0%{transform:translate(4px,5px) scale(.9)} 50%{transform:translate(-10px,-9px) scale(1.02)} 100%{transform:translate(4px,5px) scale(.9)} }
+    @keyframes stormMidB { 0%{transform:translate(5px,4px) scale(1.02)} 50%{transform:translate(-14px,-19px) scale(.93)} 100%{transform:translate(5px,4px) scale(1.02)} }
+    @keyframes stormMidA { 0%{transform:translate(-5px,4px) scale(.96)} 50%{transform:translate(15px,-18px) scale(1.06)} 100%{transform:translate(-5px,4px) scale(.96)} }
+    @keyframes stormCoreA { 0%{transform:translate(-8px,6px) scale(.94)} 50%{transform:translate(10px,-32px) scale(1.12)} 100%{transform:translate(-8px,6px) scale(.94)} }
+    @keyframes stormCoreB { 0%{transform:translate(8px,5px) scale(1.05)} 50%{transform:translate(-10px,-29px) scale(.9)} 100%{transform:translate(8px,5px) scale(1.05)} }
     @keyframes hudRise { 0% { opacity: 0; transform: translateY(8px) scale(0.6); } 20% { opacity: 1; transform: translateY(-1px) scale(1.12); } 70% { opacity: 1; transform: translateY(-11px) scale(1); } 100% { opacity: 0; transform: translateY(-18px) scale(0.95); } }
     @keyframes chipPop { 0% { transform: translate3d(0,0,0) rotateZ(0deg) rotateX(0deg) scale(0.3); opacity: 1; animation-timing-function: cubic-bezier(0.15,0.7,0.3,1); } 30% { transform: translate3d(var(--cx), var(--cy), 0) rotateZ(calc(var(--cr) * 0.4)) rotateX(calc(var(--fx) * 0.35)) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.5,0.05,0.75,0.4); } 82% { opacity: 1; } 100% { transform: translate3d(var(--dx), var(--gy), 0) rotateZ(var(--cr)) rotateX(var(--fx)) scale(0.85); opacity: 0; } }
     @keyframes chipPopOld { 0% { transform: translate(0,0) rotate(0deg) scale(0.3); opacity: 1; } 18% { transform: translate(calc(var(--cx) * 0.25), calc(var(--cy) * 0.55)) rotate(calc(var(--cr) * 0.25)) scale(1.1); opacity: 1; } 60% { transform: translate(calc(var(--cx) * 0.7), var(--cy)) rotate(calc(var(--cr) * 0.6)) scale(1); opacity: 1; } 100% { transform: translate(var(--cx), var(--gy)) rotate(var(--cr)) scale(0.6); opacity: 0; } }
@@ -368,6 +389,14 @@
     </div>
   </div>
 
+  <!-- Task 6: goo filter for the home storm's aurora-of-blocks (metaball bridge/split of the
+       tileblobs) — feGaussianBlur softens edges, the feColorMatrix alpha boost + feBlend turns
+       the blur back into hard-edged blobs that visually fuse where they overlap. -->
+  <svg width="0" height="0" style="position:absolute;"><defs>
+    <filter id="stormGoo"><feGaussianBlur in="SourceGraphic" stdDeviation="11" result="stormGooBlur"/>
+    <feColorMatrix in="stormGooBlur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 30 -14" result="stormGooMatrix"/>
+    <feBlend in="SourceGraphic" in2="stormGooMatrix"/></filter>
+  </defs></svg>
   <div style="{{ homeScreenStyle }}" onPointerDown="{{ onPagerPointerDown }}" onPointerMove="{{ onPagerPointerMove }}" onPointerUp="{{ onPagerPointerUp }}" onScroll="{{ onScreenScroll }}">
       <sc-for list="{{ homeFloaters }}" as="hf" hint-placeholder-count="0">
         <div style="{{ hf.style }}"></div>
@@ -496,9 +525,12 @@
         <div style="{{ homeDockInnerStyle }}">
                   <div key="{{ homeRiseKey }}" style="position:relative; display:flex; flex-direction:column; align-items:center; width:100%; opacity:0; animation:homeRise 0.6s cubic-bezier(0.2,0.8,0.2,1) 0.4s forwards;">
                     <div aria-hidden="true" style="{{ stormWrapStyle }}">
-                      <div style="position:absolute; inset:0; filter:blur(19px); background:{{ storm.colorBg }}; animation:{{ storm.animA }};"></div>
-                      <div style="position:absolute; inset:0; filter:blur(17px); background:radial-gradient(34px 27px at 36% 52%, rgba(8,6,16,0.92) 0%, transparent 70%), radial-gradient(26px 22px at 58% 46%, rgba(8,6,16,0.86) 0%, transparent 70%), radial-gradient(24px 20px at 82% 60%, rgba(8,6,16,0.82) 0%, transparent 70%), radial-gradient(22px 18px at 14% 46%, rgba(8,6,16,0.8) 0%, transparent 70%); animation:smokeDriftB 17s ease-in-out infinite;"></div>
-                      <div style="position:absolute; inset:0; filter:blur(11px); background:radial-gradient(48px 32px at 52% 42%, rgba(233,240,255,0.95) 0%, transparent 62%); opacity:0; animation:{{ storm.lightAnim }};"></div>
+                      <div class="stormAura">
+                        <div class="stormHaze"></div>
+                        <div class="stormBlockwrap"><div class="stormGoo">
+                          <div class="stormBlob stormB1"></div><div class="stormBlob stormB2"></div><div class="stormBlob stormB3"></div><div class="stormBlob stormB4"></div><div class="stormBlob stormB5"></div><div class="stormBlob stormB6"></div>
+                        </div></div>
+                      </div>
                     </div>
                     <sc-if value="{{ dailyNotDone }}" hint-placeholder-val="{{ true }}">
                       <button onClick="{{ startDaily }}" aria-label="{{ homeSwipeLabel }}" style="position:relative; z-index:1; width:100%; box-sizing:border-box; background:transparent; border:none; padding:8px 0 4px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; font-family:inherit; transition:transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);" style-active="transform:translateY(-5px)">
@@ -6350,22 +6382,15 @@ class Component extends DCLogic {
       },
       homeDockInnerStyle: { width: '100%', maxWidth: colW, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 8, pointerEvents: 'auto' },
       homeSeq: st.homeSeq || 0,
-      storm: (() => {
-        const live = this._dailyLive && !st.over && (st.tiles || []).length && this.optVal('dailyMode', true);
-        if (live) return {
-          colorBg: 'radial-gradient(30px 24px at 18% 60%, #F58FB8 0%, transparent 66%), radial-gradient(36px 28px at 42% 40%, #F5B84A 0%, transparent 66%), radial-gradient(28px 24px at 68% 60%, #F58A66 0%, transparent 66%), radial-gradient(30px 24px at 86% 48%, #E0567A 0%, transparent 66%), radial-gradient(26px 21px at 30% 66%, #A78BFA 0%, transparent 68%)',
-          animA: 'smokeDriftA 6s ease-in-out infinite', lightAnim: 'lightningFlash 3s ease-in-out infinite',
-        };
-        return {
-          colorBg: 'radial-gradient(30px 24px at 18% 60%, #5BC8F5 0%, transparent 68%), radial-gradient(34px 27px at 40% 42%, #7C5CE0 0%, transparent 68%), radial-gradient(26px 22px at 70% 62%, #5FD6A8 0%, transparent 68%), radial-gradient(30px 24px at 86% 50%, #5BC8F5 0%, transparent 68%), radial-gradient(22px 19px at 30% 66%, #8FA8FF 0%, transparent 70%)',
-          animA: 'smokeDriftA 14s ease-in-out infinite', lightAnim: 'lightningFlash 9s ease-in-out infinite',
-        };
-      })(),
       // v18: the storm sits at the skeleton's base in BOTH states now (previously it only
       // existed inside the pre-play dock branch) — brewing full-strength pre-play, resting
-      // (dim + desaturated, "it did its job") once the day is consumed. Existing FX; Task 6
-      // replaces the storm itself, this just keeps it always-mounted so nothing pops in/out.
-      stormWrapStyle: 'position:absolute; left:50%; bottom:-84px; transform:translateX(-50%); width:256px; height:150px; pointer-events:none; z-index:0; opacity:' + (this.dailyConsumed() ? 0.2 : 0.5) + '; filter:saturate(' + (this.dailyConsumed() ? 0.55 : 1) + '); transition:opacity 0.6s ease, filter 0.6s ease;',
+      // (dim + desaturated, "it did its job") once the day is consumed.
+      // Task 6 (aurora-of-blocks): the blob field itself (colors/positions/keyframes) is now
+      // static CSS (.stormAura/.stormBlob* — see the <style> block), since PALETTE hex values
+      // and the bell layout never vary by state. Only this wrap's opacity/filter is
+      // day-state-driven — brewing = full color/energy, resting = opacity .4 + desaturated —
+      // and it always TRANSITIONS (never snaps), per the storm spec.
+      stormWrapStyle: 'position:absolute; left:50%; bottom:-84px; transform:translateX(-50%); width:100%; height:190px; pointer-events:none; z-index:0; opacity:' + (this.dailyConsumed() ? 0.4 : 1) + '; filter:saturate(' + (this.dailyConsumed() ? 0.55 : 1) + '); transition:opacity 0.6s ease, filter 0.6s ease;',
       // hides the swipe-up dock once today's daily is fully spent (dailyConsumed) — a played
       // day has nothing left to (re)start; the v18 dock instead shows the countdown below.
       dailyNotDone: !this.dailyConsumed(),
