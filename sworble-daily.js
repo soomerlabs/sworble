@@ -25,12 +25,23 @@
     return { sworb: sworb, themeWords: themeWords };
   }
 
-  function isClue(word, entry) {
-    if (!entry || !word) return false;
+  // A spelled word counts as finding a clue if it STARTS WITH the clue (trims/trimmed/
+  // trimming all bank "trim"; seedy banks "seed"). Returns the matched clue itself (lowercase)
+  // so the caller knows exactly what to bank/dedup — not the spelled word. When more than one
+  // clue prefixes the word (e.g. both "seed" and "seeds" are clues and the word is "seeds"),
+  // the LONGEST matching clue wins. Returns null on no match / missing entry / empty word.
+  function clueFor(word, entry) {
+    if (!entry || !word) return null;
     var list = entry.themeWords || entry.clues || [];
     var w = String(word).toLowerCase();
-    return list.indexOf(w) >= 0;
+    var best = null;
+    for (var i = 0; i < list.length; i++) {
+      var c = String(list[i] || '').toLowerCase();
+      if (c && w.indexOf(c) === 0 && (!best || c.length > best.length)) best = c;
+    }
+    return best;
   }
+  function isClue(word, entry) { return !!clueFor(word, entry); }
 
   function normalize(s) { return String(s || '').toLowerCase().replace(/[^a-z]/g, ''); }
   function checkGuess(input, entry) { return !!entry && normalize(input) === entry.sworb; }
@@ -63,7 +74,7 @@
     return res;
   }
 
-  var API = { parseEntry: parseEntry, isClue: isClue, checkGuess: checkGuess, guessReward: guessReward, scoreGuess: scoreGuess, REWARD: REWARD };
+  var API = { parseEntry: parseEntry, isClue: isClue, clueFor: clueFor, checkGuess: checkGuess, guessReward: guessReward, scoreGuess: scoreGuess, REWARD: REWARD };
   root.SworbleDaily = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

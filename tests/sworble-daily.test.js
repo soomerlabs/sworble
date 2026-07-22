@@ -49,4 +49,41 @@ assert.deepStrictEqual(D.scoreGuess('erxx', 'reef'), ['yellow','yellow','gray','
   assert.strictEqual(D.parseEntry({ x: { sworb: 'ocean', themeWords: ['tide', 7] } }, 'x'), null, 'non-string entry -> null');
 }
 
+// --- NEW: clueFor(word, entry) -> clue|null — a spelled word banks a clue if it STARTS
+// WITH the clue (trims/trimmed/trimming -> "trim"; seedy -> "seed"); isClue becomes a thin
+// wrapper (!!clueFor(...)); longest matching clue wins when more than one prefixes the word ---
+{
+  const kitchen = { sworb: 'kitchen', themeWords: ['trim', 'seed', 'seeds', 'oven'] };
+
+  // exact hit
+  assert.strictEqual(D.clueFor('trim', kitchen), 'trim', 'exact match returns the clue');
+  assert.strictEqual(D.clueFor('TRIM', kitchen), 'trim', 'case-insensitive');
+
+  // extension hits (trims/trimmed/trimming all bank "trim")
+  assert.strictEqual(D.clueFor('trims', kitchen), 'trim', 'trims -> trim');
+  assert.strictEqual(D.clueFor('trimmed', kitchen), 'trim', 'trimmed -> trim');
+  assert.strictEqual(D.clueFor('trimming', kitchen), 'trim', 'trimming -> trim');
+
+  // non-prefix miss: "roster" does NOT start with "rose" (rost vs rose)
+  const beach = { sworb: 'beach', themeWords: ['rose'] };
+  assert.strictEqual(D.clueFor('roster', beach), null, 'roster does not start with rose -> miss');
+
+  // longest match wins: both "seed" and "seeds" are clues; spelling "seeds" should bank
+  // "seeds" (the longer/more specific match), not "seed"
+  assert.strictEqual(D.clueFor('seeds', kitchen), 'seeds', 'longest matching clue wins (seeds over seed)');
+  assert.strictEqual(D.clueFor('seedy', kitchen), 'seed', 'seedy -> seed (only "seed" prefixes it)');
+  assert.strictEqual(D.clueFor('seed', kitchen), 'seed', 'exact "seed" still matches "seed"');
+
+  // null entry / word safety
+  assert.strictEqual(D.clueFor('trim', null), null, 'null entry -> null');
+  assert.strictEqual(D.clueFor('', kitchen), null, 'empty word -> null');
+  assert.strictEqual(D.clueFor(null, kitchen), null, 'null word -> null');
+
+  // isClue is now a thin wrapper around clueFor (back-compat)
+  assert.strictEqual(D.isClue('trims', kitchen), true, 'isClue: extension counts as a clue');
+  assert.strictEqual(D.isClue('roster', beach), false, 'isClue: non-prefix still a miss');
+  assert.strictEqual(D.isClue('TIDE', e), true, 'isClue: still works against the original fixture');
+  assert.strictEqual(D.isClue('shore', e), false);
+}
+
 console.log('sworble-daily: all passed');
