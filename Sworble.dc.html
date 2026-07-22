@@ -75,6 +75,11 @@
     @keyframes tipCycle { 0% { opacity: 0; transform: translateY(5px); } 9% { opacity: 1; transform: translateY(0); } 86% { opacity: 1; } 100% { opacity: 0; } }
     @keyframes trailDraw { 0% { stroke-dashoffset: 1; opacity: 0.2; } 45% { opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 1; } }
     @keyframes bestPop { 0% { transform: scale(1); } 40% { transform: scale(1.3); } 100% { transform: scale(1); } }
+    /* LIVE-PLAYTEST item E: count-in beats POP in with a spring overshoot instead of a flat
+       swap; GO gets its own burst — it scales further past 1 and fades OUT (the release), where
+       3·2·1 settle back to 1 (still-in-progress). */
+    @keyframes countPop { 0% { transform: scale(0.35); opacity: 0; } 55% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+    @keyframes countPopGo { 0% { transform: scale(0.35); opacity: 0; } 45% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1.25); opacity: 0; } }
     @keyframes swipeUpHint { 0%, 100% { transform: translateY(3px); opacity: 0.55; } 50% { transform: translateY(-3px); opacity: 1; } }
     @keyframes homeRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
     @keyframes arrowHue { 0% { color:#5FD6A8; } 16.6% { color:#5BC8F5; } 33.3% { color:#A78BFA; } 50% { color:#F5B84A; } 66.6% { color:#F58FB8; } 83.3% { color:#F58A66; } 100% { color:#5FD6A8; } }
@@ -84,8 +89,8 @@
        {{ }} holes) — colors/positions/durations are fixed per the v11 mock spec; only the wrap's
        opacity/filter (brewing vs resting) is driven by day-state via stormWrapStyle. */
     .stormAura { position:absolute; inset:0; overflow:hidden;
-      -webkit-mask-image:radial-gradient(135% 96% at 50% 112%, #000 34%, rgba(0,0,0,.5) 66%, transparent 88%);
-              mask-image:radial-gradient(135% 96% at 50% 112%, #000 34%, rgba(0,0,0,.5) 66%, transparent 88%); }
+      -webkit-mask-image:radial-gradient(135% 96% at 50% 110%, #000 34%, rgba(0,0,0,.5) 66%, transparent 88%);
+              mask-image:radial-gradient(135% 96% at 50% 110%, #000 34%, rgba(0,0,0,.5) 66%, transparent 88%); }
     .stormHaze { position:absolute; left:50%; bottom:-70px; transform:translateX(-50%); width:220px; height:190px;
       background:radial-gradient(closest-side, color-mix(in srgb, #A78BFA 22%, transparent), transparent 74%);
       animation:stormHaze 20s ease-in-out infinite; }
@@ -276,9 +281,6 @@
             {{ timeFxEl }}
           </div>
         </div>
-        <sc-if value="{{ pauseBtnShow }}" hint-placeholder-val="{{ false }}">
-          <button onClick="{{ pauseGame }}" aria-label="Pause" title="Pause" style="{{ pauseBtnStyle }}" style-active="transform:scale(0.94)"><span style="{{ pauseBtnGlyphStyle }}">pause</span></button>
-        </sc-if>
       </div>
 
 
@@ -344,19 +346,6 @@
         </div>
       </sc-if>
       </div>
-      <sc-if value="{{ countInShow }}" hint-placeholder-val="{{ false }}">
-        <div style="{{ countInOverlayStyle }}">
-          <div key="{{ countInKey }}" style="{{ countInTextStyle }}">{{ countInText }}</div>
-        </div>
-      </sc-if>
-      <sc-if value="{{ pauseOverlayShow }}" hint-placeholder-val="{{ false }}">
-        <div style="{{ pauseOverlayStyle }}">
-          <span style="{{ pauseOverlayGlyphStyle }}">pause_circle</span>
-          <div style="{{ pauseOverlayTitleStyle }}">paused</div>
-          <div style="{{ pauseOverlayTimeStyle }}">{{ pauseRemainingText }} left</div>
-          <button onClick="{{ resumeGame }}" style="{{ pauseResumeBtnStyle }}">RESUME</button>
-        </div>
-      </sc-if>
 
     </div>
   </div>
@@ -381,13 +370,41 @@
         <div style="font-family:'Fredoka', 'Manrope', sans-serif; font-size:22px; font-weight:600; letter-spacing:0.3px; color:var(--sheet-ink);">sworbl</div>
       </div>
       <div style="width:44px; flex:none; display:flex; justify-content:flex-end;">
-        <sc-if value="{{ isGameScr }}" hint-placeholder-val="{{ false }}"><button onClick="{{ openSettings }}" aria-label="Settings" title="Settings" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">settings</span></button></sc-if>
+        <!-- LIVE-PLAYTEST item D: the floating in-game pause button is gone — during a live hunt
+             this SAME top-right slot becomes pause (glyph + action swap), driven by state. Off a
+             live hunt (home, finale, paused, over) it's settings as before. -->
+        <sc-if value="{{ gameNavIsPause }}" hint-placeholder-val="{{ false }}"><button onClick="{{ pauseGame }}" aria-label="Pause" title="Pause" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">pause</span></button></sc-if>
+        <sc-if value="{{ gameNavIsSettings }}" hint-placeholder-val="{{ false }}"><button onClick="{{ openSettings }}" aria-label="Settings" title="Settings" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">settings</span></button></sc-if>
         <sc-if value="{{ isHomeScr }}" hint-placeholder-val="{{ true }}"><button onClick="{{ openSettings }}" aria-label="Settings" title="Settings" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">settings</span></button></sc-if>
         <sc-if value="{{ isProfileScr }}" hint-placeholder-val="{{ false }}"><button onClick="{{ openSettings }}" aria-label="Settings" title="Settings" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">settings</span></button></sc-if>
         <sc-if value="{{ isLbScr }}" hint-placeholder-val="{{ false }}"><button onClick="{{ doShare }}" aria-label="Share" title="Share" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">ios_share</span></button></sc-if>
       </div>
     </div>
   </div>
+
+  <!-- LIVE-PLAYTEST item B: count-in + pause overlays live at ROOT level now (siblings of the
+       appBar div above), not nested inside the game wrap's z10 stacking context. A stacking
+       context traps ALL descendant z-index values, including position:fixed ones, inside its own
+       slot in the parent's paint order — so the overlays' old z55 only ever competed against
+       OTHER game-wrap children, never against the home/profile/lb/wordbank screen layers sitting
+       beside the wrap at root. Moved out here, they get real root-level z-index (60/58) that
+       properly outranks every screen layer. Show-conditions are unchanged (still gate on
+       screen==='game' — see countInShow/pauseOverlayShow) so neither renders on home. -->
+  <sc-if value="{{ countInShow }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ countInOverlayStyle }}">
+      <div key="{{ countInKey }}" style="{{ countInTextStyle }}">{{ countInText }}</div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ pauseOverlayShow }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ pauseOverlayStyle }}">
+      <span style="{{ pauseOverlayGlyphStyle }}">pause_circle</span>
+      <div style="{{ pauseOverlayTitleStyle }}">paused</div>
+      <div style="{{ pauseOverlayTimeStyle }}">{{ pauseRemainingText }} left</div>
+      <button onClick="{{ resumeGame }}" style="{{ pauseResumeBtnStyle }}">RESUME</button>
+      <!-- LIVE-PLAYTEST item D: settings stays reachable mid-round without leaving pause -->
+      <button onClick="{{ openSettings }}" style="{{ pauseSettingsBtnStyle }}">SETTINGS</button>
+    </div>
+  </sc-if>
 
   <!-- Task 6: goo filter for the home storm's aurora-of-blocks (metaball bridge/split of the
        tileblobs) — feGaussianBlur softens edges, the feColorMatrix alpha boost + feBlend turns
@@ -5879,15 +5896,23 @@ class Component extends DCLogic {
       // both layers) so the slot always sizes to the taller of the two — swapping never
       // changes the slot's height, it's a pure opacity/blur crossfade both ways.
       homeSlotStyle: { position: 'relative', width: '100%', display: 'grid' },
+      // LAYERING FIX (item A2): pointerEvents here used to key off st.finale ONLY — 'auto'
+      // whenever finale wasn't live, with no regard for which SCREEN was on-screen. Since these
+      // two layers are DOM descendants of homeScreenStyle, that hardcoded 'auto' overrode the
+      // root's pointerEvents:'none' (CSS pointer-events is inherited, but an explicit value on a
+      // descendant always wins over an inherited one) — punching a click-through hole into the
+      // home layer even while the GAME screen was active and home was supposed to be inert. Both
+      // now also gate on st.screen === 'home' so the crossfade behavior is unchanged on home,
+      // but neither layer can ever intercept a tap while another screen owns the foreground.
       homeHintsLayerStyle: {
         gridColumn: '1', gridRow: '1', display: 'flex', flexDirection: 'column',
         opacity: st.finale ? 0 : 1, filter: st.finale ? 'blur(10px)' : 'blur(0px)',
-        pointerEvents: st.finale ? 'none' : 'auto', transition: 'opacity 0.32s ease, filter 0.32s ease',
+        pointerEvents: (st.screen === 'home' && !st.finale) ? 'auto' : 'none', transition: 'opacity 0.32s ease, filter 0.32s ease',
       },
       homeKbLayerStyle: {
         gridColumn: '1', gridRow: '1', display: 'flex', flexDirection: 'column',
         opacity: st.finale ? 1 : 0, filter: st.finale ? 'blur(0px)' : 'blur(10px)',
-        pointerEvents: st.finale ? 'auto' : 'none', transition: 'opacity 0.32s ease, filter 0.32s ease',
+        pointerEvents: (st.screen === 'home' && st.finale) ? 'auto' : 'none', transition: 'opacity 0.32s ease, filter 0.32s ease',
       },
       // CLOSE swaps back to the hints layer without resolving the guess — the typed slots are
       // ephemeral (never persisted; SWORB_PREFIX only writes on an actual submit) so reopening
@@ -5945,7 +5970,9 @@ class Component extends DCLogic {
       onWbSearch: (e) => this.setState({ wbQuery: e.target.value }),
       clearWbSearch: () => { this.sfxClick(); this.setState({ wbQuery: '' }); },
       wordBankScreenStyle: {
-        position: 'fixed', inset: 0, zIndex: 27, boxSizing: 'border-box', background: 'var(--home-bg)',
+        // LAYERING FIX (item A): same screen-state-driven z-index pattern as homeScreenStyle —
+        // only outranks the game wrap (z10) while wordbank is the active screen.
+        position: 'fixed', inset: 0, zIndex: st.screen === 'wordbank' ? 27 : 4, boxSizing: 'border-box', background: 'var(--home-bg)',
         overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start',
         padding: mobile ? 'calc(' + (navBarH + 6) + 'px + env(safe-area-inset-top)) 16px calc(34px + env(safe-area-inset-bottom))' : (navBarH + 6) + 'px 16px 44px',
@@ -6319,7 +6346,14 @@ class Component extends DCLogic {
         if (scr === 'wordbank' && dx > 55 && Math.abs(dx) > Math.abs(dy) * 1.4) { this.sfxClick(); this.setState({ opts: this._optsHomeReset(), screen: 'home' }); }
       },
       homeScreenStyle: {
-        position: 'fixed', inset: 0, zIndex: 20, boxSizing: 'border-box',
+        position: 'fixed', inset: 0,
+        // LAYERING FIX (LIVE-PLAYTEST item A): z-index is now SCREEN-STATE-DRIVEN, not a static
+        // 20 that always sits above the game wrap (z10). A static z20 let inactive home content
+        // paint above an active game screen — combined with any hardcoded pointerEvents:'auto'
+        // inside home, that let home controls intercept taps meant for the game (e.g. the pause
+        // overlay's RESUME button). Only the ACTIVE screen may outrank the game wrap; every
+        // inactive screen layer drops BELOW it (4 < wrap's 10).
+        zIndex: st.screen === 'home' ? 20 : 4, boxSizing: 'border-box',
         // OPAQUE front door: the gameboard is fully hidden behind home (no frosted see-through).
         // On PLAY it resolves IN (gameMorphStyle blur/scale below) as this layer crossfades out.
         background: 'var(--home-bg)',
@@ -6352,7 +6386,10 @@ class Component extends DCLogic {
         padding: mobile ? '22px 16px calc(16px + env(safe-area-inset-bottom))' : '24px 16px 22px',
         background: 'linear-gradient(to top, var(--home-bg) 56%, transparent)', pointerEvents: 'none',
       },
-      homeDockInnerStyle: { width: '100%', maxWidth: colW, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 8, pointerEvents: 'auto' },
+      // LAYERING FIX (item A2): was a hardcoded 'auto' regardless of screen — same home-subtree
+      // punch-through as homeHintsLayerStyle/homeKbLayerStyle above. Gated on st.screen==='home'
+      // so the swipe-up dock stays clickable on home but can't intercept taps on other screens.
+      homeDockInnerStyle: { width: '100%', maxWidth: colW, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 8, pointerEvents: st.screen === 'home' ? 'auto' : 'none' },
       homeSeq: st.homeSeq || 0,
       // v18: the storm sits at the skeleton's base in BOTH states now (previously it only
       // existed inside the pre-play dock branch) — brewing full-strength pre-play, resting
@@ -6362,7 +6399,13 @@ class Component extends DCLogic {
       // and the bell layout never vary by state. Only this wrap's opacity/filter is
       // day-state-driven — brewing = full color/energy, resting = opacity .4 + desaturated —
       // and it always TRANSITIONS (never snaps), per the storm spec.
-      stormWrapStyle: 'position:absolute; left:50%; bottom:-84px; transform:translateX(-50%); width:100%; height:190px; pointer-events:none; z-index:0; opacity:' + (this.dailyConsumed() ? 0.4 : 1) + '; filter:saturate(' + (this.dailyConsumed() ? 0.55 : 1) + '); transition:opacity 0.6s ease, filter 0.6s ease;',
+      // LIVE-PLAYTEST item C: was a tiny ambient-glow box (left:50%+translateX(-50%), width:100%
+      // of a narrow flex item — measured live at only ~256px wide, bottom:-84px). Approved design
+      // (docs/superpowers/mocks/2026-07-22-storm-aurora-blocks-v11.html, the "home" phone's
+      // .aura) is a FULL-COLUMN-WIDTH well: edge-to-edge, sitting flush on the floor. Blob %
+      // positions (.stormB1..6, static CSS) were already authored for full width — only this
+      // wrap's own box needed to actually SPAN full width for them to read as the bell layout.
+      stormWrapStyle: 'position:absolute; left:0; right:0; bottom:0; height:260px; overflow:hidden; pointer-events:none; z-index:0; opacity:' + (this.dailyConsumed() ? 0.4 : 1) + '; filter:saturate(' + (this.dailyConsumed() ? 0.55 : 1) + '); transition:opacity 0.6s ease, filter 0.6s ease;',
       // hides the swipe-up dock once today's daily is fully spent (dailyConsumed) — a played
       // day has nothing left to (re)start; the v18 dock instead shows the countdown below.
       dailyNotDone: !this.dailyConsumed(),
@@ -6493,17 +6536,13 @@ class Component extends DCLogic {
           : 'none',
       },
       boardCardRef: this.boardCardRef,
-      // Task 5c: the small pause icon lives beside the HUD card — only during an actual live
-      // hunt (never mid count-in / already paused / behind another modal, all of which either
-      // have their own overlay already up or would double-arm the fair-pause).
-      pauseBtnShow: this.liveHunt(st) && !st.paused && !st.activeModal,
-      pauseBtnStyle: {
-        flex: 'none', alignSelf: 'stretch', width: compact ? 44 : 52,
-        background: 'var(--card)', border: 'none', borderRadius: 16,
-        boxShadow: '0 4px 0 var(--card-edge)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        cursor: 'pointer', padding: 0, WebkitTapHighlightColor: 'transparent',
-      },
-      pauseBtnGlyphStyle: { fontFamily: "'Material Symbols Rounded'", fontWeight: 'normal', fontSize: 22, lineHeight: 1, color: 'var(--card-ink)', fontFeatureSettings: "'liga'", WebkitFontFeatureSettings: "'liga'", WebkitFontSmoothing: 'antialiased' },
+      // LIVE-PLAYTEST item D: the floating in-game pause button (pauseBtnShow/pauseBtnStyle/
+      // pauseBtnGlyphStyle) is REMOVED — pause now lives in the app bar's top-right slot, which
+      // swaps settings<->pause based on gameNavIsPause/gameNavIsSettings (see isGameScr block
+      // above and the appBar template). `pauseGame` itself is unchanged and still self-guards
+      // (no-op off a live hunt / mid count-in / behind another modal).
+      gameNavIsPause: st.screen === 'game' && this.liveHunt(st) && !st.paused && !st.activeModal,
+      gameNavIsSettings: st.screen === 'game' && !(this.liveHunt(st) && !st.paused && !st.activeModal),
       // COUNT-IN (3·2·1·GO): board stays VISIBLE behind a light scrim — only the fair-pause
       // overlay below blurs/obscures. Input is locked the same way pause locks it: boardDown's
       // existing `if (this.state.paused ...) return;` guard already covers this beat because
@@ -6511,23 +6550,36 @@ class Component extends DCLogic {
       countInShow: st.countIn != null && st.screen === 'game', // defense-in-depth: never stranded showing over another screen
       countInText: st.countIn === 'GO' ? 'GO!' : String(st.countIn || ''),
       countInKey: 'ci' + String(st.countIn),
+      // LIVE-PLAYTEST item B: moved to ROOT level (see template — now a sibling of the appBar
+      // div, not nested inside the game wrap's z10 stacking context) with real root-scoped
+      // z-index 60 so it reliably outranks every screen layer, not just other game-wrap children.
       countInOverlayStyle: {
-        position: 'fixed', inset: 0, zIndex: 55, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(16,16,20,0.24)', backdropFilter: 'blur(1px)', WebkitBackdropFilter: 'blur(1px)',
+        position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        // LIVE-PLAYTEST item E: slightly dim/blur the board behind the count-in so the numeral
+        // owns focus — was a nearly-invisible 0.24 scrim + 1px blur.
+        background: 'rgba(16,16,20,0.35)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
         opacity: (st.countIn != null && st.screen === 'game') ? 1 : 0, pointerEvents: (st.countIn != null && st.screen === 'game') ? 'auto' : 'none',
         transition: 'opacity 0.18s ease',
       },
+      // LIVE-PLAYTEST item E ("nicer animation"): each beat now POPs in with an overshoot
+      // (countPop) instead of the old flat bestPop swap; GO gets its own burst variant that
+      // scales past 1 and fades on the way out, so the round's start reads as a release, not
+      // just another numeral. countInKey (unchanged) still remounts every beat so the animation
+      // restarts cleanly each time. Total timing (armCountIn's 2400ms chain) is untouched.
       countInTextStyle: {
         fontFamily: "'Fredoka','Manrope',sans-serif", fontWeight: 700,
         fontSize: st.countIn === 'GO' ? 68 : 108, color: '#FFFFFF',
         textShadow: '0 4px 0 rgba(0,0,0,0.28)', lineHeight: 1,
-        animation: 'bestPop 0.5s cubic-bezier(0.34,1.56,0.64,1)',
+        animation: (st.countIn === 'GO' ? 'countPopGo' : 'countPop') + ' 0.5s cubic-bezier(0.34,1.56,0.64,1)',
       },
       // FAIR PAUSE: full-screen blur/obscure (no free scanning) + remaining time + RESUME,
       // which replays the count-in above rather than snapping straight back to a running clock.
       pauseOverlayShow: !!st.gamePaused && st.screen === 'game', // defense-in-depth: never stranded showing over another screen
+      // LIVE-PLAYTEST item B: moved to ROOT level alongside countInOverlayStyle, z-index 58 (just
+      // under the count-in's 60, so a resume-triggered count-in still wins if both are ever
+      // mid-transition at once).
       pauseOverlayStyle: {
-        position: 'fixed', inset: 0, zIndex: 55, display: 'flex', flexDirection: 'column', gap: 14,
+        position: 'fixed', inset: 0, zIndex: 58, display: 'flex', flexDirection: 'column', gap: 14,
         alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 32px', boxSizing: 'border-box',
         background: dark ? 'rgba(16,16,20,0.88)' : 'rgba(237,239,247,0.9)',
         backdropFilter: 'blur(22px)', WebkitBackdropFilter: 'blur(22px)',
@@ -6542,6 +6594,13 @@ class Component extends DCLogic {
         marginTop: 8, background: '#8971FF', color: '#FFFFFF', border: 'none', borderRadius: 14,
         padding: '13px 34px', fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 15, fontWeight: 800,
         letterSpacing: 0.8, cursor: 'pointer', boxShadow: '0 4px 0 #5A43C9', WebkitTapHighlightColor: 'transparent',
+      },
+      // LIVE-PLAYTEST item D: secondary ghost button on the pause overlay so settings stays
+      // reachable mid-round without leaving pause (mirrors pauseResumeBtnStyle's shape/sizing).
+      pauseSettingsBtnStyle: {
+        marginTop: 2, background: 'transparent', color: 'var(--ghost)', border: '2px solid var(--line)', borderRadius: 14,
+        padding: '11px 30px', fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 13, fontWeight: 800,
+        letterSpacing: 0.8, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
       },
       sheetRef: this.sheetRef,
       // idle stack-coach ghost: a translucent twin slides from tile A onto tile B
@@ -6678,7 +6737,9 @@ class Component extends DCLogic {
       profileInitial: (String(this.playerName || 'Y')[0] || 'Y').toUpperCase(),
       profileAvatarStyle: (() => { const p = PALETTE[this.tileColorFor((String(this.playerName || 'y')[0] || 'y').toLowerCase(), 0)] || PALETTE[0]; return { width: 52, height: 52, borderRadius: 15, boxSizing: 'border-box', paddingBottom: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1F1442', fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 26, fontWeight: 600, background: p.bg, boxShadow: 'inset 0 -4px 0 ' + p.edge, flex: 'none' }; })(),
       profileScreenStyle: {
-        position: 'fixed', inset: 0, zIndex: 26, boxSizing: 'border-box', background: 'var(--home-bg)',
+        // LAYERING FIX (item A): same screen-state-driven z-index pattern as homeScreenStyle —
+        // only outranks the game wrap (z10) while profile is the active screen.
+        position: 'fixed', inset: 0, zIndex: st.screen === 'profile' ? 26 : 4, boxSizing: 'border-box', background: 'var(--home-bg)',
         overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start',
         padding: mobile ? 'calc(' + (navBarH + 6) + 'px + env(safe-area-inset-top)) 16px calc(34px + env(safe-area-inset-bottom))' : (navBarH + 6) + 'px 16px 44px',
@@ -6691,7 +6752,9 @@ class Component extends DCLogic {
       closeLb: () => { this.sfxClick(); this.closeModal(); },
       lbBack: () => { this.sfxClick(); this.setState({ opts: this._optsHomeReset(), screen: 'home', over: false, justFinished: false }); this.loadHomeLb(); },
       lbScreenStyle: {
-        position: 'fixed', inset: 0, zIndex: 25, boxSizing: 'border-box', background: 'var(--home-bg)',
+        // LAYERING FIX (item A): same screen-state-driven z-index pattern as homeScreenStyle —
+        // only outranks the game wrap (z10) while lb is the active screen.
+        position: 'fixed', inset: 0, zIndex: st.screen === 'lb' ? 25 : 4, boxSizing: 'border-box', background: 'var(--home-bg)',
         overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start',
         padding: mobile ? 'calc(' + (navBarH + 6) + 'px + env(safe-area-inset-top)) 16px calc(34px + env(safe-area-inset-bottom))' : (navBarH + 6) + 'px 16px 44px',
