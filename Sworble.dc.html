@@ -399,18 +399,11 @@
                           <div style="font-size:9px; font-weight:800; letter-spacing:1.5px; color:var(--ghost);">SWORB OF THE DAY</div>
                           <div style="{{ homeSworb.tagStyle }}">{{ homeSworb.tag }}</div>
                         </div>
-                        <div onClick="{{ openSworbHome }}" style="{{ homeSworb.blocksWrapStyle }}">
+                        <div style="{{ homeSworb.blocksWrapStyle }}">
                           <sc-for list="{{ sworbGuess.blocks }}" as="b" hint-placeholder-count="5">
                             <div style="{{ b.style }}">{{ b.ch }}</div>
                           </sc-for>
                         </div>
-                        <sc-if value="{{ homeKbShow }}" hint-placeholder-val="{{ false }}">
-                          <div style="{{ sworbKb.homeGridStyle }}">
-                            <sc-for list="{{ sworbKb.keys }}" as="k" hint-placeholder-count="28">
-                              <div onClick="{{ k.onClick }}" style="{{ k.style }}" style-active="transform:translateY(3px) scale(0.93); filter:brightness(1.1)">{{ k.ch }}</div>
-                            </sc-for>
-                          </div>
-                        </sc-if>
                         <div style="{{ homeSworb.hintStyle }}">{{ homeSworb.hint }}</div>
                       </div>
                     </sc-if>
@@ -1212,6 +1205,7 @@ class Component extends DCLogic {
       lbData: null, homeLb: null, stacklLb: null, nameInput: '', nameError: '', sheetH: 0,
       sworbInput: '', sworbShake: 0, sworbColors: null, clueGlowIds: null, // sworb guess: current typed letters, wrong-guess shake counter, last-guess Wordle colors (UI-only)
       stepperMode: 'play', sworbTyping: false, sworbWin: false, sworbFlipKey: 0, // stepper flip (play<->sworb), board-morph keyboard open, win-flash, flip-anim rekey
+      finale: false, // THE FINALE: 0:00 board-morph guess-off is live (set by endRound, cleared by sworbSubmit on resolve)
       sworbSlots: [], // position-addressable guess slots (Wordle-persistence: green/yellow letters stay after a miss)
       screen: 'home',
       dictNote: 'loading dictionary\u2026',
@@ -1754,7 +1748,18 @@ class Component extends DCLogic {
   }
 
   async loadDailies() {
-    try { const r = await fetch('./dailies.json'); if (r.ok) { this._dailies = await r.json(); this.forceUpdate(); } } catch (e) { this._dailies = null; }
+    try { const r = await fetch('./dailies.json'); if (r.ok) { this._dailies = await r.json(); this.forceUpdate(); this._checkFinaleAtBoot(); } } catch (e) { this._dailies = null; }
+  }
+  // RELOAD MID-FINALE: dailyEntry()/dailyStatus().sworb both need dailies.json, which is still
+  // loading at the synchronous point in componentDidMount where the live-run snapshot gets
+  // restored — so this check happens here instead, once, right after dailies actually land.
+  // A restored live run (still time on the clock) always wins; otherwise if today's finale is
+  // still pending (finalePending), land directly on it rather than a bare, un-actionable home.
+  _checkFinaleAtBoot() {
+    if (this._finaleBootChecked) return;
+    this._finaleBootChecked = true;
+    if (this._dailyLive || this.state.screen !== 'home') return;
+    if (this.finalePending()) this.enterFinale();
   }
   // the day's theme POOL (all curated candidates), parsed once
   themePool() {
@@ -1788,12 +1793,12 @@ class Component extends DCLogic {
     catch (e) { return { guessesUsed: 0, solved: false, correct: false, bonus: 0 }; }
   }
   saveSworb(st) { try { LS.setItem(K.SWORB_PREFIX + (this.dailyKey || this.dayKey(new Date())), JSON.stringify(st)); } catch (e) {} }
-  // the sworb-of-the-day guess action: 5 guesses, locks on solve/exhaustion, awards a
+  // the sworb-of-the-day guess action: 6 guesses, locks on solve/exhaustion, awards a
   // clue-scaled bonus that rides today's competitive score (there is no par target to distort).
   guessSworb(input) {
     const e = this.dailyEntry(); if (!e) return { ok: false };
     const st = this.sworbState();
-    if (st.solved || st.guessesUsed >= 5) return { ok: false, done: true };
+    if (st.solved || st.guessesUsed >= 6) return { ok: false, done: true };
     const correct = SworbleDaily.checkGuess(input, e);
     st.guessesUsed += 1;
     if (correct) {
@@ -1810,7 +1815,7 @@ class Component extends DCLogic {
     }
     this.saveSworb(st);
     this.forceUpdate();
-    return { ok: true, correct, guessesLeft: Math.max(0, 5 - st.guessesUsed), bonus: st.bonus };
+    return { ok: true, correct, guessesLeft: Math.max(0, 6 - st.guessesUsed), bonus: st.bonus };
   }
   // guess-sheet submit: UI-only wrapper around guessSworb — validates non-empty input,
   // clears the field either way, and shakes (via sworbShake, a bump counter so repeated
@@ -1820,7 +1825,7 @@ class Component extends DCLogic {
     const raw = (this.state.sworbInput || '').trim().toLowerCase().replace(/[^a-z]/g, '');
     if (!raw || !e) return;
     // the guess must be the full length of the sworb (the blocks show how many) — a short
-    // guess just nudges (shake) rather than burning one of your five guesses
+    // guess just nudges (shake) rather than burning one of your six guesses
     if (raw.length !== e.sworb.length) { this.setState(s => ({ sworbShake: (s.sworbShake || 0) + 1 })); return; }
     const colors = SworbleDaily.scoreGuess(raw, e.sworb); // Wordle green/yellow/gray for the blocks
     const res = this.guessSworb(raw);
@@ -1842,9 +1847,20 @@ class Component extends DCLogic {
   // (the day's guess blocks). Flipping to SWORB while still guessable morphs the board
   // into an A-Z tile keyboard (sworbTyping). All game tiles stay untouched in state, so
   // flipping back re-renders the board exactly as it was.
+  // FINALE-ONLY GUESSING: guessing is no longer a mid-hunt side-trip — it only opens once
+  // the board morphs into the keyboard at 0:00 (endRound's finale gate). So the flip is a
+  // no-op while a daily round is still being hunted (LIVE: screen 'game', dailyMode, not
+  // over, not yet in the finale) — nothing to flip to yet. It's ALSO a no-op once the
+  // finale itself is live: the morph is locked to the sworb face for its whole duration —
+  // flipping away would drop sworbTyping and re-arm the frozen board's taps (over stays
+  // false through the finale by design; see endRound) with nothing left to play. Practice
+  // (dailyMode:false) is unaffected by either guard.
   flipStepper() {
     const e = this.dailyEntry();
     if (!e) return; // no sworb today: the strip has one face, nothing to flip
+    const daily = this.optVal('dailyMode', true) && this.state.screen === 'game';
+    const liveHunting = daily && !this.state.over && !this.state.finale;
+    if (liveHunting || this.state.finale) return;
     this.sfxClick();
     this.setState(s => {
       const toSworb = s.stepperMode !== 'sworb';
@@ -1859,16 +1875,6 @@ class Component extends DCLogic {
         path: [], // drop any half-drawn word when the board leaves play mode
       };
     });
-  }
-  // HOME: tapping the sworb hero blocks raises/lowers the same A-Z tile keyboard inline
-  // (no board to morph on home, so the keyboard renders under the blocks). Solved/locked
-  // days just show their state — nothing to type.
-  openSworbHome() {
-    const e = this.dailyEntry(); if (!e) return;
-    const sw = this.dailyStatus().sworb;
-    if (!sw.active || sw.solved || sw.guessesLeft <= 0) return;
-    this.sfxClick();
-    this.setState(s => ({ sworbTyping: !s.sworbTyping, sworbSlots: s.sworbTyping ? s.sworbSlots : [], sworbColors: null, sworbShake: 0 }));
   }
   // tap an A-Z key: drop the letter into the first empty slot (Wordle-persistence means slots
   // can have interior gaps after a miss — green/yellow letters stay put, so we fill first-empty)
@@ -1907,6 +1913,17 @@ class Component extends DCLogic {
   // guessSworb reward). Correct -> brief win flash then retire to PLAY. Wrong -> show the
   // Wordle colors, then KEEP the green (right-spot) AND yellow (right-letter) tiles in place,
   // clearing only the grays, so the next guess builds on what you learned.
+  //
+  // THE FINALE (state.finale): the exact same guess engine, but the exit is different — there
+  // is no PLAY face left to retire to (the round already ended at 0:00). solve -> hold the win
+  // flash, re-bank the bonus-inflated score (guessSworb only bumped state.score; endRound's
+  // banking already ran BEFORE the bonus existed), then land on home via the same beat every
+  // daily round uses. 6th miss -> sworbGuess's own `locked` branch (dailyStatus().sworb.guessesLeft
+  // <= 0) already renders the answer in gray once the miss clears the slots, so the "reveal" is
+  // free — just hold on it, then land on home. In BOTH finale exits sworbTyping is kept true
+  // until the very end (paired with over:true) — over is false for the whole finale by design
+  // (see endRound), so sworbTyping is the only thing keeping the frozen board's taps blocked;
+  // dropping it early would re-arm a "dead" board for a couple seconds.
   sworbSubmit() {
     const e = this.dailyEntry();
     const slots = (this.state.sworbSlots || []);
@@ -1916,21 +1933,43 @@ class Component extends DCLogic {
     const colors = SworbleDaily.scoreGuess(raw, e.sworb);
     const res = this.guessSworb(raw);
     if (!res || !res.ok) return;
+    const finale = !!this.state.finale;
     if (res.correct) {
-      this.setState({ sworbColors: colors, sworbTyping: false, sworbWin: true });
-      try { this.sfxWin ? this.sfxWin() : this.sfxOver(); } catch (x) {}
-      this.later(() => this.setState({ sworbWin: false, stepperMode: 'play', sworbSlots: [], sworbColors: null, sworbFlipKey: (this.state.sworbFlipKey || 0) + 1 }), 2400);
+      if (finale) {
+        this.setState({ sworbColors: colors, sworbWin: true }); // sworbTyping stays true — see method note
+        try { this.sfxWin ? this.sfxWin() : this.sfxOver(); } catch (x) {}
+        this.later(() => {
+          this.bankFinaleBonus(); // score just grew (guess bonus) — re-merge/re-submit before landing home
+          this.setState({ sworbWin: false, finale: false, over: true, sworbTyping: false, stepperMode: 'play', sworbSlots: [], sworbColors: null, sworbFlipKey: (this.state.sworbFlipKey || 0) + 1 });
+          this.homeReturnAfterRound();
+        }, 2400);
+      } else {
+        this.setState({ sworbColors: colors, sworbTyping: false, sworbWin: true });
+        try { this.sfxWin ? this.sfxWin() : this.sfxOver(); } catch (x) {}
+        this.later(() => this.setState({ sworbWin: false, stepperMode: 'play', sworbSlots: [], sworbColors: null, sworbFlipKey: (this.state.sworbFlipKey || 0) + 1 }), 2400);
+      }
     } else {
       this.setState({ sworbColors: colors });
       try { this.sfxBad(); } catch (x) {}
       const spent = res.guessesLeft <= 0;
-      this.later(() => this.setState(s => {
-        if (spent) return { sworbSlots: [], sworbColors: null, sworbTyping: false, stepperMode: 'play', sworbFlipKey: (s.sworbFlipKey || 0) + 1 };
-        // keep letters that landed green (right spot) or yellow (in the word); blank the grays
-        const keepSlots = slots.map((c, i) => (colors[i] === 'green' || colors[i] === 'yellow') ? c : '');
-        const keepColors = colors.map(c => (c === 'green' || c === 'yellow') ? c : null);
-        return { sworbSlots: keepSlots, sworbColors: keepColors.some(Boolean) ? keepColors : null, sworbShake: (s.sworbShake || 0) + 1 };
-      }), 1300);
+      if (finale && spent) {
+        this.later(() => {
+          this.setState({ sworbSlots: [], sworbColors: null }); // sworbGuess.locked now renders the gray answer on its own
+          this.later(() => {
+            this.setState({ finale: false, over: true, sworbTyping: false, stepperMode: 'play', sworbFlipKey: (this.state.sworbFlipKey || 0) + 1 });
+            this.homeReturnAfterRound();
+          }, 2000);
+        }, 1300);
+      } else if (spent) {
+        this.later(() => this.setState(s => ({ sworbSlots: [], sworbColors: null, sworbTyping: false, stepperMode: 'play', sworbFlipKey: (s.sworbFlipKey || 0) + 1 })), 1300);
+      } else {
+        this.later(() => this.setState(s => {
+          // keep letters that landed green (right spot) or yellow (in the word); blank the grays
+          const keepSlots = slots.map((c, i) => (colors[i] === 'green' || colors[i] === 'yellow') ? c : '');
+          const keepColors = colors.map(c => (c === 'green' || c === 'yellow') ? c : null);
+          return { sworbSlots: keepSlots, sworbColors: keepColors.some(Boolean) ? keepColors : null, sworbShake: (s.sworbShake || 0) + 1 };
+        }), 1300);
+      }
     }
   }
 
@@ -2533,18 +2572,93 @@ class Component extends DCLogic {
     }
     // PERFECT RUN: every word of a full budget was a best word (legendary, crowned on the result sheet)
     this._lastRunPerfect = (this._bestHits || 0) >= this.parGuesses();
-    this.setState({ timeLeft: 0, over: true, path: [], scoreShown: this.state.score });
+    // THE FINALE GATE: a daily round whose sworb is still unresolved (unsolved, a guess still
+    // live) does NOT land on the over-sheet/board-celebration — the board morphs straight into
+    // the guess keyboard instead (the game's signature moment; the morph itself already exists,
+    // see flipStepper). Already-solved (or no sworb today) keeps the original landing untouched.
+    // `over` stays FALSE for the whole finale on purpose: `over:true` is what turns on
+    // boardCelebrateShow (a confetti overlay meant for "hunt ended, no finale") and the
+    // scroll-lock effect — both wrong mid-finale. sworbSubmit flips `over:true` itself only once
+    // the finale resolves (solve or 6th miss), right before routing home the same way this
+    // function does for a non-finale ending.
+    const dailyMode = this.optVal('dailyMode', true);
+    const sworbEntry = dailyMode && this.dailyEntry();
+    const sworbNow = sworbEntry && this.dailyStatus().sworb;
+    const enteringFinale = !!(sworbEntry && sworbNow && sworbNow.active && !sworbNow.solved && sworbNow.guessesLeft > 0);
+    if (enteringFinale) {
+      this.setState({
+        timeLeft: 0, over: false, path: [], scoreShown: this.state.score,
+        finale: true, stepperMode: 'sworb', sworbTyping: true, paused: false,
+        sworbSlots: [], sworbColors: null, sworbShake: 0, sworbWin: false,
+        sworbFlipKey: (this.state.sworbFlipKey || 0) + 1,
+      });
+    } else {
+      this.setState({ timeLeft: 0, over: true, path: [], scoreShown: this.state.score });
+    }
     this.sfxOver();
     this.prepareRecap(); // words you missed + pre-rendered share image
     this.submitDaily(); // push today's best to the daily leaderboard
     // NEW daily flow (Option A — home-native result): the board CELEBRATES in place (confetti rains over
     // the frozen board — boardCelebrateShow) for a beat, THEN dismisses → lands on HOME, where the done-state
     // IS the result (your seven fills, score, YOU on the standing graph) + a slim result ribbon (resultToastShow)
-    // confirms it, auto-clearing after ~7s. Practice keeps its own on-board modal.
-    if (this.optVal('dailyMode', true)) this.later(() => {
+    // confirms it, auto-clearing after ~7s. Practice keeps its own on-board modal. The finale skips this landing
+    // entirely — sworbSubmit calls homeReturnAfterRound() itself once the finale resolves.
+    if (dailyMode && !enteringFinale) this.homeReturnAfterRound();
+  }
+  // shared "round -> home" landing (the board celebrates in place for a beat, then the screen
+  // hops to home where the result toast confirms it). Used by endRound's non-finale exit AND
+  // both finale resolutions (solve / 6th miss) in sworbSubmit, so every daily round — a timed
+  // hunt alone, or a hunt that ran into the finale — ends on the exact same home landing.
+  homeReturnAfterRound() {
+    this.later(() => {
       this.setState({ screen: 'home', endModal: true });
       this.later(() => this.setState(s => (s.endModal ? { endModal: false } : null)), 7000);
     }, 1100);
+  }
+  // FINALE SOLVE only: guessSworb's bonus lands AFTER endRound's banking already ran (the
+  // finale morph happens post-0:00, past the point endRound merges the daily seven / submits
+  // the leaderboard), so the bonus-inflated score never made it into either — re-run the same
+  // two steps with the now-current state.score so the day's best/seven/leaderboard entry catch
+  // up before the player lands on home. mergeDailySeven is idempotent-safe here: it only writes
+  // when the new score beats the standing best, so a re-call the SAME as before writes nothing.
+  bankFinaleBonus() {
+    if (!this.optVal('dailyMode', true)) return;
+    try {
+      const best = this.mergeDailySeven(this.state.roundWords, this.state.score);
+      this._tb = best; this._tbKey = this.dailyKey;
+    } catch (e) {}
+    try {
+      const d = this.dailyKey || this.dayKey(new Date()), k = K.PUZZLE_BEST_PREFIX + d, p = Number(LS.getItem(k) || 0) || 0;
+      if ((this.state.score || 0) > p) LS.setItem(k, String(this.state.score || 0));
+    } catch (e) {}
+    this.submitDaily();
+  }
+  // RELOAD / MANUAL-EXIT MID-FINALE: is there an unresolved finale waiting for today? Checked
+  // at boot AND whenever something is about to deal a fresh round (PLAY), so leaving the
+  // finale early (back button, swipe-down-to-dismiss, or a reload) never forfeits it and never
+  // re-rolls a new 5:00 hunt on top of it. No separate "finale pending" flag needed: DONE_PREFIX
+  // is written unconditionally at 0:00 (before endRound's finale branch even runs), so it's
+  // already true the instant a finale could exist; combined with the persisted sworb guess
+  // state (SWORB_PREFIX, read via dailyStatus().sworb) that's everything required — solved or
+  // guesses-exhausted both correctly say "nothing pending" and fall through to a fresh round.
+  finalePending() {
+    if (!this.optVal('dailyMode', true)) return false;
+    try {
+      const day = this.dailyKey || this.dayKey(new Date());
+      if (!LS.getItem(K.DONE_PREFIX + day)) return false;
+      const sw = this.dailyStatus().sworb;
+      return !!(sw && sw.active && !sw.solved && sw.guessesLeft > 0);
+    } catch (e) { return false; }
+  }
+  // land directly on the finale's board-morph (no home stop-over first — there's no "resume"
+  // preview for it, unlike a paused live run): guesses remaining, keyboard up, over false.
+  enterFinale() {
+    this.setState(s => ({
+      screen: 'game', over: false, paused: false, finale: true,
+      stepperMode: 'sworb', sworbTyping: true,
+      sworbSlots: [], sworbColors: null, sworbShake: 0, sworbWin: false,
+      sworbFlipKey: (s.sworbFlipKey || 0) + 1, path: [],
+    }));
   }
 
   // === game-engine loop: absolute timestamps, zero accumulation ===
@@ -4984,8 +5098,10 @@ class Component extends DCLogic {
   _exitGame() {
     this.sfxClick();
     const opts = { ...(this.state.opts || {}), dailyMode: true };
-    // leaving the board drops any in-progress sworb typing + returns the stepper to play
-    const sworbReset = { sworbTyping: false, stepperMode: 'play', sworbSlots: [], sworbColors: null };
+    // leaving the board drops any in-progress sworb typing + returns the stepper to play.
+    // finale:false here is a display reset ONLY — leaving mid-finale doesn't forfeit it
+    // (finalePending/enterFinale re-derive "still pending" from persisted state on the way back in).
+    const sworbReset = { sworbTyping: false, stepperMode: 'play', sworbSlots: [], sworbColors: null, finale: false };
     // a Stackl run never resumes from home (session-only) — clear the flag on the way out
     // so the daily/practice never inherit a live countdown from a prior Stackl run.
     if (this._dailyLive && !this.state.over && this.optVal('dailyMode', true)) {
@@ -5455,30 +5571,28 @@ class Component extends DCLogic {
       openWords: () => this.goModal('words'),
       closeWords: () => { this.sfxClick(); this.closeModal(); },
       htBombShow: this.optVal('debugMine', false) || this.stacklOn(), // bombs live on stackl's themed board (and via dev debugMine elsewhere) — surface the how-to line there
-      // SWORB home reveal (Task 11): pre-solve shows the X/5 clue-find progress; once solved,
-      // reveals the theme word (from dailyEntry().sworb) + the guess bonus earned
-      // (sworbState().bonus). Safe {active:false} default on any non-sworb day.
+      // SWORB home reveal: pre-solve shows the X/5 clue-find progress; once solved, reveals
+      // the theme word (from dailyEntry().sworb) + the guess bonus earned (sworbState().bonus).
+      // Display-only now (THE FINALE, Task 3) — guessing happens ONLY in the 0:00 board-morph;
+      // these blocks are no longer tappable (openSworbHome/the home keyboard grid are gone).
+      // Safe {active:false} default on any non-sworb day.
       homeSworb: (() => {
         const off = { active: false, solved: false, notSolved: false, tag: '', tagStyle: { display: 'none' }, hint: '', hintStyle: { display: 'none' }, cardStyle: { display: 'none' }, blocksWrapStyle: { display: 'none' } };
         try {
           const sw = this.dailyStatus().sworb;
           if (!sw.active) return off;
-          const typing = !!st.sworbTyping && st.screen === 'home';
-          const canGuess = !sw.solved && sw.guessesLeft > 0;
           const bonus = sw.solved ? (this.sworbState().bonus || 0) : 0;
-          const hint = sw.solved ? 'solved' : sw.guessesLeft <= 0 ? 'out of guesses' : typing ? 'tap letters, then GUESS' : 'tap to guess the theme';
+          const hint = sw.solved ? 'solved' : sw.guessesLeft <= 0 ? 'out of guesses' : 'guess when the clock hits 0:00';
           return {
             active: true, solved: sw.solved, notSolved: !sw.solved,
             tag: sw.solved ? ('+' + bonus.toLocaleString() + ' pts') : (sw.foundCount + '/' + sw.total + ' clues'),
             tagStyle: { fontSize: 11, fontWeight: 800, letterSpacing: '0.5px', color: sw.solved ? '#F5B84A' : 'var(--ghost)' },
             hint, hintStyle: { fontSize: 10.5, fontWeight: 800, letterSpacing: '1px', color: 'var(--ghost)', textTransform: 'uppercase', textAlign: 'center' },
             cardStyle: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, background: 'var(--card)', borderRadius: 16, padding: '13px 14px', marginTop: 2, boxShadow: '0 4px 0 var(--card-edge)' },
-            blocksWrapStyle: { display: 'flex', gap: 5, justifyContent: 'center', cursor: canGuess ? 'pointer' : 'default', animation: (st.sworbShake || 0) > 0 && st.screen === 'home' ? 'shakeX 0.4s ease-out' : 'none' },
+            blocksWrapStyle: { display: 'flex', gap: 5, justifyContent: 'center', cursor: 'default', animation: (st.sworbShake || 0) > 0 && st.screen === 'home' ? 'shakeX 0.4s ease-out' : 'none' },
           };
         } catch (e) { return off; }
       })(),
-      openSworbHome: () => this.openSworbHome(),
-      homeKbShow: !!(st.sworbTyping && st.screen === 'home' && this.dailyEntry() && (() => { const sw = this.dailyStatus().sworb; return sw.active && !sw.solved && sw.guessesLeft > 0; })()),
       goWordBank: () => { if (this._swiped) return; this.sfxClick(); this.setState({ screen: 'wordbank', wbQuery: '' }); },
       wbBack: () => { this.sfxClick(); this.setState({ screen: 'home' }); },
       appBarStyle: { position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40, display: 'flex', justifyContent: 'center', padding: mobile ? 'calc(env(safe-area-inset-top) + ' + navPadV + 'px) 16px ' + navPadV + 'px' : navPadV + 'px 16px ' + navPadV + 'px', boxSizing: 'border-box', pointerEvents: 'none' }, // PERSISTENT on every screen incl. game (one wordmark, never display-toggled) — no launch flash, no home->game hop
@@ -5706,6 +5820,9 @@ class Component extends DCLogic {
           this.setState({ screen: 'game', paused: false, sworbTyping: false, stepperMode: 'play' });
           return;
         }
+        // RE-ENTER a pending finale — leaving it early (back/swipe-down) never forfeits it;
+        // PLAY picks the SAME unresolved guess back up instead of dealing a fresh round.
+        if (this.finalePending()) { this.enterFinale(); return; }
         // (reload-resume happens at BOOT now — componentDidMount rehydrates the saved run
         // into memory, so the in-memory branch above already covers the reload case)
         try { this._tutPending = this._tutForce || !LS.getItem(K.TUT_DONE); } catch (e) { this._tutPending = !!this._tutForce; } // first play ever (or dev replay): warm-up round
@@ -6293,7 +6410,8 @@ class Component extends DCLogic {
         return { show: true, tokens, wrapStyle: { display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: 7, margin: '16px auto 0', minHeight: 40, width: '100%' } };
       })(),
       // ---- A-Z TILE KEYBOARD: the board morphs into this while guessing (sworbTyping). ----
-      // Reused on HOME (homeGridStyle) and in-game over the board (gameGridStyle). 26 letter
+      // In-game over the board ONLY (gameGridStyle) — the finale is the sole place guessing
+      // happens (Task 3); there is no home keyboard to reuse this for anymore. 26 letter
       // keys in reading order + a 2-wide backspace + a 2-wide GUESS that greens up when full.
       ...(() => {
         const e = this.dailyEntry();
@@ -6303,7 +6421,7 @@ class Component extends DCLogic {
         // (its opacity/blur is driven by sworbTyping below — no remount, no jump).
         const canGuess = !!(e && sw.active && !sw.solved && sw.guessesLeft > 0);
         const typing = !!st.sworbTyping;
-        if (!canGuess) return { sworbKb: { open: false, keys: [], gameGridStyle: { display: 'none' }, homeGridStyle: { display: 'none' } }, boardTyping: false, boardActive: true };
+        if (!canGuess) return { sworbKb: { open: false, keys: [], gameGridStyle: { display: 'none' } }, boardTyping: false, boardActive: true };
         const dk = this.isDark();
         const s = st.tileSize, gp = this.gap(s), rad = Math.round(s * 0.2), lift = Math.max(3, Math.round(s * 0.08));
         const len = e.sworb.length;
@@ -6340,7 +6458,6 @@ class Component extends DCLogic {
             // the keyboard grid IS the crossfade layer: visible+sharp+interactive while typing,
             // transparent+blurred+inert otherwise. The game-tile layer does the mirror.
             gameGridStyle: { position: 'absolute', inset: 0, zIndex: 5, display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gridTemplateRows: 'repeat(6,1fr)', gap: gp, opacity: typing ? 1 : 0, filter: typing ? 'blur(0px)' : 'blur(9px)', pointerEvents: typing ? 'auto' : 'none', transition: 'opacity 0.28s ease, filter 0.28s ease' },
-            homeGridStyle: { display: 'grid', gridTemplateColumns: 'repeat(5,' + s + 'px)', gridAutoRows: s + 'px', gap: gp, justifyContent: 'center', margin: '0 auto' },
           },
           boardTyping: typing, boardActive: !typing,
         };

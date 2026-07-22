@@ -128,17 +128,17 @@ function st(over) { return S.dailyStatus(Object.assign({}, BASE, over)); }
   const base = { done:false, storedDailyBest:0, storedSeven:null, puzzleBest:0, lbMe:null, savedRun:null, live:{active:false,over:false,roundWords:[],tilesCount:0} };
   const off = S.dailyStatus(base).sworb;
   assert.deepStrictEqual(off, { active: false }, 'no sworb src -> inactive');
-  const on = S.dailyStatus(Object.assign({}, base, { sworb: { entry, cluesFound: ['tide','wave'], guessesUsed: 1, solved: false } })).sworb;
+  const on = S.dailyStatus(Object.assign({}, base, { sworb: { entry, cluesFound: ['tide','wave'], guessesUsed: 2, solved: false } })).sworb;
   assert.strictEqual(on.active, true);
   assert.strictEqual(on.total, 5);
   assert.strictEqual(on.foundCount, 2);
-  assert.strictEqual(on.guessesLeft, 4);
+  assert.strictEqual(on.guessesLeft, 4, 'guessesLeft counts down from 6 (6 - 2 used)');
   assert.strictEqual(on.solved, false);
   assert.strictEqual(on.canGuess, true);
   const solved = S.dailyStatus(Object.assign({}, base, { sworb: { entry, cluesFound: ['tide'], guessesUsed: 1, solved: true } })).sworb;
   assert.strictEqual(solved.canGuess, false, 'solved -> cannot guess');
-  const spent = S.dailyStatus(Object.assign({}, base, { sworb: { entry, cluesFound: [], guessesUsed: 5, solved: false } })).sworb;
-  assert.strictEqual(spent.guessesLeft, 0);
+  const spent = S.dailyStatus(Object.assign({}, base, { sworb: { entry, cluesFound: [], guessesUsed: 6, solved: false } })).sworb;
+  assert.strictEqual(spent.guessesLeft, 0, 'all 6 guesses used -> 0 left');
   assert.strictEqual(spent.canGuess, false, 'no guesses left -> cannot guess');
 }
 
