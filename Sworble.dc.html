@@ -1391,14 +1391,13 @@ class Component extends DCLogic {
       opacity: st.sheetFading ? 0 : 1, transition: 'opacity 0.2s ease',
       animation: (st.sheetFading || this._hadModal) ? 'none' : 'conIn 0.2s ease' }; // fade in only from NOTHING — sheet→sheet hops keep the backdrop solid
   }
-  // the classic drop mode (v1) was retired — always-full board, words add time
+  // the classic drop mode (v1) was retired — always-full board, words add time. isV2() is
+  // the one remaining flag from that split and is now permanently true (a further baked-
+  // switch collapse candidate — flagged, not done, in the Task 8 report's crap-logic audit).
   isV2() { return true; }
-  // Puzzle mode: the optimization-puzzle identity — fixed clock with no time economy,
-  // visible word-fuse bombs, bot-anchored Bronze/Silver/Gold tiers on the daily. BAKED:
-  // budget mode IS the game (classic fully retired) — always live, no toggle.
-  // Task 4 (mode collapse): Stackl (the session-only 2-min timed arm) is retired — the daily
-  // round IS the one timed game now. stacklOn()/stacklMode are gone; liveDaily() alone judges
-  // the live countdown.
+  // Task 4 (mode collapse): Stackl (the session-only 2-min timed arm) and the fixed-clock
+  // puzzle identity it grew out of are both retired — the daily round is the one timed game
+  // now. stacklOn()/stacklMode are gone; liveDaily() alone judges the live countdown.
   // A daily round is "live" while it's actually running — dealt, on the game screen, not
   // yet ended. This is the TIME HUD / low-time warning's key.
   liveDaily(st) { st = st || this.state; return st.screen === 'game' && !this.practiceMode() && !st.over; }
@@ -3434,9 +3433,14 @@ class Component extends DCLogic {
   // (radius 1 for 4-5 letters, 2 for 6+); spend it on a ≤3 word and the fizzle
   // costs 5s. Armed from a dedicated seeded stream so daily runs stay fair.
   mineQuota() {
-    // puzzle mode: hidden always — and the minefield ESCALATES as the budget drains:
-    // 2 early, 3 mid-run, 4 for the last 3 words (comeback targets right when easy
-    // words run dry; overlapping sonar patches finally produce real 2s and 3s)
+    // puzzle mode: hidden always. NOTE (stale-comment sweep, Task 8): this was designed to
+    // ESCALATE as the round's guess budget drains — 2 early, 3 mid-run, 4 for the last 3
+    // words (comeback targets right when easy words run dry) — via state.guessesLeft. But
+    // guessesLeft is never decremented post-ONE-GAME-pivot (see "ENDLESS DAILY: word budget
+    // removed" near clearWord's bestBonus calc), so `gl` below sits frozen at parGuesses()
+    // for the whole round and this tiering never actually escalates in practice anymore.
+    // Dev-only either way (debugMine gates it) — flagged in the Task 8 crap-logic audit,
+    // left as-is (behavior fix, not a dead-code deletion).
     if (this.state.over) return 0;
     // BOMBS CUT from the live board (retention-thesis simplification) — every line of
     // bomb/beacon/detonation code stays intact; they simply don't spawn. A dev can flip
