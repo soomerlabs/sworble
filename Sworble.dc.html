@@ -255,6 +255,9 @@
             {{ timeFxEl }}
           </div>
         </div>
+        <sc-if value="{{ pauseBtnShow }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ pauseGame }}" aria-label="Pause" title="Pause" style="{{ pauseBtnStyle }}" style-active="transform:scale(0.94)"><span style="{{ pauseBtnGlyphStyle }}">pause</span></button>
+        </sc-if>
       </div>
 
 
@@ -320,6 +323,19 @@
         </div>
       </sc-if>
       </div>
+      <sc-if value="{{ countInShow }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ countInOverlayStyle }}">
+          <div key="{{ countInKey }}" style="{{ countInTextStyle }}">{{ countInText }}</div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ pauseOverlayShow }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ pauseOverlayStyle }}">
+          <span style="{{ pauseOverlayGlyphStyle }}">pause_circle</span>
+          <div style="{{ pauseOverlayTitleStyle }}">paused</div>
+          <div style="{{ pauseOverlayTimeStyle }}">{{ pauseRemainingText }} left</div>
+          <button onClick="{{ resumeGame }}" style="{{ pauseResumeBtnStyle }}">RESUME</button>
+        </div>
+      </sc-if>
 
     </div>
   </div>
@@ -1370,7 +1386,12 @@ class Component extends DCLogic {
   // the live countdown.
   // A daily round is "live" while it's actually running — dealt, on the game screen, not
   // yet ended, and past the throwaway warm-up. This is the TIME HUD / low-time warning's key.
-  liveDaily(st) { st = st || this.state; return st.screen === 'game' && this.optVal('dailyMode', true) && !st.over && !st.tut; }
+  liveDaily(st) { st = st || this.state; return st.screen === 'game' && this.optVal('dailyMode', true) && !st.over; }
+  // A live "hunt" is any in-progress timed round on the board — daily OR practice, both now
+  // share one clock (see frame()'s ONE-GAME pivot note) — not yet over, not the untimed finale.
+  // THE predicate gating count-in + pause (Task 5c): both surfaces and both auto-pause listeners
+  // read this so a hunt is pausable/count-in'd the same way regardless of dailyMode.
+  liveHunt(st) { st = st || this.state; return st.screen === 'game' && !st.over && !st.finale; }
   // The Sworble Seven: 7 words per run (dev-tunable). Fewer picks = each one is high-stakes
   // (grab the safe word or hunt the monster?) — that agony IS the game.
   // Invalid words are free (they only break streak) — the skill is spending your seven well.
@@ -1545,14 +1566,14 @@ class Component extends DCLogic {
     if (document.hasFocus && document.hasFocus()) this.claimAudio();
     window.addEventListener('pointerdown', this.claimAudio, true);
     window.addEventListener('focus', this.claimAudio);
-    // hidden tabs must go silent: auto-pause and suspend audio so a background
-    // copy of the game can never keep playing sounds
+    // hidden tabs must go silent AND fair-pause: auto-pause (Task 5c) so a backgrounded round
+    // can never keep burning the clock (or be left running for a return-and-peek), plus
+    // suspend audio so a background copy of the game can never keep playing sounds
     this.onVis = () => {
       if (document.hidden) {
         if (this.pausedAt == null) this.pausedAt = performance.now(); // freeze anchors NOW: rAF stops in hidden tabs
+        this.forceFairPause(); // no-op off a live hunt / already paused — safe to call unconditionally
         this.saveRunState(); // flush the live run NOW — a hidden mobile tab may be evicted before any throttle fires
-        // no clock anymore — leaving the tab loses nothing, so we DON'T auto-pause; just
-        // hush audio. The player returns to the exact board (pause is a manual menu now).
         if (this.ac) { try { this.ac.suspend(); } catch (e) {} }
       } else {
         // wake audio the moment we're visible again — otherwise the first sound
@@ -1563,9 +1584,15 @@ class Component extends DCLogic {
     };
     document.addEventListener('visibilitychange', this.onVis);
     // pagehide is the LAST reliable beat before an iOS Safari page teardown — the live run
-    // must hit storage here or a closed tab silently eats the day's progress
-    this.onPageHide = () => this.saveRunState();
+    // must hit storage here or a closed tab silently eats the day's progress; also fair-pause
+    // (Task 5c) so a torn-down/evicted tab never leaves the round ticking
+    this.onPageHide = () => { this.forceFairPause(); this.saveRunState(); };
     window.addEventListener('pagehide', this.onPageHide);
+    // blur (Task 5c): covers app-switch / alt-tab cases some browsers fire as blur without a
+    // visibilitychange (e.g. a picture-in-picture or system dialog stealing focus) — same
+    // fair-pause, no-op if visibilitychange already handled it
+    this.onBlur = () => this.forceFairPause();
+    window.addEventListener('blur', this.onBlur);
     // landscape on a touch device = rotate overlay covers the game — pause so the
     // clock doesn't burn while the player can't see the board
     try {
@@ -1622,6 +1649,7 @@ class Component extends DCLogic {
     document.removeEventListener('pointerdown', this._dragScroll);
     document.removeEventListener('visibilitychange', this.onVis);
     window.removeEventListener('pagehide', this.onPageHide);
+    window.removeEventListener('blur', this.onBlur);
     if (this._runSaveT) { clearTimeout(this._runSaveT); this._runSaveT = null; }
     if (this.sheetCloseT) { clearTimeout(this.sheetCloseT); this.sheetCloseT = null; }
     try {
@@ -1738,6 +1766,49 @@ class Component extends DCLogic {
     }, ms);
     this.timeouts.push(id);
     return id;
+  }
+
+  // === Task 5c: the shared 3·2·1·GO count-in beat ===
+  // Every round START (newGame) and every PAUSE RESUME (resumeGame / boot-resume) runs
+  // through this. Callers set `countIn: 3` (+ `gamePaused: false`) themselves as part of
+  // whatever setState they're already doing; armCountIn only schedules the remaining beats
+  // and the final unpause. `state.paused` stays true for the WHOLE span (set true by the
+  // caller before this runs) — frame()'s existing pause idiom (pausedAt freeze + gap-shift
+  // on unpause) is what actually keeps the clock from leaking during the beat; this method
+  // never touches roundEndAt/pausedAt directly. A monotonic token guards every step so a
+  // newer deal/resume/auto-pause can silently orphan a stale in-flight chain — no crossed
+  // timers if the player re-triggers (or the tab backgrounds) before an old chain finishes.
+  armCountIn() {
+    const token = (this._countInToken = (this._countInToken || 0) + 1);
+    const step = (val, ms) => this.later(() => { if (this._countInToken !== token) return; this.setState({ countIn: val }); }, ms);
+    step(2, 700);
+    step(1, 1400);
+    step('GO', 2100);
+    this.later(() => {
+      if (this._countInToken !== token) return;
+      // a modal (e.g. the first-run how-to sheet, opened right after this round dealt) owns
+      // its OWN pause-behind-sheet and unpauses on close (see fadeClose's `paused: inGame ?
+      // false : ...`) — never race it: clear the numeral but leave `paused` for the modal to
+      // resolve. Otherwise this is the normal case: unpause, frame() picks up the full gap.
+      this.setState(s => s.activeModal ? { countIn: null } : { countIn: null, paused: false });
+    }, 2400);
+  }
+  // interrupt an in-flight count-in (e.g. the tab backgrounds mid-beat) — every pending step
+  // becomes a no-op. Caller is responsible for the resulting paused/gamePaused state.
+  cancelCountIn() {
+    this._countInToken = (this._countInToken || 0) + 1;
+  }
+  // AUTO-PAUSE (Task 5c): the one entry point visibilitychange/pagehide/blur all call while a
+  // hunt is live. Cancels any in-flight count-in (never let it silently unpause a backgrounded
+  // tab) and drops into the SAME fair-pause the manual pause button uses — gamePaused arms the
+  // blurred/obscured overlay, `paused` freezes the clock (frame()'s existing idiom). A no-op
+  // once already paused/counting-in, or off a live hunt (finale/home/over) — cheap to call from
+  // every listener without each one re-deriving the guard.
+  forceFairPause() {
+    if (!this.liveHunt(this.state) || this.state.paused) return;
+    if (this.pausedAt == null) this.pausedAt = performance.now(); // freeze the anchor NOW — rAF may not tick again before the setState below commits
+    this.cancelCountIn();
+    this.setState({ paused: true, gamePaused: true, countIn: null });
   }
 
   applySize() {
@@ -2296,8 +2367,6 @@ class Component extends DCLogic {
     // no color tease on load: the board deals STRAIGHT to mono (the candy-flash-then-drain intro
     // was removed by preference). candyIntro/introDrain stay false so tiles never light up on deal.
     this.setState({ candyIntro: false, introDrain: false, worb: null, worbFlip: false, worbBack: false }); // a gag can never leak across deals
-    this._tutNow = this._tutPending; this._tutPending = false; // consume the tutorial flag for THIS deal only
-    if (this._tutNow) this.later(() => this.setState(s => s.tut ? { idleTip: { kind: 'copy', text: 'drag through touching letters to spell a word', key: 'tut1' } } : null), 1600);
     this.mergedOnce = false;
     this.progV = 0;
     this.timeLeftV = this.roundSecs();
@@ -2315,13 +2384,17 @@ class Component extends DCLogic {
     this.setState({
       nextFresh: true,
       dropStamp: (this.state.dropStamp || 0) + 1, // restart the drop bar with the round
-      tiles, score: 0, over: false, paused: false, guessesLeft: this.parGuesses(), tut: this._tutNow ? { step: 1 } : null,
+      // Task 5c: every fresh deal starts PAUSED — the 3·2·1 count-in (armed below) holds the
+      // clock at bay until it completes, then unpauses via the same frame() pause-gap shift
+      // used everywhere else (see armCountIn / frame()'s "Pauses shift the anchors" note).
+      tiles, score: 0, over: false, paused: true, gamePaused: false, countIn: 3, guessesLeft: this.parGuesses(),
       path: [], banner: null, streak: 0, maxStreak: 0,
       scoreShown: 0, bestLit: false, roundWords: [], hopSwap: null, boom: null, rattle: 0, _tr: (this.timeRoll = 0),
       nextRow: this.genRow(),
       dropMs: (this.optVal('dropSeconds', 10)) * 1000,
       timeLeft: this.roundSecs(),
     });
+    this.armCountIn(); // 3·2·1·GO, then unpause — the clock never ticks until this finishes
     this.later(() => this.syncMines(), 900); // debug force-mine arms on the fresh board after the deal-in
   }
 
@@ -2336,7 +2409,6 @@ class Component extends DCLogic {
   saveRunState() { // flush the live run to LS (cheap; called throttled + on tab-hide)
     try {
       if (!this._dailyLive || this.state.over || !this.optVal('dailyMode', true)) return;
-      if (this.state.tut) return; // the warm-up round is a throwaway — never snapshot it
       let elapsed = this._boardElapsedMs || 0;
       if (this._boardTickAt != null) elapsed += performance.now() - this._boardTickAt;
       const snap = SworbleRun.serializeRun({
@@ -2465,7 +2537,6 @@ class Component extends DCLogic {
     this.idleTipN = 0;
     this._worbLast = performance.now();
     this._pendingWord = null;
-    this._tutNow = false; this._tutPending = false; // a saved run implies the tutorial is behind them
     this.mergedOnce = !!run.mergedOnce;
     this.progV = 0;
     // resume with REMAINING round time, not a fresh full clock — boardElapsedMs (the time
@@ -2489,7 +2560,10 @@ class Component extends DCLogic {
     this.setState({
       nextFresh: false,
       dropStamp: (this.state.dropStamp || 0) + 1,
-      tiles, score: run.score, over: false, paused: atBoot, guessesLeft: run.guessesLeft, tut: null,
+      // Task 5c: a boot rehydrate always lands paused (frame() freezes anchors on `atBoot`
+      // above) — the game screen's fair-pause overlay + resume-through-count-in flow (armed by
+      // startDaily's resume branch) picks it up from here; never auto-unpause a reload.
+      tiles, score: run.score, over: false, paused: atBoot, gamePaused: false, countIn: null, guessesLeft: run.guessesLeft,
       path: [], banner: null, streak: run.streak || 0, maxStreak: run.maxStreak || 0,
       scoreShown: run.score, bestLit: false, roundWords: run.roundWords || [], hopSwap: null, boom: null, rattle: 0, _tr: (this.timeRoll = 0),
       nextRow: (Array.isArray(run.nextRow) && run.nextRow.length === this.cols()) ? run.nextRow : this.genRow(),
@@ -2727,8 +2801,9 @@ class Component extends DCLogic {
   // land directly on the finale's board-morph (no home stop-over first — there's no "resume"
   // preview for it, unlike a paused live run): guesses remaining, keyboard up, over false.
   enterFinale() {
+    this.cancelCountIn(); // defensive: the finale is untimed — count-in/pause never apply to it
     this.setState(s => ({
-      screen: 'game', over: false, paused: false, finale: true,
+      screen: 'game', over: false, paused: false, finale: true, gamePaused: false, countIn: null,
       stepperMode: 'sworb', sworbTyping: true,
       sworbSlots: [], sworbColors: null, sworbShake: 0, sworbWin: false,
       sworbFlipKey: (s.sworbFlipKey || 0) + 1, path: [],
@@ -2883,7 +2958,7 @@ class Component extends DCLogic {
       const dn = Math.floor((now - this._dotBase) / 600) % 4; // relative base so the cycle RESTARTS at 0 ("swipe a word") after the gag, not mid-...
       if (dn !== st.restDotN) this.setState({ restDotN: dn });
     }
-    if (!this.dragging && !st.path.length && !st.banner && !st.idleTip && !st.tut && !st.worb && !st.worbBack
+    if (!this.dragging && !st.path.length && !st.banner && !st.idleTip && !st.worb && !st.worbBack
         && !st.over && !st.paused && st.screen === 'game'
         && (st.restDotN === 3) // only trigger on a FULL "..." so rest -> gag is seamless
         && now - (this._worbLast || 0) > 14000 && now - (this.lastActiveAt || 0) > 6000) {
@@ -2907,8 +2982,8 @@ class Component extends DCLogic {
     // letters sit adjacent (and the player hasn't merged yet) the twins pulse and a
     // ghost tile demos the stack move
     if (!this.dragging && !st.path.length && !st.banner && !st.idleTip
-        && (st.tut || (this.idleTipN || 0) < 3) // max 3 tips per round — after that, silence
-        && now - (this.lastActiveAt || 0) > (st.tut ? 4500 : 15000)) { // warm-up coaches sooner; play coaches rarely
+        && (this.idleTipN || 0) < 3 // max 3 tips per round — after that, silence
+        && now - (this.lastActiveAt || 0) > 15000) {
       this.lastActiveAt = now; // rearm — next tip only after another full idle window
       const n = this.idleTipN = (this.idleTipN || 0) + 1;
       // the stack demo is a one-time teach: once a user has seen it (ever) we skip
@@ -3402,7 +3477,7 @@ class Component extends DCLogic {
     // "Show mines" (debugMine) back on to exercise the whole system.
     if (!this.optVal('debugMine', false)) return 0;
     const gl = this.state.guessesLeft ?? this.parGuesses();
-    return this.state.tut ? 1 : gl <= 3 ? 4 : gl <= 9 ? 3 : 2;
+    return gl <= 3 ? 4 : gl <= 9 ? 3 : 2;
   }
   syncMines() {
     if (this.state.over || this.state.screen === 'home') return;
@@ -3582,17 +3657,8 @@ class Component extends DCLogic {
     // MINES: 4+ word through an armed mine detonates it — radius tiles pay value × streak
     // mult on top; a ≤3 word fizzles it for −5s (applied in the commit callback below)
     // ENDLESS DAILY: word budget removed \u2014 a valid word never spends a guess and never
-    // ends the round. Warm-up graduation is the only per-word state transition left here.
-    if (this.state.tut) {
-      // WARM-UP (first open ever): words are free; two good words graduate into the real round
-      if (this.state.tut.step === 1) {
-        this.setState({ tut: { step: 2 }, idleTip: { kind: 'copy', text: 'longer words score way more. one more', key: 'tut2' } });
-      } else {
-        try { LS.setItem(K.TUT_DONE, '1'); } catch (e) {}
-        this.setState({ idleTip: { kind: 'copy', text: 'you\u2019re ready. 7 words, make them count', key: 'tut3' } });
-        this.later(() => { if (this.state.tut) { this.setState({ tut: null, idleTip: null }); this.newGame(true); } }, 2600);
-      }
-    }
+    // ends the round. (The warm-up graduation that used to live here is gone \u2014 Task 5c
+    // removed the `tut` flow entirely; onboarding is the future tutorial, backlogged.)
     // HIDDEN BOMBS (minesweeper rules): bombs never show themselves — the sonar numbers
     // are the only signal. ANY word through one triggers it: 4+ letters = defuse (payout),
     // ≤3 = fizzle (wasted, −15). The player had the information; the outcome is earned.
@@ -5208,14 +5274,19 @@ class Component extends DCLogic {
     // finale:false here is a display reset ONLY — leaving mid-finale doesn't forfeit it
     // (finalePending/enterFinale re-derive "still pending" from persisted state on the way back in).
     const sworbReset = { sworbTyping: false, stepperMode: 'play', sworbSlots: [], sworbColors: null, finale: false };
+    // Task 5c: leaving the game screen always drops the count-in/fair-pause UI (gamePaused,
+    // countIn) — those overlays are only ever meaningful ON the game screen; whatever brought
+    // the player here (X, swipe-down, mid count-in) never leaves them stranded showing over
+    // home. Re-entering (startDaily's resume branch) re-arms gamePaused fresh, still fair.
+    this.cancelCountIn();
     if (this._dailyLive && !this.state.over && this.optVal('dailyMode', true)) {
-      this.setState({ opts, screen: 'home', paused: true, path: [], banner: null, homeSeq: (this.state.homeSeq || 0) + 1, ...sworbReset });
+      this.setState({ opts, screen: 'home', paused: true, gamePaused: false, countIn: null, path: [], banner: null, homeSeq: (this.state.homeSeq || 0) + 1, ...sworbReset });
       this.loadHomeLb();
       return;
     }
     this.timeLeftV = this.roundSecs();
     this.progV = 0;
-    this.setState({ opts, screen: 'home', paused: false, over: false, tiles: [], path: [], banner: null, bombArmed: false, boom: null, rattle: 0, score: 0, scoreShown: 0, streak: 0, prog: 0, timeLeft: this.optVal('gameSeconds', 120), homeSeq: (this.state.homeSeq || 0) + 1, ...sworbReset });
+    this.setState({ opts, screen: 'home', paused: false, gamePaused: false, countIn: null, over: false, tiles: [], path: [], banner: null, bombArmed: false, boom: null, rattle: 0, score: 0, scoreShown: 0, streak: 0, prog: 0, timeLeft: this.optVal('gameSeconds', 120), homeSeq: (this.state.homeSeq || 0) + 1, ...sworbReset });
     this.loadHomeLb();
   }
   renderVals() {
@@ -5976,7 +6047,7 @@ class Component extends DCLogic {
       })(),
       devEndRun: () => { // dev: jump straight to the result modal with the current score
         this.sfxClick();
-        if (this.state.screen === 'game' && !this.state.over) this.setState({ activeModal: null, modalStack: [], paused: false }, () => this.endRound());
+        if (this.state.screen === 'game' && !this.state.over) { this.cancelCountIn(); this.setState({ activeModal: null, modalStack: [], paused: false, gamePaused: false, countIn: null }, () => this.endRound()); }
         else this.closeModal();
       },
       restartDaily: () => { // dev: wipe today's daily progress → clean slate, deal a fresh daily (unsticks practice-only)
@@ -6063,10 +6134,20 @@ class Component extends DCLogic {
       // the daily round is the ONLY game now, launched directly by startDaily (dock button +
       // swipe-up gesture both call it).
       startDaily: (this._startDaily = () => {
+        // 5b LOW fix (folded into 5c): the HOME finale keyboard is open (tap the hero blocks
+        // on a finale-pending day — see homeHeroTap below) — dock PLAY / swipe-up must never
+        // bounce this to the game screen; enterFinale() would wipe the letters mid-guess.
+        // The player is already guessing right where they are — no-op.
+        if (st.finale && st.screen === 'home') return;
         this.sfxClick();
-        // RESUME a live, unfinished daily run — you only paused it by visiting home. Never re-roll.
+        // RESUME a live, unfinished daily run — you only paused it by visiting home (or the
+        // tab auto-paused). Never re-roll. Task 5c: this is now a FAIR resume, not instant —
+        // land on the game screen already showing the blurred pause overlay (gamePaused) so
+        // the player taps RESUME and runs the same 3·2·1 count-in as a fresh round before the
+        // clock moves again. Covers both a manual leave-and-return AND a reload-at-boot
+        // rehydrate (restoreRun already parked it paused; see restoreRun's atBoot comment).
         if (this._dailyLive && !this.state.over && (this.state.tiles || []).length) {
-          this.setState({ screen: 'game', paused: false, sworbTyping: false, stepperMode: 'play' });
+          this.setState({ screen: 'game', paused: true, gamePaused: true, countIn: null, sworbTyping: false, stepperMode: 'play' });
           return;
         }
         // RE-ENTER a pending finale — leaving it early (back/swipe-down) never forfeits it;
@@ -6077,8 +6158,6 @@ class Component extends DCLogic {
         if (this.dailyConsumed()) return;
         // (reload-resume happens at BOOT now — componentDidMount rehydrates the saved run
         // into memory, so the in-memory branch above already covers the reload case)
-        try { this._tutPending = this._tutForce || !LS.getItem(K.TUT_DONE); } catch (e) { this._tutPending = !!this._tutForce; } // first play ever (or dev replay): warm-up round
-        this._tutForce = false;
         const opts = { ...(this.state.opts || {}), dailyMode: true };
         this.saveOpts(opts); // also heals any stale dailyMode:false from the removed toggle
         this.setState({ opts, screen: 'game', sworbTyping: false, stepperMode: 'play' }, () => {
@@ -6097,6 +6176,25 @@ class Component extends DCLogic {
         });
       }),
       goHome: () => this._exitGame(),
+      // Task 5c: manual PAUSE — same fair-pause a backgrounded tab gets itself (blurred/
+      // obscured overlay, clock frozen). No-op off a live hunt, mid count-in, or behind an
+      // already-open modal (that modal owns its own pause).
+      pauseGame: () => {
+        if (!this.liveHunt(this.state) || this.state.paused || this.state.activeModal) return;
+        this.sfxClick();
+        this.forceFairPause();
+        this.saveRunState();
+      },
+      // RESUME (tap inside the fair-pause overlay): never jump straight back to a running
+      // clock — replay the SAME 3·2·1 count-in a fresh round gets. `paused` stays true
+      // throughout (armCountIn only clears it when the beat finishes), so the WHOLE
+      // pause+count-in span shifts roundEndAt as one gap the instant frame() sees paused go
+      // false again.
+      resumeGame: () => {
+        if (!this.state.gamePaused) return;
+        this.sfxClick();
+        this.setState({ gamePaused: false, countIn: 3 }, () => this.armCountIn());
+      },
       onGameDismissDown: (e) => {
         if (this.state.screen !== 'game') { this._gh = null; return; }
         if (e.pointerType === 'mouse' && e.button !== 0) { this._gh = null; return; }
@@ -6301,13 +6399,12 @@ class Component extends DCLogic {
         return Math.max(this._tb || 0, st.score).toLocaleString();
       })(),
       hopperMsgRef: this.hopperMsgRef,
-      timeHudLabel: this.liveDaily(st) ? 'TIME' : (st.tut ? 'WARMUP' : 'WORDS'),
+      timeHudLabel: this.liveDaily(st) ? 'TIME' : 'WORDS',
       timeText: (() => {
         if (this.liveDaily(st)) { const shown = Math.max(0, Math.ceil(st.timeLeft - (this.timeRoll || 0))); return Math.floor(shown / 60) + ':' + String(shown % 60).padStart(2, '0'); }
-        if (st.tut) return '\u2014';
         return String((this.state.roundWords || []).length); // words found so far (no cap)
       })(),
-      timeKey: this.liveDaily(st) ? 'clock' : (!st.tut ? ('w' + (this.state.roundWords || []).length) : 'clock'), // remount per word — replays the pop
+      timeKey: this.liveDaily(st) ? 'clock' : ('w' + (this.state.roundWords || []).length), // remount per word — replays the pop
       timeValStyle: {
         fontSize: valFont, fontWeight: 800, lineHeight: 1,
         color: (() => {
@@ -6395,6 +6492,56 @@ class Component extends DCLogic {
           : 'none',
       },
       boardCardRef: this.boardCardRef,
+      // Task 5c: the small pause icon lives beside the HUD card — only during an actual live
+      // hunt (never mid count-in / already paused / behind another modal, all of which either
+      // have their own overlay already up or would double-arm the fair-pause).
+      pauseBtnShow: this.liveHunt(st) && !st.paused && !st.activeModal,
+      pauseBtnStyle: {
+        flex: 'none', alignSelf: 'stretch', width: compact ? 44 : 52,
+        background: 'var(--card)', border: 'none', borderRadius: 16,
+        boxShadow: '0 4px 0 var(--card-edge)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer', padding: 0, WebkitTapHighlightColor: 'transparent',
+      },
+      pauseBtnGlyphStyle: { fontFamily: "'Material Symbols Rounded'", fontWeight: 'normal', fontSize: 22, lineHeight: 1, color: 'var(--card-ink)', fontFeatureSettings: "'liga'", WebkitFontFeatureSettings: "'liga'", WebkitFontSmoothing: 'antialiased' },
+      // COUNT-IN (3·2·1·GO): board stays VISIBLE behind a light scrim — only the fair-pause
+      // overlay below blurs/obscures. Input is locked the same way pause locks it: boardDown's
+      // existing `if (this.state.paused ...) return;` guard already covers this beat because
+      // `paused` is true for its entire span (see armCountIn) — no separate countIn check needed.
+      countInShow: st.countIn != null && st.screen === 'game', // defense-in-depth: never stranded showing over another screen
+      countInText: st.countIn === 'GO' ? 'GO!' : String(st.countIn || ''),
+      countInKey: 'ci' + String(st.countIn),
+      countInOverlayStyle: {
+        position: 'fixed', inset: 0, zIndex: 55, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(16,16,20,0.24)', backdropFilter: 'blur(1px)', WebkitBackdropFilter: 'blur(1px)',
+        opacity: (st.countIn != null && st.screen === 'game') ? 1 : 0, pointerEvents: (st.countIn != null && st.screen === 'game') ? 'auto' : 'none',
+        transition: 'opacity 0.18s ease',
+      },
+      countInTextStyle: {
+        fontFamily: "'Fredoka','Manrope',sans-serif", fontWeight: 700,
+        fontSize: st.countIn === 'GO' ? 68 : 108, color: '#FFFFFF',
+        textShadow: '0 4px 0 rgba(0,0,0,0.28)', lineHeight: 1,
+        animation: 'bestPop 0.5s cubic-bezier(0.34,1.56,0.64,1)',
+      },
+      // FAIR PAUSE: full-screen blur/obscure (no free scanning) + remaining time + RESUME,
+      // which replays the count-in above rather than snapping straight back to a running clock.
+      pauseOverlayShow: !!st.gamePaused && st.screen === 'game', // defense-in-depth: never stranded showing over another screen
+      pauseOverlayStyle: {
+        position: 'fixed', inset: 0, zIndex: 55, display: 'flex', flexDirection: 'column', gap: 14,
+        alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 32px', boxSizing: 'border-box',
+        background: dark ? 'rgba(16,16,20,0.88)' : 'rgba(237,239,247,0.9)',
+        backdropFilter: 'blur(22px)', WebkitBackdropFilter: 'blur(22px)',
+        opacity: (st.gamePaused && st.screen === 'game') ? 1 : 0, pointerEvents: (st.gamePaused && st.screen === 'game') ? 'auto' : 'none',
+        transition: 'opacity 0.22s ease',
+      },
+      pauseOverlayGlyphStyle: { fontFamily: "'Material Symbols Rounded'", fontWeight: 'normal', fontSize: 52, lineHeight: 1, color: 'var(--ink)', fontFeatureSettings: "'liga'", WebkitFontFeatureSettings: "'liga'", WebkitFontSmoothing: 'antialiased' },
+      pauseOverlayTitleStyle: { fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 26, fontWeight: 600, letterSpacing: 0.5, color: 'var(--ink)', textTransform: 'uppercase' },
+      pauseOverlayTimeStyle: { fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 16, fontWeight: 600, color: 'var(--ghost)', fontVariantNumeric: 'tabular-nums' },
+      pauseRemainingText: (() => { const shown = Math.max(0, Math.ceil(st.timeLeft)); return Math.floor(shown / 60) + ':' + String(shown % 60).padStart(2, '0'); })(),
+      pauseResumeBtnStyle: {
+        marginTop: 8, background: '#8971FF', color: '#FFFFFF', border: 'none', borderRadius: 14,
+        padding: '13px 34px', fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 15, fontWeight: 800,
+        letterSpacing: 0.8, cursor: 'pointer', boxShadow: '0 4px 0 #5A43C9', WebkitTapHighlightColor: 'transparent',
+      },
       sheetRef: this.sheetRef,
       // idle stack-coach ghost: a translucent twin slides from tile A onto tile B
       // (positions are live runtime values — they come from the current tiles)

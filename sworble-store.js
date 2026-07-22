@@ -39,7 +39,9 @@
     SEEN_MINES: 'sworble_seen_mines',
     SEEN_STACKHINT: 'sworble_seen_stackhint',
     SEEN_BOMBHINT: 'sworble_seen_bombhint',
-    TUT_DONE: 'sworble_tut_done',
+    // TUT_DONE ('sworble_tut_done') retired in Task 5c — the warm-up (`tut`) flow is removed
+    // entirely (onboarding is the future tutorial, backlogged). Not reused: any orphaned
+    // sworble_tut_done in a returning player's storage is simply inert.
     AUDIO_CLAIM: 'sworble_audio_claim',
     MUTED: 'worddrop_muted', // legacy name kept ON PURPOSE (the rename spared it)
     // per-day / per-board PREFIXES — `K.DAILY_PREFIX + dayKey`, `K.LB_ME_PREFIX + boardId`:
