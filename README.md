@@ -52,6 +52,14 @@ node tests/seed-stress.js       # board-packing stress harness (optional, not in
 Deploying: see `docs/DEPLOY.md` (build stamp + cache-bust discipline). CI (`.github/workflows/
 test.yml`) is the only gate between a push and production.
 
+`npm run coverage` runs the same suites under c8 (text summary). This is **pure-module
+coverage only** — the 9 `sworble-*.js` kernel modules the tests actually `require()`.
+index.html's ~6.3k-line inline DC script is never instrumented (it isn't `require`d by
+anything; `tests/boot-smoke.test.js` exercises it at runtime but c8 can't attribute coverage
+to code executed via `Function()`/`eval`), so this number is never "the app's coverage" —
+don't quote it as one. CI runs it as a separate, non-blocking step after `npm test` (reports
+the real number; no threshold gate yet).
+
 ## Content
 
 Days live in `dailies.json`, validated by `tests/dailies-check.js` (dictionary membership,

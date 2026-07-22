@@ -16,3 +16,9 @@ jobs:
           node-version: 20
       - run: npm ci   # eslint is the repo's first devDependency (lint gates npm test)
       - run: npm test
+      # Coverage over the 9 pure kernel modules only — index.html's inline DC script isn't
+      # required by any test file, so c8 never sees it (that's "pure-module coverage", not
+      # whole-app coverage; see the coverage script's own comment in package.json for why).
+      # Reports the real number every run; NOT a gate yet (`|| true` — Road-to-9 Sprint 1 #1:
+      # publish honest numbers first, decide a threshold once the number is stable).
+      - run: npm run coverage || true
