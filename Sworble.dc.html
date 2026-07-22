@@ -238,6 +238,40 @@
     }catch(e){}
   }
   window.__errTrap = show;
+  // prod path: a small dismissible "reload?" banner for real players, independent of
+  // debugErrors. Only fires for post-boot errors (see window.__sworbleBooted, set once the
+  // app's first render commits) — errors during boot are either fatal (support.js's own
+  // retry UI covers a total load failure) or too early/noisy to interrupt with a banner.
+  // Throttled to once per session so a repeating error can't spam the player mid-game.
+  var prodBannerShown = false;
+  function showProdBanner(){
+    if (prodBannerShown) return;
+    if (!window.__sworbleBooted) return;
+    try{
+      var id='__prod_err_banner';
+      if (document.getElementById(id)) return;
+      prodBannerShown = true;
+      var b=document.createElement('div');
+      b.id=id;
+      b.style.cssText='position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 12px);z-index:2147483646;background:#1E1E24;color:#EDEFF7;font:600 13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:12px 14px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.35);display:flex;align-items:center;gap:10px;';
+      var msg=document.createElement('div');
+      msg.style.cssText='flex:1;';
+      msg.textContent='something hiccuped — reload?';
+      var reload=document.createElement('button');
+      reload.type='button';
+      reload.textContent='reload';
+      reload.style.cssText='background:#8971FF;color:#FFFFFF;border:none;border-radius:8px;padding:8px 12px;font:700 12px inherit;cursor:pointer;flex:none;';
+      reload.addEventListener('click',function(){ window.location.reload(); });
+      var dismiss=document.createElement('button');
+      dismiss.type='button';
+      dismiss.setAttribute('aria-label','Dismiss');
+      dismiss.textContent='×';
+      dismiss.style.cssText='background:transparent;color:#9DA2B3;border:none;font-size:18px;font-weight:800;cursor:pointer;flex:none;padding:0 2px;line-height:1;';
+      dismiss.addEventListener('click',function(){ b.remove(); });
+      b.appendChild(msg); b.appendChild(reload); b.appendChild(dismiss);
+      (document.body||document.documentElement).appendChild(b);
+    }catch(e){}
+  }
   try {
     var _ce = console.error;
     console.error = function(){
@@ -275,10 +309,12 @@
   window.addEventListener('error',function(ev){
     var e=ev.error;
     show('JS ERROR',(ev.message||'')+' @ '+(ev.filename||'?')+':'+(ev.lineno||'?')+':'+(ev.colno||'?'), e&&e.stack?String(e.stack).split('\n').slice(0,5).join('\n'):'');
+    showProdBanner();
   },true);
   window.addEventListener('unhandledrejection',function(ev){
     var r=ev.reason;
     show('PROMISE REJECTION',((r&&(r.message||r.name))||r)+'', r&&r.stack?String(r.stack).split('\n').slice(0,5).join('\n'):'');
+    showProdBanner();
   });
 })();
 </script>
@@ -1739,6 +1775,11 @@ class Component extends DCLogic {
     try { document.title = 'sworbl'; } catch (e) {} // brand the tab (covers preview + export post-boot)
     // first real render is committed — reveal the app (raw template is CSS-hidden)
     try { const el = document.querySelector('x-dc'); if (el) { el.style.visibility = 'visible'; el.style.opacity = '1'; } } catch (e) {}
+    // boot flag for the prod error banner (see the error trap in <helmet>) — errors during
+    // the boot sequence itself are either fatal (cluster 2's retry UI covers total load
+    // failure) or too noisy/expected to interrupt with a banner; only post-boot runtime
+    // errors during actual play should ever surface it.
+    try { window.__sworbleBooted = true; } catch (e) {}
   }
 
   componentWillUnmount() {
