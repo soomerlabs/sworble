@@ -141,6 +141,24 @@ function jsonResponse(status, body) {
     assert.strictEqual(SworbleApi.pendingCount(), 1, 'same day+mode replaces, never duplicates');
   }
 
+  // --- QUEUE_KEY contract: sworble-net.js's own QUEUE_KEY is a hand-maintained literal
+  // duplicate of SworbleStore.K.PENDING_SUBMITS (this module stays dependency-free of
+  // sworble-store.js — see the QUEUE_KEY comment in sworble-net.js). This test enforces
+  // the two never drift apart: it queues a submit through SworbleApi, then reads it back
+  // from raw storage using the STORE's key, not net.js's own.
+  {
+    const { K } = require('../sworble-store.js');
+    const storage = memStorage();
+    SoomerNet.setup({ appId: 'x', environment: 'prod', retryBaseMs: 1, fetchFn: async () => { throw new TypeError('down'); } });
+    SworbleApi.setup({ storage, playerId: 'pid-contract' });
+    await SworbleApi.submitScore({ date: '2026-07-22', mode: 'puzzle', displayName: 'P', score: 1, seven: [] });
+    const raw = storage.getItem(K.PENDING_SUBMITS);
+    assert.ok(raw, "SworbleApi's durable queue must be stored under SworbleStore.K.PENDING_SUBMITS ('" + K.PENDING_SUBMITS + "') — sworble-net.js's QUEUE_KEY literal has drifted from the store contract");
+    const parsed = JSON.parse(raw);
+    assert.strictEqual(parsed.length, 1);
+    assert.strictEqual(parsed[0].score, 1);
+  }
+
   // --- unconfigured SworbleApi degrades to null/false, no throws --------------------
   {
     SoomerNet.reset();

@@ -128,7 +128,6 @@
     .stormAura, .stormAura * { animation-play-state: inherit; }
     @keyframes hudRise { 0% { opacity: 0; transform: translateY(8px) scale(0.6); } 20% { opacity: 1; transform: translateY(-1px) scale(1.12); } 70% { opacity: 1; transform: translateY(-11px) scale(1); } 100% { opacity: 0; transform: translateY(-18px) scale(0.95); } }
     @keyframes chipPop { 0% { transform: translate3d(0,0,0) rotateZ(0deg) rotateX(0deg) scale(0.3); opacity: 1; animation-timing-function: cubic-bezier(0.15,0.7,0.3,1); } 30% { transform: translate3d(var(--cx), var(--cy), 0) rotateZ(calc(var(--cr) * 0.4)) rotateX(calc(var(--fx) * 0.35)) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.5,0.05,0.75,0.4); } 82% { opacity: 1; } 100% { transform: translate3d(var(--dx), var(--gy), 0) rotateZ(var(--cr)) rotateX(var(--fx)) scale(0.85); opacity: 0; } }
-    @keyframes chipPopOld { 0% { transform: translate(0,0) rotate(0deg) scale(0.3); opacity: 1; } 18% { transform: translate(calc(var(--cx) * 0.25), calc(var(--cy) * 0.55)) rotate(calc(var(--cr) * 0.25)) scale(1.1); opacity: 1; } 60% { transform: translate(calc(var(--cx) * 0.7), var(--cy)) rotate(calc(var(--cr) * 0.6)) scale(1); opacity: 1; } 100% { transform: translate(var(--cx), var(--gy)) rotate(var(--cr)) scale(0.6); opacity: 0; } }
     @keyframes twinPulse { 0%, 100% { filter: drop-shadow(0 0 0px rgba(137,113,255,0)); } 50% { filter: drop-shadow(0 0 9px rgba(137,113,255,0.9)) drop-shadow(0 0 2px rgba(137,113,255,0.8)); } }
     @keyframes ghostSlide { 0% { transform: translate(var(--gx0), var(--gy0)) scale(1); opacity: 0; box-shadow: 0 3px 0 var(--edge); animation-timing-function: ease-out; } 7% { opacity: 1; } 17% { transform: translate(var(--gx0), var(--gy0)) translateY(-9px) scale(1.14); box-shadow: 0 16px 22px rgba(0,0,0,0.4); opacity: 1; animation-timing-function: cubic-bezier(0.45,0,0.55,1); } 53% { transform: translate(var(--gx1), var(--gy1)) translateY(-9px) scale(1.14); box-shadow: 0 16px 22px rgba(0,0,0,0.4); opacity: 1; animation-timing-function: cubic-bezier(0.55,0,0.9,0.35); } 65% { transform: translate(var(--gx1), var(--gy1)) translateY(0px) scale(0.9); box-shadow: 0 2px 0 var(--edge); opacity: 1; animation-timing-function: cubic-bezier(0.2,0.85,0.3,1.25); } 74% { transform: translate(var(--gx1), var(--gy1)) scale(1.06); } 84% { transform: translate(var(--gx1), var(--gy1)) scale(1); box-shadow: 0 3px 0 var(--edge); opacity: 1; } 93% { opacity: 1; } 100% { transform: translate(var(--gx1), var(--gy1)) scale(1); opacity: 0; box-shadow: 0 3px 0 var(--edge); } }
     @keyframes boardPunchA { 0% { transform: scale(1); } 32% { transform: scale(1.035); } 100% { transform: scale(1); } }
@@ -1405,7 +1404,7 @@ class Component extends DCLogic {
     // activeModal here means that step will see none and unpause normally when the beat ends.
     // `countIn:'out'` (the post-GO release beat) counts as RESOLVED, not mid-count-in — input
     // was already unlocked before this modal opened (goModal pauses over an already-live board
-    // same as any other in-game modal), so treat it like null or the 2950ms tail-step that clears
+    // same as any other in-game modal), so treat it like null or the 3300ms tail-step that clears
     // it to null while this modal was open would otherwise never get a second chance to unpause,
     // stranding `paused: true` with no overlay to show for it.
     const unpause = inGame && (this.state.countIn == null || this.state.countIn === 'out');
@@ -1843,14 +1842,14 @@ class Component extends DCLogic {
     this.later(() => {
       if (this._countInToken !== token) return;
       // RELEASE (not a hard cut): the board is unlocked HERE — `paused` clears same as before,
-      // input contract unchanged (still fires at 2400ms) — but the numeral+veil don't vanish
+      // input contract unchanged (still fires at 2750ms) — but the numeral+veil don't vanish
       // yet. `countIn: 'out'` is a NOT-ACTIVE state for every input guard (they only lock on
       // `countIn && countIn !== 'out'`) while the overlay style fades to transparent over
       // ~550ms (compositor-only opacity, no backdrop-filter/filter in the transition — see
       // countInOverlayStyle/boardCardStyle) and the board plays its one-shot wake. The final
       // step below unmounts the (by-then invisible) overlay.
       // The `s.activeModal ?` branch used to matter for the auto-opened first-run how-to sheet,
-      // which could still be open when this 2400ms step fired and would otherwise get its
+      // which could still be open when this 2750ms step fired and would otherwise get its
       // `paused` yanked out from under it mid-read. That auto-open trigger is gone, so nothing
       // realistic sets activeModal during the count-in's ~2.4s window anymore (the overlay
       // blocks input the whole time) — left in as harmless defense-in-depth against any future
@@ -1860,8 +1859,8 @@ class Component extends DCLogic {
     this.later(() => {
       if (this._countInToken !== token) return;
       // unmount only — never touch `paused`/`activeModal` here, both were already resolved
-      // by the 2400ms step (or left alone for a modal to resolve on its own close). Pushed from
-      // 2850→2950 to give the longer ~550ms veil fade (2400 + 550 = 2950) room to finish before
+      // by the 2750ms step (or left alone for a modal to resolve on its own close). Pushed from
+      // 2850→3300 to give the longer ~550ms veil fade (2750 + 550 = 3300) room to finish before
       // the overlay unmounts — otherwise the fade would visibly snap off early.
       this.setState(s => s.countIn === 'out' ? { countIn: null } : null);
     }, 3300);
@@ -6184,7 +6183,7 @@ class Component extends DCLogic {
         try {
           const LS = SworbleStore.LS, K = SworbleStore.K;
           const day = this.dailyKey || this.dayKey(new Date());
-          [K.DONE_PREFIX, K.DAILY_PREFIX, K.SEVEN_PREFIX, K.RUNS_PREFIX, K.ATT_PREFIX, K.TIME_PREFIX, K.FOUND_PREFIX, K.TARGETS_PREFIX, K.PUZZLE_BEST_PREFIX, K.PUZZLE_PAR_PREFIX, K.RUN_PREFIX, K.SWORB_PREFIX, K.THEME_PREFIX].forEach(p => { try { LS.removeItem(p + day); } catch (e) {} });
+          [K.DONE_PREFIX, K.DAILY_PREFIX, K.SEVEN_PREFIX, K.RUNS_PREFIX, K.ATT_PREFIX, K.TIME_PREFIX, K.FOUND_PREFIX, K.TARGETS_PREFIX, K.PUZZLE_BEST_PREFIX, K.RUN_PREFIX, K.SWORB_PREFIX, K.THEME_PREFIX].forEach(p => { try { LS.removeItem(p + day); } catch (e) {} });
           [K.LB_ME_PREFIX + day, K.LB_ME_PREFIX + day + '|puzzle'].forEach(k => { try { LS.removeItem(k); } catch (e) {} }); // leaderboard "me" submit (board id = day OR day|puzzle) — else YOU lingers on the standing graph
         } catch (e) {}
         this._dailyLive = false;
@@ -6719,13 +6718,13 @@ class Component extends DCLogic {
       // the same way pause locks it: boardDown's existing `if (this.state.paused ...) return;`
       // guard already covers this beat because `paused` is true for its entire span (see
       // armCountIn) — no separate countIn check needed.
-      // RELEASE: `countIn:'out'` is the post-GO tail (armCountIn's 2400→2950ms beat) — `paused`
+      // RELEASE: `countIn:'out'` is the post-GO tail (armCountIn's 2750→3300ms beat) — `paused`
       // is already false by then (input unlocked); it still counts as "shown" (mounted) so the
       // fade below has something to animate, but every OTHER guard in this file (`countIn &&
       // countIn !== 'out'`) treats it as inactive.
       countInShow: st.countIn != null && st.screen === 'game', // defense-in-depth: never stranded showing over another screen
       // NO DEAD FRAME: 'out' keeps showing GO's own text/key (doesn't blank to '') so the
-      // countPopGo burst — mounted at GO, 500ms long — is never cut off mid-fade at the 2400ms
+      // countPopGo burst — mounted at GO, 500ms long — is never cut off mid-fade at the 2750ms
       // 'out' transition (it was previously interrupted ~300ms in, before its own fade-out even
       // finished). Same text+key across GO→out means React never remounts the node, so the
       // burst's fade (which starts ~100ms before 'out' begins, per countPopGo's own keyframe)
@@ -6752,7 +6751,7 @@ class Component extends DCLogic {
         // RELEASE (graceful GO→board handoff, not a hard cut): 'out' fades the veil to fully
         // transparent over ~550ms on a slow-settle bezier. pointerEvents drops to 'none' the
         // INSTANT 'out' begins (not eased — the board must take input through the fading veil,
-        // and it's already unlocked at this point; unchanged from before — still 2400ms) while
+        // and it's already unlocked at this point; unchanged from before — still 2750ms) while
         // opacity alone eases out.
         opacity: (st.countIn != null && st.screen === 'game' && st.countIn !== 'out') ? 1 : 0,
         pointerEvents: (st.countIn != null && st.screen === 'game' && st.countIn !== 'out') ? 'auto' : 'none',
@@ -7082,9 +7081,10 @@ class Component extends DCLogic {
         return { show: true, tokens, wrapStyle: { display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: 7, margin: '16px auto 0', minHeight: 40, width: '100%' } };
       })(),
       // ---- A-Z TILE KEYBOARD: the board morphs into this while guessing (sworbTyping). ----
-      // In-game over the board ONLY (gameGridStyle) — the finale is the sole place guessing
-      // happens (Task 3); there is no home keyboard to reuse this for anymore. 26 letter
-      // keys in reading order + a 2-wide backspace + a 2-wide GUESS that greens up when full.
+      // In-game over the board ONLY (gameGridStyle) — this is strictly the board-morph version.
+      // Home has its own separate OS-style keyboard for guessing straight from the home screen
+      // (see homeKb below) — the two are independent layers, not one reused component. 26
+      // letter keys in reading order + a 2-wide backspace + a 2-wide GUESS that greens up when full.
       ...(() => {
         const e = this.dailyEntry();
         const sw = this.dailyStatus().sworb;

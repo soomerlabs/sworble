@@ -35,8 +35,10 @@
     SINCE: 'sworble_since', // first-seen timestamp -> "player since <Mon YYYY>" on the profile eyebrow
     BESTWORD: 'sworble_bestword',
     WORDS_TOTAL: 'sworble_words_total',
-    SEEN_HOWTO: 'sworble_seen_howto',
-    SEEN_MINES: 'sworble_seen_mines',
+    // SEEN_HOWTO/SEEN_MINES retired: the auto-opening first-run how-to sheet they gated is
+    // gone (see componentDidMount's Post-pivot comment) and neither key has any remaining
+    // reader/writer. Any orphaned sworble_seen_howto/sworble_seen_mines in a returning
+    // player's storage is simply inert.
     SEEN_STACKHINT: 'sworble_seen_stackhint',
     SEEN_BOMBHINT: 'sworble_seen_bombhint',
     // TUT_DONE ('sworble_tut_done') retired in Task 5c — the warm-up (`tut`) flow is removed
@@ -53,7 +55,8 @@
     // STACKL_BEST_PREFIX retired in Task 4 (mode collapse) — the Stackl (2-min timed) arm no
     // longer exists, so its per-day best key is dead. Not reused: any orphaned
     // sworble_stackl_best_* entries in a returning player's storage are simply inert.
-    PUZZLE_PAR_PREFIX: 'sworble_puzzle_par_',
+    // PUZZLE_PAR_PREFIX retired: nothing ever wrote a sworble_puzzle_par_* entry — it was only
+    // ever named in resetDayTap's defensive wipe list. Any orphaned entries are simply inert.
     TARGETS_PREFIX: 'sworble_targets_',
     FOUND_PREFIX: 'sworble_found_',
     LB_ME_PREFIX: 'sworble_lb_me_',

@@ -103,6 +103,13 @@
   };
 
   // ---- SworbleApi: app endpoints + validation + durable submit queue ---------------
+  // QUEUE_KEY is a hand-maintained literal duplicate of SworbleStore's K.PENDING_SUBMITS —
+  // this file stays free of a hard dependency on sworble-store.js (this module is required
+  // standalone in tests/sworble-net.test.js, with no SworbleStore loaded alongside it) and
+  // <script src> load order in index.html isn't a contract this file should lean on either.
+  // The two MUST stay identical; tests/sworble-net.test.js enforces it behaviorally (queues
+  // a submit through SworbleApi, then reads it back via SworbleStore.K.PENDING_SUBMITS) so
+  // any drift fails loudly instead of silently splitting the queue across two keys.
   const QUEUE_KEY = 'sworble_pending_submits';
   let app = null; // { storage, playerId }
 
