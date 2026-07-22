@@ -190,6 +190,10 @@ skeleton (no layout shift between them).
   full crown (mock's svg, inline).
 - [ ] Sworb-safe row REMOVED; the superlatives cluster becomes TAPPABLE → opens the word bank
   (rebrands as the "superlatives safe"). Keep reachability; delete the old row + vals.
+- [ ] DEV TOOL — "today's clues" in the debug menu: list the day's 6 realized clue words FILLED IN
+  (dev-only reveal, like debugMine); tapping a clue HIGHLIGHTS its path on the live board (glow/
+  ring its tiles via the stored cluePaths — first real reader of _cluePaths). Tap again or auto-
+  fade to clear. Only visible in the dev menu; zero footprint in production UI.
 - [ ] FINALE-PENDING home keyboard: when (round played) && (sworb unsolved) && (guesses left),
   tapping the word-of-the-day BLUR-REPLACES everything below the hints with the A–Z guess keyboard
   (v15 swap: opacity/blur, ZERO height change; reuse sworbKb + guess flow = the finale continued on
