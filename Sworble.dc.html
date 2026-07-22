@@ -440,7 +440,7 @@
 
                   <!-- SLIM SCORE STRIP: you · dashed link-line · crown+top. No chase text, no %. -->
                   <div style="width:100%; display:flex; align-items:center; gap:14px; opacity:0; animation:homeRise 0.6s cubic-bezier(0.2,0.8,0.2,1) 0.05s forwards;">
-                    <div style="{{ homeSlim.youStyle }} display:flex; align-items:baseline; gap:5px; flex:none;">{{ homeSlim.youText }}<small style="font-size:10.5px; font-weight:700; color:var(--ghost);">pts</small></div>
+                    <div style="{{ homeSlim.youStyle }} flex:none;">{{ homeSlim.youText }}</div>
                     <div style="position:relative; flex:1; height:18px;">
                       <div style="position:absolute; left:2px; right:2px; top:50%; border-top:2px dashed var(--line);"></div>
                       <div style="{{ homeSlim.fillStyle }}"></div>
@@ -782,13 +782,18 @@
           <div style="min-height:0; overflow:hidden;">
           <div style="display:flex; flex-direction:column; gap:17px; border:2px solid var(--line); border-radius:12px; padding:15px 14px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-size:14px; font-weight:700; color:var(--sheet-sub);">Restart daily (clean slate)</span>
-              <button onClick="{{ restartDaily }}" style="{{ mineDbgToggleStyle }}">GO</button>
+              <span style="font-size:14px; font-weight:700; color:var(--sheet-sub);">Reset day</span>
+              <button onClick="{{ resetDayTap }}" style="{{ resetDayBtnStyle }}">{{ resetDayLabel }}</button>
             </div>
             <div style="display:flex; flex-direction:column;">
               <div style="display:flex; justify-content:space-between; align-items:center;">
                 <span style="font-size:14px; font-weight:700; color:var(--sheet-sub);">All words on board</span>
-                <button onClick="{{ devListWords }}" style="{{ mineDbgToggleStyle }}">{{ devWordsLabel }}</button>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <sc-if value="{{ devWordsShow }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ devRescanWords }}" aria-label="Re-scan the live board" title="Re-scan the live board" style="{{ devRescanBtnStyle }}">&#8635;</button>
+                  </sc-if>
+                  <button onClick="{{ devListWords }}" style="{{ mineDbgToggleStyle }}">{{ devWordsLabel }}</button>
+                </div>
               </div>
               <sc-if value="{{ devWordsShow }}" hint-placeholder-val="{{ false }}">
                 <sc-if value="{{ devHasWords }}" hint-placeholder-val="{{ false }}">
@@ -825,12 +830,16 @@
                       <button onClick="{{ cw.onClick }}" style="{{ cw.style }}">{{ cw.word }}</button>
                     </sc-for>
                   </div>
-                  <div style="font-size:10.5px; font-weight:700; letter-spacing:0.5px; color:var(--ghost); margin-top:6px;">tap a clue to highlight its path on the board</div>
+                  <div style="font-size:10.5px; font-weight:700; letter-spacing:0.5px; color:var(--ghost); margin-top:6px;">tap a clue to highlight its path on the board — not findable right now shakes red</div>
                 </sc-if>
                 <sc-if value="{{ devNoClues }}" hint-placeholder-val="{{ false }}">
                   <div style="font-size:11px; font-weight:800; letter-spacing:1px; color:var(--ghost); margin-top:9px;">no sworb today</div>
                 </sc-if>
               </sc-if>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:14px; font-weight:700; color:var(--sheet-sub);">LB field (dev stub size)</span>
+              <button onClick="{{ cycleLbField }}" style="{{ mineDbgToggleStyle }}">{{ lbFieldLabel }}</button>
             </div>
             <button onClick="{{ toggleFlagsOpen }}" style="display:flex; justify-content:space-between; align-items:center; width:100%; background:transparent; border:none; padding:0; font-family:inherit; cursor:pointer;">
               <span style="font-size:11px; font-weight:800; letter-spacing:1.2px; color:var(--ghost);">FEATURE FLAGS</span>
@@ -2353,7 +2362,8 @@ class Component extends DCLogic {
       const realized = cand.realized.filter(w => SworbleSolver.findWord(tiles, { word: w, expand: SworbleCore.expandLetter, diag: this.diag() }));
       if (realized.length) {
         this._activeTheme = realized;
-        this._cluePaths = cand.cluePaths;
+        // (cand.cluePaths intentionally not cached — the dev "today's clues" tap-to-highlight
+        // re-solves the LIVE board on every tap instead; see devCluePathTileIds.)
         try { LS.setItem(K.THEME_PREFIX + this.dailyKey, JSON.stringify(realized)); } catch (e) {}
         try { LS.setItem(K.TARGETS_PREFIX + this.dailyKey, JSON.stringify(realized)); } catch (e) {} // reuse existing found/targets UI
       }
@@ -3597,16 +3607,22 @@ class Component extends DCLogic {
   // dev: LIVE best-words solve. Memoized by a board signature so an open list always
   // reflects the CURRENT board (never lists words whose path no longer connects), and
   // uses the COMMON dict so entries are words a player would actually recognize.
+  // LAZY, on-demand only: devSolve() never re-scans just because the render loop ticked or a
+  // tile changed underneath it (normal play never pays for this). It only re-scans when
+  // this._devEpoch has moved past the epoch its cached list was built at — bumped exactly at
+  // "panel opened" (devListWords) and "refresh tapped" (devRescanWords), nowhere else. This
+  // replaces an earlier tile-signature cache (id+letter only) that could silently miss a REAL
+  // change — tiles dropping/settling into new row/col after a clear kept the same id+letter,
+  // so the cached list quietly kept describing the board's PREVIOUS layout.
   devSolve() {
     if (!this.state.devWordsShow) return [];
+    if (this._devList && this._devListEpoch === this._devEpoch) return this._devList;
     const tiles = this.liveTiles().filter(t => !t.clearing && !t.dead);
-    const sig = tiles.map(t => t.id + t.letter).join('|');
-    if (this._devSig === sig && this._devList) return this._devList;
     let list = [];
     try {
       if (this.dict && tiles.length) list = SworbleSolver.findAllWords(tiles, { expand: SworbleCore.expandLetter, dict: this.commonDict || this.dict, common: this.commonDict || null, letterVal: (l) => (VALUES[l] || 1), lenMult: (c) => this.lenMult(c), diag: this.diag(), cap: 7, minTiles: 3, budget: 600000 });
     } catch (e) {}
-    this._devSig = sig; this._devList = list;
+    this._devList = list; this._devListEpoch = this._devEpoch;
     return list;
   }
 
@@ -3628,41 +3644,36 @@ class Component extends DCLogic {
     this.later(() => { this.setState({ debugBestIds: w.ids }); this.later(() => this.setState(s => (s.debugBestIds === w.ids ? { debugBestIds: null } : null)), 3600); }, 260);
   }
 
-  // DEV: today's clues (Task 5b/6) — the tile ids for a realized clue's packed path, keyed off
-  // the SAME deterministic seedClueLettersTwoPass call newGame uses. Prefers the live
-  // this._cluePaths set at deal time (exact, first real reader of it); recomputes it
-  // deterministically (same dailySeed, same cols/rows, same candidate pool) as a fallback for
-  // a session that never called newGame this load (e.g. straight to home after a reload) —
-  // same seed + same pool always packs the same 6 words at the same cells.
+  // DEV: today's clues (Task 5b/6) — the tile ids for a realized clue's path, LOCATED FRESH on
+  // the LIVE board every tap via the same solver/findability machinery the game itself uses
+  // (SworbleSolver.findWord — the exact fn the clue seeder calls to verify a stamped word is
+  // really findable, see newGame). No caching, no seed-time snapshot: a clue's packed path at
+  // deal time goes stale the moment tiles drop/clear/re-stamp, so the old approach (read
+  // this._cluePaths, or worst case re-derive the ORIGINAL deal deterministically) could glow
+  // tiles that no longer spell the word, or miss that gravity moved it entirely. Returns the
+  // live tile-id path, or [] when the word isn't findable on the board RIGHT NOW.
   devCluePathTileIds(word) {
     try {
-      let paths = this._cluePaths;
-      if (!paths) {
-        const pool = this.themePool();
-        if (!pool) return [];
-        const day = this.dailyKey || this.dayKey(new Date());
-        const dailySeed = day + '|sworb';
-        const rngFactory = () => mulberry32(SworbleCore.hashSeed(dailySeed) >>> 0);
-        const cand = SworbleSeed.seedClueLettersTwoPass({ clues: pool.themeWords, cols: this.cols(), rows: this.rows(), rngFactory, target: SWORB_CLUE_COUNT });
-        paths = cand.cluePaths;
-      }
-      const path = paths[String(word).toLowerCase()];
-      if (!path || !path.length) return [];
-      const tiles = this.liveTiles();
-      const ids = [];
-      path.forEach(p => { const t = tiles.find(tt => tt.row === p.r && tt.col === p.c); if (t) ids.push(t.id); });
-      return ids;
+      const tiles = this.liveTiles().filter(t => !t.clearing && !t.dead);
+      const path = SworbleSolver.findWord(tiles, { word: String(word).toLowerCase(), expand: SworbleCore.expandLetter, diag: this.diag() });
+      return path || [];
     } catch (e) { return []; }
   }
 
-  // tap a clue chip: highlight its path (reuses the debugBestIds ring/dim, same as "flash on
-  // board" above) — tap the SAME clue again (or the ~3s auto-fade) clears it.
+  // tap a clue chip: highlight its LIVE path (reuses the debugBestIds ring/dim, same as "flash
+  // on board" above) — tap the SAME clue again (or the ~3s auto-fade) clears it. If the word
+  // isn't findable on the board right now (already broken up, mid-reseed, etc.) there is no
+  // stale path to fall back to — the chip shakes/flashes red instead of glowing wrong tiles.
   devFlashClue(word) {
     const w = String(word).toLowerCase();
     this.sfxClick();
     if (this.state.devClueGlowWord === w) { this.setState({ devClueGlowWord: null, debugBestIds: null }); return; }
     const ids = this.devCluePathTileIds(w);
-    if (!ids.length) { this.setState({ devClueGlowWord: null, debugBestIds: null }); return; }
+    if (!ids.length) {
+      this.setState({ devClueGlowWord: null, debugBestIds: null, devClueShakeWord: w });
+      this.later(() => this.setState(s => (s.devClueShakeWord === w ? { devClueShakeWord: null } : null)), 650);
+      return;
+    }
     this.closeModal();
     this.later(() => {
       this.setState({ devClueGlowWord: w, debugBestIds: ids });
@@ -4345,7 +4356,13 @@ class Component extends DCLogic {
       entries.push({ name: pool[i], score: sc, solved });
     }
     let me = null; try { me = JSON.parse(LS.getItem(K.LB_ME_PREFIX + this.lbBoardId(date)) || 'null'); } catch (e) {}
-    return { entries, me, count: entries.length + (me ? 1 : 0) };
+    // DEV: "LB FIELD" knob (full/2/1/0, settings > DEVELOPER) truncates the stub field so the
+    // owner can eyeball the empty/partial-standings states on demand — the real board is always
+    // 16-27 entries, so 0/1/2-entry days never happen naturally without this. Session-only
+    // (this.state.lbFieldDbg, never persisted); undefined/'full' is a no-op, real play untouched.
+    const dbg = this.state && this.state.lbFieldDbg;
+    const capped = (dbg === '0') ? [] : (dbg === '1' || dbg === '2') ? entries.slice(0, parseInt(dbg, 10)) : entries;
+    return { entries: capped, me, count: capped.length + (me ? 1 : 0) };
   }
   loadLb() {
     const date = this.dailyKey || this.dayKey(new Date());
@@ -5207,11 +5224,19 @@ class Component extends DCLogic {
         if (played && !inTop3) { const yr = mk('#' + fmt(rank), meName || 'you', fmt(bestT), true, false, false); yr.rowStyle = { ...yr.rowStyle, marginTop: 7 }; rows.push(yr); }
         const palOf = (nm) => PALETTE[this.tileColorFor((String(nm || 'a')[0] || 'a').toLowerCase(), 0)] || PALETTE[0];
         const dk = this.isDark();
+        // light-mode grounding: same barely-there-dark/real-in-light drop shadow as every other
+        // home candy block. Real podium blocks only — the dashed ghost placeholders stay flat.
+        const blockShadow = dk ? '0 3px 8px rgba(0,0,0,0.25)' : '0 4px 10px rgba(31,20,66,0.18)';
         const slotMap = { 0: { left: '84%', size: 58, rad: 14, font: 26, float: 'floatSlotA 6s ease-in-out infinite' }, 1: { left: '58%', size: 50, rad: 12, font: 22, float: 'floatSlotB 7.2s ease-in-out -1.2s infinite' }, 2: { left: '33%', size: 46, rad: 11, font: 20, float: 'floatSlotC 6.6s ease-in-out -2.4s infinite' } };
         const youBelow = played && !field.slice(0, 3).some(e => meName && e.name === meName); // nameless players still get the YOU node below the podium
         const leftPct = youBelow ? { 0: '74%', 1: '52%', 2: '29%' } : { 0: '74%', 1: '44%', 2: '14%' };
         const xMap = youBelow ? { 0: 209, 1: 147, 2: 82 } : { 0: 209, 1: 124, 2: 39 };
-        const sTop = field[0] ? field[0].score : 0, sBot = field[2] ? field[2].score : sTop;
+        // sBot anchors the SPREAD, not just "the 3rd-place score" — with only 1-2 real entries
+        // there IS no 3rd place, so fall back to the LOWEST real score actually present (2nd,
+        // else 1st) rather than re-using sTop. Re-using sTop collapsed the span to 0 whenever
+        // there were exactly 2 entries (gSpan floored to 1 by the max() below), which blew the
+        // 2nd column's proportional cy() out to thousands of percent — off-screen.
+        const sTop = field[0] ? field[0].score : 0, sBot = field[2] ? field[2].score : (field[1] ? field[1].score : sTop);
         const gSpan = Math.max(1, sTop - sBot);
         // #1 ALWAYS pins to the TOP of the plot and #3 to the floor, so the line stays nicely spread
         // no matter how close the scores are (#2 floats proportionally between). No-YOU spreads across the
@@ -5231,10 +5256,14 @@ class Component extends DCLogic {
           cyArr[i] = field[i] ? cyFor(field[i]) : Math.min(202, (cyArr[i - 1] != null ? cyArr[i - 1] : cyTop) + 42 + Math.round((jr() - 0.5) * 22));
         }
         const phSeg = 'fill:none; stroke:color-mix(in srgb, var(--sheet-ink) 22%, transparent); stroke-width:5; stroke-linecap:round; stroke-dasharray:1.5 8;';
-        const homeTrailSegs = field[0] ? [
+        // ALWAYS draw both segments (coords are defined regardless of field size — cyArr falls
+        // back to a seeded placeholder position per slot) so a totally empty board (0 real
+        // entries) still shows the full dashed constellation, not a blank gap where the trail
+        // used to require field[0] to exist at all.
+        const homeTrailSegs = [
           { key: 's1', x1: xMap[0], y1: cyArr[0], x2: xMap[1], y2: cyArr[1], style: field[1] ? segStyle(field[1]) : phSeg },
           { key: 's2', x1: xMap[1], y1: cyArr[1], x2: xMap[2], y2: cyArr[2], style: field[2] ? segStyle(field[2]) : phSeg },
-        ] : [];
+        ];
         // v18: a mint \u2713 mini-tile pins to the block's top-right corner when that player
         // cracked today's sworb \u2014 rank order already puts solvers first (field.sort above);
         // this is the visual confirmation on the constellation itself.
@@ -5243,7 +5272,7 @@ class Component extends DCLogic {
           initial: String(e.name || '?')[0].toUpperCase(), name: String(e.name || '').toUpperCase().slice(0, 6), score: fmt(e.score), rank: String(ri + 1), isFirst: ri === 0,
           auraStyle: 'position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:' + (ri === 0 ? 205 : ri === 1 ? 190 : 172) + '%; height:' + (ri === 0 ? 205 : ri === 1 ? 190 : 172) + '%; border-radius:50%; background:radial-gradient(circle, ' + p.bg + ' 0%, transparent 66%); filter:blur(' + (ri === 0 ? 13 : ri === 1 ? 12 : 10) + 'px); opacity:' + (ri === 0 ? 0.6 : ri === 1 ? 0.5 : 0.34) + '; z-index:-1; pointer-events:none; animation:auraPulse ' + (ri === 0 ? '3s' : ri === 1 ? '3.4s' : '3.9s') + ' ease-in-out infinite;',
           slotStyle: 'position:absolute; left:' + leftPct[ri] + '; top:' + slotTopCSS(cy, s.size) + '; transform:translateX(-50%); width:76px; z-index:1; display:flex; flex-direction:column; align-items:center; gap:5px; animation:' + s.float + ';',
-          blockStyle: 'position:relative; width:' + s.size + 'px; height:' + s.size + 'px; border-radius:' + s.rad + 'px; background:' + p.bg + '; box-shadow:inset 0 -' + (ri === 0 ? 5 : 4) + 'px 0 ' + p.edge + (isYou ? ', 0 0 0 2.5px #8971FF' : '') + '; color:#1F1442; font-family:\'Fredoka\',\'Manrope\',sans-serif; font-size:' + s.font + 'px; font-weight:600; display:flex; align-items:center; justify-content:center; padding-bottom:2px;',
+          blockStyle: 'position:relative; width:' + s.size + 'px; height:' + s.size + 'px; border-radius:' + s.rad + 'px; background:' + p.bg + '; box-shadow:inset 0 -' + (ri === 0 ? 5 : 4) + 'px 0 ' + p.edge + (isYou ? ', 0 0 0 2.5px #8971FF' : '') + ', ' + blockShadow + '; color:#1F1442; font-family:\'Fredoka\',\'Manrope\',sans-serif; font-size:' + s.font + 'px; font-weight:600; display:flex; align-items:center; justify-content:center; padding-bottom:2px;',
           badgeStyle: 'position:absolute; top:-7px; left:-7px; width:' + (ri === 0 ? 20 : 19) + 'px; height:' + (ri === 0 ? 20 : 19) + 'px; border-radius:' + (ri === 0 ? 8 : 7) + 'px; background:#1F1442; color:#fff; font-family:\'Fredoka\',\'Manrope\',sans-serif; font-size:' + (ri === 0 ? 11 : 10.5) + 'px; font-weight:600; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px ' + p.edge + '; padding-bottom:1px;',
           nameStyle: 'font-size:10.5px; font-weight:800; color:var(--sheet-sub); letter-spacing:0.3px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;',
           scoreStyle: "font-family:'Fredoka','Manrope',sans-serif; font-size:" + (ri === 0 ? 12.5 : 12) + "px; font-weight:600; color:" + (ri === 0 ? 'var(--sheet-ink)' : 'var(--sheet-sub)') + "; font-variant-numeric:tabular-nums;",
@@ -5259,7 +5288,11 @@ class Component extends DCLogic {
           scoreStyle: "font-family:'Fredoka','Manrope',sans-serif; font-size:12px; font-weight:600; color:var(--ghost); opacity:0.5; font-variant-numeric:tabular-nums;",
           checkShow: false, checkStyle: 'display:none;',
         }; };
-        const buildCol = (ri) => field[ri] ? podCol(field[ri], ri) : (field[0] ? phCol(ri) : null);
+        // ALWAYS fall back to a dashed ghost placeholder, even with ZERO real entries — the
+        // old `field[0] ? phCol(ri) : null` only ghosted 2nd/3rd when a real champion existed,
+        // so a totally empty board returned null for every slot and the whole constellation
+        // (buildCol -> homePodium -> homePodiumShow) vanished instead of showing 3 placeholders.
+        const buildCol = (ri) => field[ri] ? podCol(field[ri], ri) : phCol(ri);
         const homePodium = [buildCol(1), buildCol(0), buildCol(2)].filter(Boolean);
         const youOnPodium = meName && field.slice(0, 3).some(e => e.name === meName);
         const yp = palOf(meName);
@@ -5268,7 +5301,7 @@ class Component extends DCLogic {
         const homeYouNode = (played && !youOnPodium) ? { show: true, rank: '#' + fmt(rank), initial: (meName[0] || 'Y').toUpperCase(), name: 'YOU', score: fmt(bestT),
           segStyle: 'fill:none; stroke:color-mix(in srgb, ' + yp.bg + ' 88%, transparent); stroke-width:6; stroke-linecap:round; stroke-linejoin:round; filter:blur(2px);',
           slotStyle: 'position:absolute; left:12%; top:calc(62.50% - 20px); transform:translateX(-50%); width:76px; z-index:1; display:flex; flex-direction:column; align-items:center; gap:5px; animation:floatSlotB 7.6s ease-in-out -0.6s infinite;',
-          blockStyle: 'position:relative; width:40px; height:40px; border-radius:11px; background:' + yp.bg + '; box-shadow:inset 0 -4px 0 ' + yp.edge + '; color:#1F1442; font-family:\'Fredoka\',\'Manrope\',sans-serif; font-size:18px; font-weight:600; display:flex; align-items:center; justify-content:center; padding-bottom:2px;',
+          blockStyle: 'position:relative; width:40px; height:40px; border-radius:11px; background:' + yp.bg + '; box-shadow:inset 0 -4px 0 ' + yp.edge + ', ' + blockShadow + '; color:#1F1442; font-family:\'Fredoka\',\'Manrope\',sans-serif; font-size:18px; font-weight:600; display:flex; align-items:center; justify-content:center; padding-bottom:2px;',
           badgeStyle: 'position:absolute; top:-7px; left:-7px; min-width:22px; height:20px; padding:0 4px; box-sizing:border-box; border-radius:8px; background:#1F1442; color:#fff; font-family:\'Fredoka\',\'Manrope\',sans-serif; font-size:10px; font-weight:600; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px ' + yp.edge + ';',
           nameStyle: 'font-size:10.5px; font-weight:800; color:var(--sheet-sub); letter-spacing:0.5px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;',
           scoreStyle: "font-family:'Fredoka','Manrope',sans-serif; font-size:12px; font-weight:600; color:var(--sheet-ink); font-variant-numeric:tabular-nums;",
@@ -5824,16 +5857,19 @@ class Component extends DCLogic {
           const dk = this.isDark();
           const dims = len <= 5 ? { w: 54, h: 60, r: 13, f: 28 } : len === 6 ? { w: 46, h: 52, r: 11, f: 24 } : { w: 40, h: 46, r: 10, f: 21 };
           const box = 'flex:none; width:' + dims.w + 'px; height:' + dims.h + 'px; box-sizing:border-box; border-radius:' + dims.r + 'px; display:flex; align-items:center; justify-content:center; font-family:\'Fredoka\',\'Manrope\',sans-serif; font-size:' + dims.f + 'px; font-weight:600;';
+          // light-mode grounding: same barely-there-dark/real-in-light drop shadow as every
+          // other home candy block — only the FILLED states get it, dashed ghosts stay flat.
+          const blockShadow = dk ? '0 3px 8px rgba(0,0,0,0.25)' : '0 4px 10px rgba(31,20,66,0.18)';
           const blocks = [];
           const slots = st.sworbSlots || [];
           const colors = st.sworbColors;
           for (let i = 0; i < len; i++) {
             if (solved) {
               const pal = PALETTE[this.tileColorFor(answer[i].toLowerCase(), i)] || PALETTE[0];
-              blocks.push({ k: 'hh' + i, ch: answer[i], style: box + ' color:#1F1442; background:' + pal.bg + '; box-shadow:inset 0 -4px 0 ' + pal.edge + ';' });
+              blocks.push({ k: 'hh' + i, ch: answer[i], style: box + ' color:#1F1442; background:' + pal.bg + '; box-shadow:inset 0 -4px 0 ' + pal.edge + ', ' + blockShadow + ';' });
             } else if (failed) {
               const bg = dk ? '#3A3A44' : '#C8C4D2', edge = dk ? '#26262E' : '#A9A5B3', ink = dk ? '#8A8A96' : '#6B6775';
-              blocks.push({ k: 'hh' + i, ch: answer[i], style: box + ' color:' + ink + '; background:' + bg + '; box-shadow:inset 0 -4px 0 ' + edge + ';' });
+              blocks.push({ k: 'hh' + i, ch: answer[i], style: box + ' color:' + ink + '; background:' + bg + '; box-shadow:inset 0 -4px 0 ' + edge + ', ' + blockShadow + ';' });
             } else if (guessing) {
               const ch = (slots[i] || '').toUpperCase();
               const col = colors ? colors[i] : null;
@@ -5843,7 +5879,7 @@ class Component extends DCLogic {
               else if (col === 'gray') { bg = dk ? '#3A3A44' : '#C8C4D2'; edge = dk ? '#26262E' : '#A9A5B3'; ink = dk ? '#8A8A96' : '#6B6775'; }
               else if (ch) { bg = dk ? '#42424F' : '#EAE8F0'; edge = dk ? '#22222A' : '#C8C4D2'; ink = dk ? '#FFFFFF' : '#1F1442'; }
               else { bg = null; edge = null; ink = 'var(--ghost)'; }
-              const skin = bg ? ('background:' + bg + '; box-shadow:inset 0 -4px 0 ' + edge + ';') : 'background:transparent; border:2.5px dashed var(--line); box-sizing:border-box;';
+              const skin = bg ? ('background:' + bg + '; box-shadow:inset 0 -4px 0 ' + edge + ', ' + blockShadow + ';') : 'background:transparent; border:2.5px dashed var(--line); box-sizing:border-box;';
               blocks.push({ k: 'hh' + i, ch, style: box + ' color:' + ink + ';' + skin });
             } else {
               blocks.push({ k: 'hh' + i, ch: '', style: box + ' color:var(--sheet-ink); background:transparent; border:2.5px dashed var(--line); box-sizing:border-box;' });
@@ -5878,6 +5914,13 @@ class Component extends DCLogic {
           const day = this.dailyKey || this.dayKey(new Date());
           let found = []; try { found = JSON.parse(LS.getItem(K.FOUND_PREFIX + day) || '[]'); } catch (x) {}
           const clues = e.themeWords || [];
+          // day CONSUMED (dailyConsumed): no re-guessing is left, so an unfound clue's blank
+          // dashed ghost stops protecting anything — reveal the real word as a GRAYED pill
+          // (same gray family the failed sworb tiles use) instead. Still-live day: stays a
+          // blank ghost, same as before (never reveal mid-play).
+          const done = this.dailyConsumed();
+          const dk = this.isDark();
+          const missedBg = dk ? '#3A3A44' : '#C8C4D2', missedEdge = dk ? '#26262E' : '#A9A5B3', missedInk = dk ? '#8A8A96' : '#6B6775';
           const tokens = clues.map((w, i) => {
             const word = String(w).toLowerCase();
             const isF = found.indexOf(word) >= 0;
@@ -5885,6 +5928,10 @@ class Component extends DCLogic {
               const pal = PALETTE[i % PALETTE.length];
               return { k: 'hc' + i, found: true, word: word,
                 style: 'font-family:\'Fredoka\',\'Manrope\',sans-serif; font-size:13px; font-weight:600; letter-spacing:0.4px; padding:6px 14px; border-radius:999px; color:#1F1442; box-shadow:inset 0 -2px 0 rgba(0,0,0,0.18); background:' + pal.bg + ';' };
+            }
+            if (done) {
+              return { k: 'hc' + i, found: false, word: word,
+                style: 'font-family:\'Fredoka\',\'Manrope\',sans-serif; font-size:13px; font-weight:600; letter-spacing:0.4px; padding:6px 14px; border-radius:999px; color:' + missedInk + '; box-shadow:inset 0 -2px 0 ' + missedEdge + '; background:' + missedBg + ';' };
             }
             return { k: 'hc' + i, found: false, word: '',
               style: 'width:46px; height:27px; border-radius:999px; border:2px dashed var(--line); box-sizing:border-box;' };
@@ -5903,11 +5950,14 @@ class Component extends DCLogic {
           if (!ds.played || !words.length) {
             return { show: true, items: [0, 1, 2, 3, 4].map(i => ({ k: 'sw' + i, word: '', pts: '', style: ghostStyle, ptsStyle: 'display:none;' })) };
           }
+          // light-mode grounding: barely-there in dark, a real shadow under the candy block in
+          // light (where a flat white page gives blocks nothing to sit on without it).
+          const blockShadow = this.isDark() ? '0 3px 8px rgba(0,0,0,0.25)' : '0 4px 10px rgba(31,20,66,0.18)';
           const items = words.map((w, i) => {
             const pal = PALETTE[i % PALETTE.length];
             return {
               k: 'sw' + i, word: String(w.word || '').toLowerCase(), pts: '+' + (w.pts || 0),
-              style: 'display:flex; align-items:baseline; gap:7px; padding:9px 15px; border-radius:12px; font-family:\'Fredoka\',\'Manrope\',sans-serif; font-weight:600; font-size:15.5px; color:#1F1442; background:' + pal.bg + '; box-shadow:inset 0 -3px 0 ' + pal.edge + ';',
+              style: 'display:flex; align-items:baseline; gap:7px; padding:9px 15px; border-radius:12px; font-family:\'Fredoka\',\'Manrope\',sans-serif; font-weight:600; font-size:15.5px; color:#1F1442; background:' + pal.bg + '; box-shadow:inset 0 -3px 0 ' + pal.edge + ', ' + blockShadow + ';',
               ptsStyle: 'font-size:11.5px; font-weight:700; opacity:0.65;',
             };
           });
@@ -6113,7 +6163,13 @@ class Component extends DCLogic {
         if (this.state.screen === 'game' && !this.state.over) { this.cancelCountIn(); this.setState({ activeModal: null, modalStack: [], paused: false, gamePaused: false, countIn: null }, () => this.endRound()); }
         else this.closeModal();
       },
-      restartDaily: () => { // dev: wipe today's daily progress → clean slate, deal a fresh daily (unsticks practice-only)
+      // dev: wipe today's daily progress AND actually deal a fresh daily — closing the loop the
+      // old "restart daily" left open (it wiped storage but stayed parked on the settings sheet;
+      // closing manually landed you on a dormant home with no visible sign anything happened).
+      // Now: brief ✓ on the button (the immediate tap feedback), THEN the whole modal stack
+      // closes and _startDaily() deals a fresh board with its normal 3·2·1 count-in — that
+      // visible re-deal + count-in IS the confirmation, no separate toast needed.
+      resetDayTap: () => {
         this.sfxClick();
         try {
           const LS = SworbleStore.LS, K = SworbleStore.K;
@@ -6125,23 +6181,50 @@ class Component extends DCLogic {
         this._tb = 0; this._tbKey = null; // clear header "today's best" cache
         const opts = { ...(this.state.opts || {}), practiceMode: false }; // unsticks practice-only, back to daily
         this.saveOpts(opts);
-        // stay put on the settings sheet — just wipe daily state; closing settings → home shows the reset
-        this.setState({ opts, over: false, endModal: false, homeLb: null }, () => {
+        this.setState({ opts, over: false, endModal: false, homeLb: null, devResetDone: true }, () => {
           this.loadHomeLb(); // rebuild standing WITHOUT the cleared "me" entry
+          this.later(() => {
+            this.setState({ activeModal: null, modalStack: [], dbgOpen: false, devResetDone: false }, () => {
+              this._startDaily(); // dailyConsumed()/finalePending() are both false post-wipe, so this always deals fresh
+            });
+          }, 420);
         });
+      },
+      resetDayLabel: st.devResetDone ? '✓' : 'RESET',
+      resetDayBtnStyle: st.devResetDone
+        ? { width: 68, padding: '7px 0', textAlign: 'center', boxSizing: 'border-box', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 800, background: '#5FD6A8', color: '#1F1442' }
+        : this.toggleStyle(false),
+      // DEV: "LB FIELD" 4-way knob (full/2/1/0) forces the stub leaderboard's field size (see
+      // lbStub) so the owner can eyeball the empty/partial-standings constellation states —
+      // production never naturally produces 0/1/2 real entries (the stub is always 16-27).
+      // Session-only (never saved to opts/localStorage): reload always comes back to FULL.
+      lbFieldLabel: (st.lbFieldDbg || 'FULL').toString().toUpperCase(),
+      cycleLbField: () => {
+        this.sfxClick();
+        const order = [undefined, '2', '1', '0'];
+        const i = order.indexOf(st.lbFieldDbg);
+        const next = order[(i < 0 ? 0 : i + 1) % order.length];
+        this.setState({ lbFieldDbg: next }, () => this.loadHomeLb());
       },
       // dev: every viable word currently findable on the board + its base points (via the shared
       // pure solver — sworble-solver.js findAllWords). Toggles a scrollable list in the dev box.
+      // devSolve() does the actual (lazy, epoch-gated) scanning — opening bumps the epoch so it's
+      // always a FRESH live scan, never a stale one left over from before the panel was closed.
       devListWords: () => {
         this.sfxClick();
         if (this.state.devWordsShow) { this.setState({ devWordsShow: false }); return; }
-        const tiles = this.liveTiles().filter(t => !t.clearing && !t.dead);
-        let list = [];
-        try {
-          if (this.dict && tiles.length) list = SworbleSolver.findAllWords(tiles, { expand: SworbleCore.expandLetter, dict: this.dict, common: this.commonDict || null, letterVal: (l) => (VALUES[l] || 1), lenMult: (c) => this.lenMult(c), diag: this.diag(), cap: 7, minTiles: 3, budget: 600000 });
-        } catch (e) {}
-        this.setState({ devWordList: list, devWordsShow: true, devIdx: 0 });
+        this._devEpoch = (this._devEpoch || 0) + 1;
+        this.setState({ devWordsShow: true, devIdx: 0 });
       },
+      // manual re-scan on demand, without closing/reopening — same epoch bump devListWords uses.
+      // Nothing recomputes automatically while the panel stays open and normal play continues;
+      // this is the only way to refresh mid-session besides toggling HIDE/SHOW.
+      devRescanWords: () => {
+        this.sfxClick();
+        this._devEpoch = (this._devEpoch || 0) + 1;
+        this.setState({ devIdx: 0 });
+      },
+      devRescanBtnStyle: { flex: 'none', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 15, color: 'var(--sheet-ink)', background: 'color-mix(in srgb, var(--sheet-ink) 8%, transparent)' },
       devWordsShow: !!st.devWordsShow,
       devWordsLabel: st.devWordsShow ? 'HIDE' : 'SHOW',
       devHasWords: this.devSolve().length > 0,
@@ -6168,31 +6251,22 @@ class Component extends DCLogic {
         const words = e ? (e.themeWords || []) : [];
         return words.map((w, i) => {
           const active = st.devClueGlowWord === w;
+          const shaking = st.devClueShakeWord === w; // tapped, but not findable on the LIVE board right now
           return {
             k: 'dc' + i, word: String(w).toUpperCase(), onClick: () => this.devFlashClue(w),
             style: {
               padding: '6px 12px', borderRadius: 9, boxSizing: 'border-box', cursor: 'pointer',
               fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 12.5, fontWeight: 700, letterSpacing: '0.5px',
-              border: active ? '2px solid #8971FF' : '2px solid var(--line)',
-              background: active ? 'color-mix(in srgb, #8971FF 14%, transparent)' : 'transparent',
-              color: 'var(--sheet-ink)',
+              border: shaking ? '2px solid #E85C5C' : active ? '2px solid #8971FF' : '2px solid var(--line)',
+              background: shaking ? 'color-mix(in srgb, #E85C5C 16%, transparent)' : active ? 'color-mix(in srgb, #8971FF 14%, transparent)' : 'transparent',
+              color: shaking ? '#E85C5C' : 'var(--sheet-ink)',
+              animation: shaking ? 'shakeX 0.4s ease-out' : 'none',
             },
           };
         });
       })(),
       devStepBtnStyle: { flex: '0 0 auto', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--sheet-ink)', background: 'color-mix(in srgb, var(--sheet-ink) 8%, transparent)' },
       devStepWordStyle: { flex: '1 1 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', background: 'color-mix(in srgb, var(--sheet-ink) 5%, transparent)' },
-      devWordsCountLabel: (this.devSolve().length) ? (this.devSolve().length + ' words \u00b7 base pts (excl. streak/fever/bonus)') : 'no board \u2014 tap SHOW to re-solve',
-      devWordsBoxStyle: { maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4, padding: 5, borderRadius: 9, background: 'color-mix(in srgb, var(--sheet-ink) 4%, transparent)' },
-      devWordRows: this.devSolve().map((w, i) => ({
-        k: 'dw' + i, word: w.word.toUpperCase(), pts: '+' + w.pts,
-        rowStyle: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, width: '100%', boxSizing: 'border-box', padding: '4px 8px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', background: w.common ? 'color-mix(in srgb, var(--sheet-ink) 5%, transparent)' : 'transparent' },
-        wordStyle: { fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 13, fontWeight: 600, letterSpacing: 0.5, color: w.common ? 'var(--sheet-ink)' : 'var(--ghost)' },
-        ptsStyle: { fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 12.5, fontWeight: 600, color: '#5FD6A8' },
-        // tap a word to FLASH it on the board — reuses the "show best word" highlight (dims the rest,
-        // glows this word's tiles). Closes settings first so the board is visible; auto-clears after ~3.6s.
-        onTap: () => { this.closeModal(); this.later(() => { this.setState({ debugBestIds: w.ids }); this.later(() => this.setState(s => (s.debugBestIds === w.ids ? { debugBestIds: null } : null)), 3600); }, 260); },
-      })),
       // Task 4 (mode collapse): the home mode picker (casual/stackl arm+launch) is retired —
       // the daily round is the ONLY game now, launched directly by startDaily (dock button +
       // swipe-up gesture both call it).
