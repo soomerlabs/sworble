@@ -117,6 +117,15 @@
     @keyframes stormMidA { 0%{transform:translate(-5px,4px) scale(.96)} 50%{transform:translate(15px,-18px) scale(1.06)} 100%{transform:translate(-5px,4px) scale(.96)} }
     @keyframes stormCoreA { 0%{transform:translate(-8px,6px) scale(.94)} 50%{transform:translate(10px,-32px) scale(1.12)} 100%{transform:translate(-8px,6px) scale(.94)} }
     @keyframes stormCoreB { 0%{transform:translate(8px,5px) scale(1.05)} 50%{transform:translate(-10px,-29px) scale(.9)} 100%{transform:translate(8px,5px) scale(1.05)} }
+    /* OFF-SCREEN STORM BURN FIX: the goo-filter storm keeps its 6 blobs + haze animating (and
+       re-rasterizing behind the stormGoo SVG filter + 12px blur wrap) even while home is fully
+       hidden behind another screen — pure wasted GPU/CPU. stormWrapStyle (JS, below) now sets
+       animation-play-state on its own root div based on st.screen==='home' && !document.hidden;
+       every animated storm descendant must explicitly `inherit` that value (animation-play-state
+       is not an inherited CSS property by default) — each level in the .stormAura -> .stormHaze/
+       .stormBlockwrap -> .stormGoo -> .stormBlob chain needs its own `inherit` or the chain
+       breaks back to the initial 'running' at that level. `.stormAura *` covers every depth. */
+    .stormAura, .stormAura * { animation-play-state: inherit; }
     @keyframes hudRise { 0% { opacity: 0; transform: translateY(8px) scale(0.6); } 20% { opacity: 1; transform: translateY(-1px) scale(1.12); } 70% { opacity: 1; transform: translateY(-11px) scale(1); } 100% { opacity: 0; transform: translateY(-18px) scale(0.95); } }
     @keyframes chipPop { 0% { transform: translate3d(0,0,0) rotateZ(0deg) rotateX(0deg) scale(0.3); opacity: 1; animation-timing-function: cubic-bezier(0.15,0.7,0.3,1); } 30% { transform: translate3d(var(--cx), var(--cy), 0) rotateZ(calc(var(--cr) * 0.4)) rotateX(calc(var(--fx) * 0.35)) scale(1); opacity: 1; animation-timing-function: cubic-bezier(0.5,0.05,0.75,0.4); } 82% { opacity: 1; } 100% { transform: translate3d(var(--dx), var(--gy), 0) rotateZ(var(--cr)) rotateX(var(--fx)) scale(0.85); opacity: 0; } }
     @keyframes chipPopOld { 0% { transform: translate(0,0) rotate(0deg) scale(0.3); opacity: 1; } 18% { transform: translate(calc(var(--cx) * 0.25), calc(var(--cy) * 0.55)) rotate(calc(var(--cr) * 0.25)) scale(1.1); opacity: 1; } 60% { transform: translate(calc(var(--cx) * 0.7), var(--cy)) rotate(calc(var(--cr) * 0.6)) scale(1); opacity: 1; } 100% { transform: translate(var(--cx), var(--gy)) rotate(var(--cr)) scale(0.6); opacity: 0; } }
@@ -184,6 +193,18 @@
     /* leaderboard list: hide native scrollbars (swipe/wheel scroll still works) — bars read as chrome, not brand */
     .lb-scroll { scrollbar-width: none; -ms-overflow-style: none; }
     .lb-scroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
+    /* prefers-reduced-motion: hard-disable EVERY CSS animation/transition app-wide (storm,
+       clue bob, superlative floaters, etc.) — near-zero duration + a single iteration so
+       elements still land on their final keyframe (many start from opacity:0) instead of
+       getting stuck invisible the way `animation:none` would leave them. */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
   </style>
   <script>
 (function(){
@@ -1612,6 +1633,12 @@ class Component extends DCLogic {
         if (this.ac && this.ac.state === 'suspended') { try { this.ac.resume(); } catch (e) {} }
         try { const api = this.netApi(); if (api) api.flushQueue(); } catch (e) {} // returning to the tab delivers any queued scores
       }
+      // OFF-SCREEN STORM BURN FIX (part c): stormWrapStyle folds document.hidden into its
+      // running/paused decision, but document.hidden isn't reactive state — nothing would
+      // recompute the style until the next unrelated render. Force one here so the storm
+      // animation-play-state flips the instant the tab backgrounds/foregrounds, not just on
+      // the next incidental setState.
+      if (window.__sworbleSoomerLive === this) this.forceUpdate();
     };
     document.addEventListener('visibilitychange', this.onVis);
     // pagehide is the LAST reliable beat before an iOS Safari page teardown — the live run
@@ -6492,27 +6519,39 @@ class Component extends DCLogic {
         }
         if (scr === 'wordbank' && dx > 55 && Math.abs(dx) > Math.abs(dy) * 1.4) { this.sfxClick(); this.setState({ opts: this._optsHomeReset(), screen: 'home' }); }
       },
-      homeScreenStyle: {
-        position: 'fixed', inset: 0,
-        // LAYERING FIX (LIVE-PLAYTEST item A): z-index is now SCREEN-STATE-DRIVEN, not a static
-        // 20 that always sits above the game wrap (z10). A static z20 let inactive home content
-        // paint above an active game screen — combined with any hardcoded pointerEvents:'auto'
-        // inside home, that let home controls intercept taps meant for the game (e.g. the pause
-        // overlay's RESUME button). Only the ACTIVE screen may outrank the game wrap; every
-        // inactive screen layer drops BELOW it (4 < wrap's 10).
-        zIndex: st.screen === 'home' ? 20 : 4, boxSizing: 'border-box',
-        // OPAQUE front door: the gameboard is fully hidden behind home (no frosted see-through).
-        // On PLAY it resolves IN (gameMorphStyle blur/scale below) as this layer crossfades out.
-        background: 'var(--home-bg)',
-        overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start',
-        padding: mobile ? 'calc(' + (navBarH + 6) + 'px + env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom))' : (navBarH + 6) + 'px 16px 96px', // top clears the bar (retired the hidden nav-row spacer); bottom clears the fixed swipe dock
-        opacity: (st.screen === 'profile' || st.screen === 'lb' || st.screen === 'game') ? 0 : 1,
-        overscrollBehaviorY: 'none',
-        transition: 'opacity 0.26s ease',
-        pointerEvents: st.screen === 'home' ? 'auto' : 'none',
-        willChange: 'opacity',
-      },
+      homeScreenStyle: (() => {
+        // OFF-SCREEN STORM BURN FIX (part a): this layer used to hide via opacity:0 ONLY, so
+        // its subtree (incl. the goo-filter storm) stayed a fully-painted, hit-testable layer
+        // re-rasterizing every frame behind whichever screen actually had focus. visibility
+        // now rides along with the SAME opacity condition so the layer drops out of hit-testing
+        // and (in most engines) out of paint once truly hidden — but visibility flips to
+        // 'hidden' only AFTER the opacity fade finishes (transition-delay == fade duration), so
+        // the 0.26s crossfade still looks identical; flipping back to visible is immediate (no
+        // delay) so the fade-in is never starved of a frame.
+        const homeHidden = st.screen === 'profile' || st.screen === 'lb' || st.screen === 'game';
+        return {
+          position: 'fixed', inset: 0,
+          // LAYERING FIX (LIVE-PLAYTEST item A): z-index is now SCREEN-STATE-DRIVEN, not a static
+          // 20 that always sits above the game wrap (z10). A static z20 let inactive home content
+          // paint above an active game screen — combined with any hardcoded pointerEvents:'auto'
+          // inside home, that let home controls intercept taps meant for the game (e.g. the pause
+          // overlay's RESUME button). Only the ACTIVE screen may outrank the game wrap; every
+          // inactive screen layer drops BELOW it (4 < wrap's 10).
+          zIndex: st.screen === 'home' ? 20 : 4, boxSizing: 'border-box',
+          // OPAQUE front door: the gameboard is fully hidden behind home (no frosted see-through).
+          // On PLAY it resolves IN (gameMorphStyle blur/scale below) as this layer crossfades out.
+          background: 'var(--home-bg)',
+          overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start',
+          padding: mobile ? 'calc(' + (navBarH + 6) + 'px + env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom))' : (navBarH + 6) + 'px 16px 96px', // top clears the bar (retired the hidden nav-row spacer); bottom clears the fixed swipe dock
+          opacity: homeHidden ? 0 : 1,
+          visibility: homeHidden ? 'hidden' : 'visible',
+          overscrollBehaviorY: 'none',
+          transition: homeHidden ? 'opacity 0.26s ease, visibility 0s linear 0.26s' : 'opacity 0.26s ease',
+          pointerEvents: st.screen === 'home' ? 'auto' : 'none',
+          willChange: 'opacity',
+        };
+      })(),
       homeContentStyle: {
         flex: '1 0 auto', width: '100%', maxWidth: colW, boxSizing: 'border-box',
         display: 'flex', flexDirection: 'column', gap: 9, alignItems: 'center',
@@ -6561,7 +6600,16 @@ class Component extends DCLogic {
       // bottom edge flush on homeDockStyle's true bottom edge == the viewport bottom, with no
       // gap, in both daily states and both themes (the well's own opacity/filter still carries
       // the brewing/resting distinction — only the anchor changed).
-      stormWrapStyle: 'position:absolute; left:0; right:0; bottom:' + (mobile ? 'calc(-16px - env(safe-area-inset-bottom))' : '-22px') + '; height:260px; overflow:hidden; pointer-events:none; z-index:0; opacity:' + (this.dailyConsumed() ? 0.4 : 1) + '; filter:saturate(' + (this.dailyConsumed() ? 0.55 : 1) + '); transition:opacity 0.6s ease, filter 0.6s ease;',
+      // OFF-SCREEN STORM BURN FIX (part a/c): the storm's own goo-filter blobs must stop
+      // ANIMATING (not just fade to invisible) whenever home isn't the active screen, or the
+      // tab is backgrounded — a CSS animation keeps re-rasterizing behind stormGoo's SVG
+      // filter + 12px blur wrap every frame regardless of ancestor opacity/visibility.
+      // animation-play-state is set here on the storm's own root div; every animated
+      // descendant (.stormHaze/.stormBlob*) inherits it via the `.stormAura, .stormAura *`
+      // CSS rule above (see the storm keyframes block). document.hidden is folded in too
+      // (part c) — onVis (componentDidMount) forceUpdates on visibilitychange so this
+      // recomputes the instant the tab is backgrounded/foregrounded, not just on screen swaps.
+      stormWrapStyle: 'position:absolute; left:0; right:0; bottom:' + (mobile ? 'calc(-16px - env(safe-area-inset-bottom))' : '-22px') + '; height:260px; overflow:hidden; pointer-events:none; z-index:0; opacity:' + (this.dailyConsumed() ? 0.4 : 1) + '; filter:saturate(' + (this.dailyConsumed() ? 0.55 : 1) + '); transition:opacity 0.6s ease, filter 0.6s ease; animation-play-state:' + ((st.screen === 'home' && !document.hidden) ? 'running' : 'paused') + ';',
       // hides the swipe-up dock once today's daily is fully spent (dailyConsumed) — a played
       // day has nothing left to (re)start; the v18 dock instead shows the countdown below.
       dailyNotDone: !this.dailyConsumed(),
