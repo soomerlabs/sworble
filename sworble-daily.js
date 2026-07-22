@@ -32,7 +32,7 @@
   // the LONGEST matching clue wins. Returns null on no match / missing entry / empty word.
   function clueFor(word, entry) {
     if (!entry || !word) return null;
-    var list = entry.themeWords || entry.clues || [];
+    var list = entry.themeWords || [];
     var w = String(word).toLowerCase();
     var best = null;
     for (var i = 0; i < list.length; i++) {

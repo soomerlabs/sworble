@@ -139,7 +139,7 @@ function st(over) { return S.dailyStatus(Object.assign({}, BASE, over)); }
 
 // --- sworb block -------------------------------------------------------------------
 {
-  const entry = { sworb: 'ocean', clues: ['tide','coral','wave','reef','salt'] };
+  const entry = { sworb: 'ocean', themeWords: ['tide','coral','wave','reef','salt'] };
   const base = { done:false, storedDailyBest:0, storedSeven:null, puzzleBest:0, lbMe:null, savedRun:null, live:{active:false,over:false,roundWords:[],tilesCount:0} };
   const off = S.dailyStatus(base).sworb;
   assert.deepStrictEqual(off, { active: false }, 'no sworb src -> inactive');

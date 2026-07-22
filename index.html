@@ -1914,10 +1914,7 @@ class Component extends DCLogic {
     // pre-seed fallback (no board built yet, e.g. on home): preview the same SWORB_CLUE_COUNT
     // (6) the two-pass seed will realize once the board deals.
     const themeWords = (Array.isArray(realized) && realized.length) ? realized : pool.themeWords.slice(0, SWORB_CLUE_COUNT);
-    // `clues` is a transition alias for `themeWords` so consumers not yet converted (guessSworb,
-    // _placeCluesInRefill, clueFan, sworble-status) keep working; Tasks 4/5/7 convert them to
-    // `themeWords`, then the alias is removed in final cleanup.
-    return { sworb: pool.sworb, themeWords, clues: themeWords };
+    return { sworb: pool.sworb, themeWords };
   }
   // sworb-of-the-day guess state, per day: { guessesUsed, solved, correct, bonus }
   sworbState() {
@@ -4033,7 +4030,7 @@ class Component extends DCLogic {
     // synchronously at commit, so it can't lose the race against the found-list write the
     // way FOUND_PREFIX can. Without this, spelling a clue makes it fall right back onto the board.
     const playedThisRun = new Set((this.state.roundWords || []).map(w => (w.word || '').toLowerCase()));
-    const unfound = e.clues.filter(w => found.indexOf(w) < 0 && !playedThisRun.has(w));
+    const unfound = e.themeWords.filter(w => found.indexOf(w) < 0 && !playedThisRun.has(w));
     if (!unfound.length) return;
     // a clue only needs restoring when it's NOT findable on the settled survivors
     const settled = this.liveTiles().filter(t => !t.clearing && !t.dead);
@@ -5793,7 +5790,7 @@ class Component extends DCLogic {
           if (!e || !sw.active) return { show: false, row1: [], row2: [] };
           const day = this.dailyKey || this.dayKey(new Date());
           let found = []; try { found = JSON.parse(LS.getItem(K.FOUND_PREFIX + day) || '[]'); } catch (x) {}
-          const clues = e.clues || [];
+          const clues = e.themeWords || [];
           const tokens = clues.map((w, i) => {
             const word = String(w).toLowerCase();
             const isF = found.indexOf(word) >= 0;
@@ -6751,7 +6748,7 @@ class Component extends DCLogic {
         const day = this.dailyKey || this.dayKey(new Date());
         let found = []; try { found = JSON.parse(LS.getItem(K.FOUND_PREFIX + day) || '[]'); } catch (x) {}
         const dk = this.isDark();
-        const tokens = e.clues.map((w, i) => {
+        const tokens = e.themeWords.map((w, i) => {
           const word = String(w).toLowerCase();
           const isF = found.indexOf(word) >= 0;
           const pal = PALETTE[i % PALETTE.length];

@@ -95,7 +95,7 @@
     var sworb;
     if (!sw || !sw.entry) { sworb = { active: false }; }
     else {
-      var themeList = sw.entry.themeWords || sw.entry.clues || [];
+      var themeList = sw.entry.themeWords || [];
       var total = themeList.length;
       var foundCount = Array.isArray(sw.cluesFound) ? sw.cluesFound.length : 0;
       var guessesLeft = Math.max(0, 6 - (num(sw.guessesUsed) || 0));
