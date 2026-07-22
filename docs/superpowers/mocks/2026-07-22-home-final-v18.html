@@ -49,7 +49,7 @@
   .date .d2c{color:var(--violet)}
   .divider{height:1.5px;background:var(--line);margin-top:16px}
 
-  .sworb{margin-top:34px;display:flex;flex-direction:column;align-items:center;gap:16px;position:relative;z-index:3}
+  .sworb{margin-top:26px;display:flex;flex-direction:column;align-items:center;gap:16px;position:relative;z-index:3}
   .blocks{display:flex;gap:7px}
   .blk{flex:none;width:54px;height:60px;border-radius:13px;display:flex;align-items:center;justify-content:center;
     font-family:'Fredoka','Manrope',sans-serif;font-size:28px;font-weight:600;background:transparent;border:2.5px dashed var(--line);color:var(--sheet-ink)}
@@ -76,6 +76,17 @@
     background:#A78BFA;box-shadow:inset 0 -5px 0 #7C5CE0}
   .heroTile.empty{background:transparent;box-shadow:none;border:2.5px dashed var(--line);color:#4A4A56}
   .heroCap{font-size:11px;font-weight:800;letter-spacing:1.8px;color:var(--ghost);text-transform:uppercase}
+  /* slim top score strip: [score] ---link-bar--- [crown top · name] */
+  .slim{display:flex;align-items:center;gap:14px;margin-top:18px;position:relative;z-index:3}
+  .slimScore{flex:none;display:flex;align-items:baseline;gap:5px;font-family:'Fredoka','Manrope',sans-serif;font-weight:600;font-size:18px;color:var(--sheet-ink)}
+  .slimScore small{font-size:10.5px;font-weight:700;color:var(--ghost)}
+  .slimTrack{position:relative;flex:1;height:18px}
+  .slimTrack::before{content:'';position:absolute;left:2px;right:2px;top:50%;border-top:2px dashed var(--line)}
+  .slimFill{position:absolute;left:0;top:50%;transform:translateY(-50%);height:5px;border-radius:999px;
+    background:color-mix(in srgb,#8971FF 80%,transparent);filter:blur(1px);box-shadow:0 0 9px -1px #8971FF}
+  .slimKnob{position:absolute;top:50%;transform:translate(-50%,-50%);width:17px;height:17px;border-radius:6px;
+    background:var(--home-bg);border:2px dashed var(--line);box-sizing:border-box}
+  .slimTop{flex:none;display:flex;align-items:center;gap:6px;font-family:'Fredoka','Manrope',sans-serif;font-weight:600;font-size:14.5px;color:var(--ghost)}
   /* progress-to-top bar (owner's pick) */
   .prog{margin-top:26px;position:relative;z-index:3;display:flex;flex-direction:column;gap:12px}
   .progHead{display:flex;align-items:flex-end;justify-content:space-between}
@@ -182,6 +193,12 @@
           <span class="navic">settings</span>
         </div>
 
+        <div class="slim rise d1">
+          <div class="slimScore"><b style="color:#4A4A56">0</b><small>pts</small></div>
+          <div class="slimTrack"><div class="slimFill" style="width:0%"></div><div class="slimKnob" style="left:2%;opacity:.45"></div></div>
+          <div class="slimTop"><svg width="14" height="10" viewBox="0 0 34 24" fill="none"><path d="M3 21 L2 7 L10 13 L17 3 L24 13 L32 7 L31 21 Z" fill="#8971FF" stroke="#6A4FE0" stroke-width="1.5" stroke-linejoin="round"/><circle cx="2" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="32" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="17" cy="2.6" r="2.4" fill="#8971FF"/></svg><span>1,480</span></div>
+        </div>
+
         <div class="sworb rise d2" style="margin-top:26px">
           <div class="blocks"><div class="blk"></div><div class="blk"></div><div class="blk"></div><div class="blk"></div><div class="blk"></div></div>
           <div class="fan">
@@ -190,15 +207,8 @@
           </div>
         </div>
 
-        <div class="prog rise d3">
-          <div class="progHead">
-            <div class="bigScore"><b style="color:#4A4A56">0</b><span>pts</span></div>
-            <div class="topSide"><div class="topLine"><svg width="19" height="13" viewBox="0 0 34 24" fill="none"><path d="M3 21 L2 7 L10 13 L17 3 L24 13 L32 7 L31 21 Z" fill="#8971FF" stroke="#6A4FE0" stroke-width="1.5" stroke-linejoin="round"/><circle cx="2" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="32" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="17" cy="2.6" r="2.4" fill="#8971FF"/></svg><b>1,480</b></div><div class="topCap">maya</div></div>
-          </div>
-          <div class="track"><div class="fill" style="width:0%"></div><div class="knob" style="left:2%;opacity:.45"></div></div>
-          <div class="bw">
+        <div class="bw rise d3" style="margin-top:16px">
             <span class="bwb gst">.</span><span class="bwb gst">.</span><span class="bwb gst">.</span><span class="bwb gst">.</span><span class="bwb gst">.</span>
-          </div>
         </div>
 
         <div class="stand rise d4">
@@ -270,6 +280,12 @@
           <span class="navic">settings</span>
         </div>
 
+        <div class="slim rise d1">
+          <div class="slimScore"><b>1,240</b><small>pts</small></div>
+          <div class="slimTrack"><div class="slimFill" style="width:84%"></div><div class="slimKnob" style="left:84%"></div></div>
+          <div class="slimTop"><svg width="14" height="10" viewBox="0 0 34 24" fill="none"><path d="M3 21 L2 7 L10 13 L17 3 L24 13 L32 7 L31 21 Z" fill="#8971FF" stroke="#6A4FE0" stroke-width="1.5" stroke-linejoin="round"/><circle cx="2" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="32" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="17" cy="2.6" r="2.4" fill="#8971FF"/></svg><span style="color:var(--sheet-ink)">1,480</span></div>
+        </div>
+
         <div class="sworb rise d3" style="margin-top:26px">
           <div class="blocks">
             <div class="blk c2">S</div><div class="blk c0">H</div><div class="blk c4">O</div><div class="blk c1">A</div><div class="blk c3">L</div>
@@ -280,19 +296,12 @@
           </div>
         </div>
 
-        <div class="prog rise d3">
-          <div class="progHead">
-            <div class="bigScore"><b>1,240</b><span>pts</span></div>
-            <div class="topSide"><div class="topLine"><svg width="19" height="13" viewBox="0 0 34 24" fill="none"><path d="M3 21 L2 7 L10 13 L17 3 L24 13 L32 7 L31 21 Z" fill="#8971FF" stroke="#6A4FE0" stroke-width="1.5" stroke-linejoin="round"/><circle cx="2" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="32" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="17" cy="2.6" r="2.4" fill="#8971FF"/></svg><b>1,480</b></div><div class="topCap">maya</div></div>
-          </div>
-          <div class="track"><div class="fill" style="width:84%"></div><div class="knob" style="left:84%"></div></div>
-          <div class="bw">
+        <div class="bw rise d3" style="margin-top:16px">
             <span class="bwb" style="background:#A78BFA;box-shadow:inset 0 -3px 0 #7C5CE0">shoal<small>420</small></span>
             <span class="bwb" style="background:#5FD6A8;box-shadow:inset 0 -3px 0 #38AD7F">waves<small>180</small></span>
             <span class="bwb" style="background:#F5B84A;box-shadow:inset 0 -3px 0 #CE9022">reef<small>150</small></span>
             <span class="bwb" style="background:#5BC8F5;box-shadow:inset 0 -3px 0 #2E9FD0">tides<small>140</small></span>
             <span class="bwb" style="background:#F58FB8;box-shadow:inset 0 -3px 0 #D06090">salt<small>120</small></span>
-          </div>
         </div>
 
         <div class="stand rise d4">

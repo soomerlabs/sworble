@@ -163,9 +163,10 @@ skeleton (no layout shift between them).
   (found = candy pill w/ ledge, unfound = dashed ghost) — replaces the old sworb card + tag/hint
   lines. Delete `modePicker` remnants (Task 4) and the old "sworb safe"/"standings" list rows the
   v18 layout drops.
-- [ ] Step 2: progress-to-top link-bar under the fan (per mock: bigScore+pts / crown+topScore+
-  leaderName (no "TOP·" prefix) / dashed track / glowing fill at `min(100, round(you/top*100))%` /
-  dashed-block knob → candy `hit` when you ≥ top). NO chase line, NO percentage. Under the bar:
+- [ ] Step 2: SLIM score strip at the TOP (under nav, per mock `.slim`): one line — small
+  score+pts / thin dashed track with glowing fill at `min(100, round(you/top*100))%` + mini
+  dashed-block knob (candy `hit` when you ≥ top) / small crown+topScore. NO chase line, NO
+  percentage, NO big score. Under the fan:
   **best-words strip** — top 5 distinct words by pts as candy word-blocks (word + small pts,
   PALETTE colors + ledge), ONE horizontal-scroll row (`overflow-x`, hidden scrollbar); pre-play =
   5 dashed ghost blocks. Data: `dailyStatus().seven.words.slice(0,5)` (the words-list machinery —
