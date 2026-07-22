@@ -72,7 +72,9 @@
   };
 
   // Typed, exception-safe accessors (optional sugar over LS + parse/stringify).
-  function getStr(k, d) { try { const v = LS.getItem(k); return v == null ? (d == null ? null : d) : v; } catch (e) { return d == null ? null : d; } }
+  // (getStr — a plain-string get/default wrapper — had zero callers across index.html and
+  // zero test coverage; dead-code sweep 2026-07-22 removed it. getInt/getJSON below cover
+  // every actual accessor the game reads.)
   function getInt(k, d) { try { return (parseInt(LS.getItem(k) || '', 10) || 0) || (d || 0); } catch (e) { return d || 0; } }
   function getJSON(k, d) { try { const v = LS.getItem(k); return v == null ? (d == null ? null : d) : JSON.parse(v); } catch (e) { return d == null ? null : d; } }
   function set(k, v) { try { LS.setItem(k, String(v)); } catch (e) {} }
@@ -106,7 +108,7 @@
     } catch (e) { return 0; }
   }
 
-  const API = { LS, K, getStr, getInt, getJSON, set, setJSON, remove, keys, migrateLegacy };
+  const API = { LS, K, getInt, getJSON, set, setJSON, remove, keys, migrateLegacy };
   root.SworbleStore = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

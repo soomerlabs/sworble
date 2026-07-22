@@ -43,7 +43,6 @@
     @keyframes sworbFlip { 0% { transform: perspective(700px) rotateX(-88deg); opacity: 0; } 55% { transform: perspective(700px) rotateX(12deg); opacity: 1; } 100% { transform: perspective(700px) rotateX(0deg); opacity: 1; } }
     @keyframes clueBob { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-5px) rotate(1.6deg); } }
     @keyframes boardMorph { 0% { opacity: 0; filter: blur(9px); } 100% { opacity: 1; filter: blur(0); } }
-    @keyframes keyPop { 0% { transform: scale(0.35); opacity: 0; } 70% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
     @keyframes clueLand { 0% { transform: scale(0.3) rotate(-12deg); opacity: 0; } 60% { transform: scale(1.12) rotate(4deg); } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
     /* HINT AIDS #2 grant moment: the clue fan's one collective bob (hintFanBob, on the fan's
        own wrapStyle) + the "+hint" beat label that rides up and fades (hintBeat) — both armed
@@ -59,19 +58,11 @@
     @keyframes floatSlotA { 0%, 100% { transform: translateX(-50%) rotate(0deg); } 50% { transform: translateX(-50%) translate(2px,-4px) rotate(1deg); } }
     @keyframes floatSlotB { 0%, 100% { transform: translateX(-50%) rotate(0deg); } 50% { transform: translateX(-50%) translate(-3px,-3px) rotate(-1deg); } }
     @keyframes floatSlotC { 0%, 100% { transform: translateX(-50%) rotate(0deg); } 35% { transform: translateX(-50%) translate(2px,-3px) rotate(0.8deg); } 70% { transform: translateX(-50%) translate(-2px,-2px) rotate(-0.9deg); } }
-    @keyframes slotPopA { 0% { transform: scale(1); } 40% { transform: scale(0.7) rotate(8deg); } 100% { transform: scale(1); } }
-    @keyframes slotPopB { 0% { transform: scale(1); } 40% { transform: scale(0.7) rotate(-8deg); } 100% { transform: scale(1); } }
     @keyframes slotShake { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-1.5px, 1px) rotate(-1deg); } 50% { transform: translate(1.5px, -1px) rotate(1deg); } 75% { transform: translate(-1px, -1px); } }
-    @keyframes floatA { 0% { transform: translate(0, 0) rotate(-8deg); } 50% { transform: translate(6px, -26px) rotate(7deg); } 100% { transform: translate(0, 0) rotate(-8deg); } }
-    @keyframes floatB { 0% { transform: translate(0, 0) rotate(12deg); } 50% { transform: translate(-8px, 22px) rotate(-4deg); } 100% { transform: translate(0, 0) rotate(12deg); } }
-    @keyframes confettiDropA { 0% { transform: translate(0, -12px) rotate(-10deg); opacity: 0; } 10% { opacity: 0.9; } 92% { opacity: 0.9; } 100% { transform: translate(-10px, 520px) rotate(360deg); opacity: 0; } }
-    @keyframes confettiDropB { 0% { transform: translate(0, -12px) rotate(12deg); opacity: 0; } 10% { opacity: 0.9; } 92% { opacity: 0.9; } 100% { transform: translate(11px, 520px) rotate(-340deg); opacity: 0; } }
     @keyframes confFadeA { 0% { transform: translate(0,-6px) rotate(-12deg); opacity:0; } 16% { opacity:0.95; } 50% { opacity:0.8; } 100% { transform: translate(-8px, 110px) rotate(320deg); opacity:0; } }
     @keyframes confFadeB { 0% { transform: translate(0,-6px) rotate(10deg); opacity:0; } 16% { opacity:0.95; } 50% { opacity:0.8; } 100% { transform: translate(9px, 110px) rotate(-300deg); opacity:0; } }
     @keyframes tileFlash { 0%, 100% { filter: brightness(1) saturate(1); } 30% { filter: brightness(1.28) saturate(1.12); } }
     @keyframes shockwave { from { transform: scale(0.45); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
-    @keyframes slotInA { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-    @keyframes slotInB { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
     @keyframes tipCycle { 0% { opacity: 0; transform: translateY(5px); } 9% { opacity: 1; transform: translateY(0); } 86% { opacity: 1; } 100% { opacity: 0; } }
     @keyframes trailDraw { 0% { stroke-dashoffset: 1; opacity: 0.2; } 45% { opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 1; } }
@@ -136,9 +127,6 @@
     @keyframes hudRise { 0% { opacity: 0; transform: translateY(8px) scale(0.6); } 20% { opacity: 1; transform: translateY(-1px) scale(1.12); } 70% { opacity: 1; transform: translateY(-11px) scale(1); } 100% { opacity: 0; transform: translateY(-18px) scale(0.95); } }
     @keyframes twinPulse { 0%, 100% { filter: drop-shadow(0 0 0px rgba(137,113,255,0)); } 50% { filter: drop-shadow(0 0 9px rgba(137,113,255,0.9)) drop-shadow(0 0 2px rgba(137,113,255,0.8)); } }
     @keyframes ghostSlide { 0% { transform: translate(var(--gx0), var(--gy0)) scale(1); opacity: 0; box-shadow: 0 3px 0 var(--edge); animation-timing-function: ease-out; } 7% { opacity: 1; } 17% { transform: translate(var(--gx0), var(--gy0)) translateY(-9px) scale(1.14); box-shadow: 0 16px 22px rgba(0,0,0,0.4); opacity: 1; animation-timing-function: cubic-bezier(0.45,0,0.55,1); } 53% { transform: translate(var(--gx1), var(--gy1)) translateY(-9px) scale(1.14); box-shadow: 0 16px 22px rgba(0,0,0,0.4); opacity: 1; animation-timing-function: cubic-bezier(0.55,0,0.9,0.35); } 65% { transform: translate(var(--gx1), var(--gy1)) translateY(0px) scale(0.9); box-shadow: 0 2px 0 var(--edge); opacity: 1; animation-timing-function: cubic-bezier(0.2,0.85,0.3,1.25); } 74% { transform: translate(var(--gx1), var(--gy1)) scale(1.06); } 84% { transform: translate(var(--gx1), var(--gy1)) scale(1); box-shadow: 0 3px 0 var(--edge); opacity: 1; } 93% { opacity: 1; } 100% { transform: translate(var(--gx1), var(--gy1)) scale(1); opacity: 0; box-shadow: 0 3px 0 var(--edge); } }
-    @keyframes boardPunchA { 0% { transform: scale(1); } 32% { transform: scale(1.035); } 100% { transform: scale(1); } }
-    @keyframes boardPunchB { 0% { transform: scale(1); } 32% { transform: scale(1.035); } 100% { transform: scale(1); } }
-    @keyframes shockRing { 0% { transform: scale(0.28); opacity: 0.85; } 100% { transform: scale(2.6); opacity: 0; } }
     * { -webkit-tap-highlight-color: transparent; }
     /* portrait-only on touch devices: landscape shows a rotate prompt (browsers
        can't lock orientation outside fullscreen, so we block + pause instead) */
@@ -182,8 +170,6 @@
     }
     @keyframes rjDrainOut { 0% { background: #E5484D; box-shadow: 0 var(--rjl) 0 #8C2328, 0 0 12px 2px rgba(229,72,77,0.4), inset 0 2px 0 rgba(255,255,255,0), inset 0 -3px 4px rgba(0,0,0,0); color: #FFFFFF; filter: none; } 55% { background: var(--rjm); box-shadow: 0 var(--rjl) 0 var(--rje), 0 0 10px 2px rgba(229,72,77,0.2), inset 0 2px 0 var(--rjhi), inset 0 -3px 4px var(--rjbot); color: var(--rji); filter: saturate(0.5); } 100% { background: var(--rjb); box-shadow: 0 var(--rjl) 0 var(--rje), 0 0 0 0 rgba(229,72,77,0), inset 0 2px 0 var(--rjhi), inset 0 -3px 4px var(--rjbot); color: var(--rji); filter: none; } }
     @keyframes chipFall { to { transform: translateY(48px) rotate(var(--fr)); opacity: 0; } }
-    @keyframes boardRattleA { 0%, 100% { transform: translateX(0); } 15% { transform: translateX(-7px); } 35% { transform: translateX(6px); } 55% { transform: translateX(-4px); } 75% { transform: translateX(3px); } }
-    @keyframes boardRattleB { 0%, 100% { transform: translateX(0); } 15% { transform: translateX(7px); } 35% { transform: translateX(-6px); } 55% { transform: translateX(4px); } 75% { transform: translateX(-3px); } }
     @keyframes tripFlash { 0% { filter: brightness(1.8) saturate(1.6) hue-rotate(-25deg); } 100% { filter: none; } }
     @keyframes boomConfetti { 0% { transform: translate(0, 0) rotate(0deg); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(var(--cx2), var(--cy2)) rotate(var(--cr2)); opacity: 0; } }
     @keyframes blastFlash { 0% { filter: brightness(2) saturate(1.6); } 100% { filter: none; } }
@@ -2469,7 +2455,6 @@ class Component extends DCLogic {
     this.prefixes = p;
   }
 
-  randLetter() { return BAG[Math.floor(this.rand() * BAG.length)]; }
   // the Q tile IS "Qu" (Boggle's fix): displays as Qu, spells as "qu" — never stranded
   dispLetter(l) { return SworbleCore.dispLetter(l); }
   expandLetter(l) { return SworbleCore.expandLetter(l); }
@@ -2771,9 +2756,6 @@ class Component extends DCLogic {
       const day = this.dayKey(new Date());
       return SworbleRun.validateRun(SworbleStore.getJSON(K.RUN_PREFIX + day, null), day);
     } catch (e) { return null; }
-  }
-  hasSavedRun() { // cheap render-time check (no JSON parse) for the home RESUME label
-    try { return !!LS.getItem(K.RUN_PREFIX + (this.dailyKey || this.dayKey(new Date()))); } catch (e) { return false; }
   }
   clearRunState() {
     try { LS.removeItem(K.RUN_PREFIX + (this.dailyKey || this.dayKey(new Date()))); } catch (e) {}
@@ -3747,9 +3729,10 @@ class Component extends DCLogic {
     }
   }
 
-  // length multiplier — v2 rewards long words much harder (feedback: 5-letter words
-  // felt weak): 4=1.5x, 5=2.5x, 6=4x, 7+=6x. v1 keeps the original curve.
-  lenMult(n) { return SworbleCore.lenMult(n, true); }
+  // length multiplier — rewards long words much harder (feedback: 5-letter words felt
+  // weak): 4=1.5x, 5=2.5x, 6=4x, 7+=6x. (The original, gentler curve — v1 — was retired
+  // with the classic mode; sworble-core.js's dead-code sweep removed its code path 2026-07-22.)
+  lenMult(n) { return SworbleCore.lenMult(n); }
   // streak multiplier: every 3 consecutive words +0.5x, capped at 2x
   streakMult(streak) { return SworbleCore.streakMult(streak); }
 

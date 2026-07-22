@@ -72,10 +72,11 @@
   // ---- Scoring primitives --------------------------------------------------------
   // A single tile's point value including merge boosts (a stacked twin doubles it).
   function letterVal(letter, boost) { return (VALUES[letter] || 1) * (1 + (boost || 0)); }
-  // Length multiplier — long words pay much harder. v2 (the shipped curve): 4=1.5x,
-  // 5=2.5x, 6=4x, 7+=6x. v1 kept for parity with the retired classic mode.
-  function lenMult(n, v2) {
-    if (v2 === false) return n >= 7 ? 4 : n === 6 ? 3 : n === 5 ? 2 : 1;
+  // Length multiplier — long words pay much harder: 4=1.5x, 5=2.5x, 6=4x, 7+=6x.
+  // (A v1 curve — 4=1x/5=2x/6=3x/7+=4x, gated by a second `v2` param — existed here for
+  // parity with the retired classic mode. Every caller passed v2:true or omitted the param
+  // entirely; nothing ever passed false. Dead-code sweep 2026-07-22: v1 arm removed.)
+  function lenMult(n) {
     return n >= 7 ? 6 : n === 6 ? 4 : n === 5 ? 2.5 : n === 4 ? 1.5 : 1;
   }
   // Streak multiplier: every 3 consecutive words +0.5x, capped at 2x.
