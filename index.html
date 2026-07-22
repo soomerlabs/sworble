@@ -2554,7 +2554,19 @@ class Component extends DCLogic {
     const prev = parseInt(LS.getItem(dkey) || '0', 10) || 0;
     if ((runScore || 0) <= prev) return prev; // not a new best run — keep the standing Seven
     // ONE seven algorithm everywhere: the same sevenFromWords the live surfaces render
-    const words = SworbleStatus.sevenFromWords((roundWords || []).map(w => ({ ...w, word: (w && w.word ? String(w.word) : '').toLowerCase() }))).words;
+    let words = SworbleStatus.sevenFromWords((roundWords || []).map(w => ({ ...w, word: (w && w.word ? String(w.word) : '').toLowerCase() }))).words;
+    // FINALE RE-ENTRY GUARD: bankFinaleBonus can call this with a genuine new-best score
+    // (storedBest + bonus) but an EMPTY roundWords — state.roundWords doesn't survive a
+    // reload mid-finale (fresh boot state), so there are no live words to derive a Seven
+    // from even though the score total is correct. Without this, that empty list would blank
+    // out today's already-banked words even as the score correctly advances. Only kicks in
+    // when the computed list is empty AND a real word list is already banked for today — a
+    // genuine new-best run that actually has words always overwrites normally.
+    if (!words.length) {
+      let stored = null;
+      try { stored = JSON.parse(LS.getItem(skey) || 'null'); } catch (e) {}
+      if (stored && Array.isArray(stored.words) && stored.words.length) words = stored.words;
+    }
     try { LS.setItem(skey, JSON.stringify({ score: runScore, words })); } catch (e) {}
     try { LS.setItem(dkey, String(runScore)); } catch (e) {}
     return runScore;
