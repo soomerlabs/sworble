@@ -1,0 +1,11 @@
+{
+  "name": "sworbl",
+  "short_name": "sworbl",
+  "display": "standalone",
+  "start_url": "./",
+  "theme_color": "#101014",
+  "background_color": "#101014",
+  "icons": [
+    { "src": "./icon-180.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
