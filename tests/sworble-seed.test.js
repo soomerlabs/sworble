@@ -126,6 +126,35 @@ console.log('sworble-seed: seedClueLetters passed');
 }
 console.log('sworble-seed: seedClueLettersBestEffort passed');
 
+// two-pass: locks the realized set to EXACTLY `target` (default 6) — "6 to find, 6 to crack it"
+{
+  const ocean = ['tide','coral','wave','reef','salt','shore','kelp','surf','foam','brine','pearl','shell'];
+  const rngFactory = () => Core.mulberry32(Core.hashSeed('ocean|twopass'));
+  const out = Seed.seedClueLettersTwoPass({ clues: ocean, cols: 5, rows: 6, rngFactory, target: 6 });
+  assert.strictEqual(out.usedFallback, false, 'a healthy 12-word pool locks 6 cleanly (no fallback)');
+  assert.strictEqual(out.realized.length, 6, 'realized set is exactly 6');
+  // the final board stamps ONLY the 6 targets — no leftover pass-1 bonus words
+  assert.deepStrictEqual(Object.keys(out.cluePaths).sort(), out.realized.slice().sort(), 'cluePaths keys are exactly the 6 realized targets');
+  for (const w of out.realized) {
+    assert.strictEqual(out.cluePaths[w].map(p => out.letters[p.r + ',' + p.c]).join(''), w, w + ' spelled on its path');
+  }
+  const tiles = tilesFromLetters(out.letters, 5, 6);
+  for (const w of out.realized) assert.ok(Solver.findWord(tiles, { word: w, expand, diag: true }), w + ' findable on the trimmed board');
+  // deterministic: same rngFactory (fresh generator per call, same seed) -> identical target set
+  const out2 = Seed.seedClueLettersTwoPass({ clues: ocean, cols: 5, rows: 6, rngFactory, target: 6 });
+  assert.deepStrictEqual(out.realized, out2.realized, 'same seed -> same realized 6');
+  assert.deepStrictEqual(out.cluePaths, out2.cluePaths, 'same seed -> same trimmed board');
+}
+// two-pass fallback: a candidate pool smaller than `target` can never realize `target` — flagged,
+// not silently eaten. `realized` reports the short slice pass 1 actually placed.
+{
+  const rngFactory = () => Core.mulberry32(Core.hashSeed('tiny|twopass'));
+  const out = Seed.seedClueLettersTwoPass({ clues: ['tide', 'coral'], cols: 5, rows: 6, rngFactory, target: 6 });
+  assert.strictEqual(out.usedFallback, true, 'a 2-word pool cannot realize a 6-word target');
+  assert.strictEqual(out.realized.length, 2, 'realized reports what pass 1 actually placed (2)');
+}
+console.log('sworble-seed: seedClueLettersTwoPass passed');
+
 // reseedBroken: re-stamp unfindable clues
 {
   // 5x6 grid, all 'x' except a broken clue. Every clue is "unfindable" per the stub predicate,

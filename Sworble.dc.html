@@ -1061,6 +1061,9 @@ const VOWELS = SworbleCore.VOWELS;
 // commons-heavy bag for the early-round on-ramp: words practically deal themselves
 const FRIENDLY = SworbleCore.FRIENDLY;
 const SHARE_URL = 'https://soomerlabs.github.io/sworble/';
+// "6 to find, 6 to crack it": every content day places EXACTLY this many theme (clue) words on
+// the opening board (see the two-pass seed in newGame + the dailyEntry() pre-seed fallback).
+const SWORB_CLUE_COUNT = 6;
 // Soomer app wiring (sworble IS a Soomer app — web client now, SDK mobile clients later,
 // all bound by the same Application UUID). Set appId to the UUID provisioned for sworble
 // on the Soomer backend to go live; while empty, everything stays fully local (stub bots +
@@ -1766,7 +1769,10 @@ class Component extends DCLogic {
     const day = this.dailyKey || this.dayKey(new Date());
     let realized = null;
     try { realized = JSON.parse(LS.getItem(K.THEME_PREFIX + day) || 'null'); } catch (e) {}
-    const themeWords = (Array.isArray(realized) && realized.length) ? realized : pool.themeWords.slice(0, this.themeTarget());
+    // pre-seed fallback (no board built yet, e.g. on home): preview the same SWORB_CLUE_COUNT
+    // (6) the two-pass seed will realize once the board deals — NOT themeTarget(), which is a
+    // dev-only knob for pass-1's wider candidate pool and would otherwise leak up to 8/20.
+    const themeWords = (Array.isArray(realized) && realized.length) ? realized : pool.themeWords.slice(0, SWORB_CLUE_COUNT);
     // `clues` is a transition alias for `themeWords` so consumers not yet converted (guessSworb,
     // _placeCluesInRefill, clueFan, sworble-status) keep working; Tasks 4/5/7 convert them to
     // `themeWords`, then the alias is removed in final cleanup.
@@ -2132,18 +2138,27 @@ class Component extends DCLogic {
     this.bombRun = 0;            // consecutive caught mines — drives the chain multiplier
     this.feverUntil = 0;         // mine-catch fever window
     this.juiceNext = 0;          // pending friendly deals
-    // SWORB day: best-effort pack up to themeTarget() theme words onto the opening board.
-    // Packing is deterministic and never fails (unlike the old all-or-nothing retry loop) —
-    // the REALIZED set (words that packed AND verify findable) is the source of truth.
+    // SWORB day: two-pass pack EXACTLY SWORB_CLUE_COUNT (6) theme words onto the opening board
+    // ("6 to find, 6 to crack it"). Pass 1 best-effort-packs the wider themeTarget() candidate
+    // pool; the first 6 realized become the target set. Pass 2 re-packs a FRESH board with ONLY
+    // those 6, on a fresh rng from the SAME seed, so the final board stamps ONLY the 6 targets —
+    // no leftover bonus words from the wider pass-1 pool. Deterministic: same seed + same pool
+    // → same 6, always. Packing is deterministic and never fails (unlike the old all-or-nothing
+    // retry loop) — the REALIZED set (words that packed AND verify findable) is the source of
+    // truth (see SworbleSeed.seedClueLettersTwoPass; dailies-check.js simulates this exact path).
     const _pool = this.themePool();
     if (_pool && (this.optVal('dailyMode', true) || this.stacklOn())) {
       const wanted = _pool.themeWords.slice(0, this.themeTarget());
       const byCell = {}; tiles.forEach(t => { byCell[t.row + ',' + t.col] = t; });
-      const rng = mulberry32(SworbleCore.hashSeed(this.dailyKey + '|sworb') >>> 0);
-      const cand = SworbleSeed.seedClueLettersBestEffort({ clues: wanted, cols: this.cols(), rows: this.rows(), rng });
+      const dailySeed = this.dailyKey + '|sworb';
+      const rngFactory = () => mulberry32(SworbleCore.hashSeed(dailySeed) >>> 0);
+      const cand = SworbleSeed.seedClueLettersTwoPass({ clues: wanted, cols: this.cols(), rows: this.rows(), rngFactory, target: SWORB_CLUE_COUNT });
       Object.keys(cand.letters).forEach(k => { const [r, c] = k.split(',').map(Number); const t = byCell[r + ',' + c]; if (t) { t.letter = cand.letters[k]; t.color = this.tileColorFor(t.letter, t.id); } });
-      // realized = the packed words that verify findable on the real board (all should, by construction)
-      const realized = Object.keys(cand.cluePaths).filter(w => SworbleSolver.findWord(tiles, { word: w, expand: SworbleCore.expandLetter, diag: this.diag() }));
+      // realized = the EXACTLY-6 target words that verify findable on the real board (all
+      // should, by construction). cand.usedFallback (content day is thin/misconfigured — should
+      // never happen with curated pools; caught by dailies-check.js) leaves any pass-1 extras
+      // stamped on the board as unmarked bonus words, but only the 6 targets are ever persisted.
+      const realized = cand.realized.filter(w => SworbleSolver.findWord(tiles, { word: w, expand: SworbleCore.expandLetter, diag: this.diag() }));
       if (realized.length) {
         this._activeTheme = realized;
         this._cluePaths = cand.cluePaths;

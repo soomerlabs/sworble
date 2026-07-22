@@ -107,6 +107,41 @@
     return { letters: letters, cluePaths: cluePaths };
   }
 
+  // Two-pass variant that locks the realized theme set to EXACTLY `target` words (default 6 —
+  // "6 to find, 6 to crack it"). Pass 1 runs seedClueLettersBestEffort against the full `clues`
+  // candidate pool; the first `target` realized words (cluePaths insertion order) become the
+  // target set. Pass 2 re-runs seedClueLettersBestEffort with ONLY those words, on a FRESH rng
+  // (via `rngFactory()`, called twice — once per pass — so pass 2 starts from the same seed
+  // state as pass 1, not a continuation of it): the final board stamps ONLY the target words,
+  // no leftover bonus words from the wider pass-1 pool.
+  //
+  // DETERMINISM: same seed (same rngFactory) + same `clues` → same target set, always.
+  //
+  // FALLBACK (should never trigger on real content — flag it, don't silently eat it): if pass 1
+  // can't even realize `target` words from the candidate pool, or pass 2's tighter re-pack (fewer
+  // crossing opportunities without the wider pool) realizes fewer than `target`, this returns
+  // `usedFallback: true` and falls back to pass 1's board/letters/cluePaths as-is (any extra
+  // pass-1 words beyond the first `target` remain stamped as unmarked bonus words) while still
+  // reporting `realized` as the (possibly short) target slice — callers should treat
+  // `usedFallback: true` as a content problem (thin/misconfigured day), not a runtime error.
+  function seedClueLettersTwoPass(opts) {
+    var clues = opts.clues || [], cols = opts.cols, rows = opts.rows, rngFactory = opts.rngFactory;
+    var target = opts.target || 6;
+    var pass1 = seedClueLettersBestEffort({ clues: clues, cols: cols, rows: rows, rng: rngFactory() });
+    var first = Object.keys(pass1.cluePaths).slice(0, target);
+    if (first.length < target) {
+      return { letters: pass1.letters, cluePaths: pass1.cluePaths, realized: first, usedFallback: true };
+    }
+    var pass2 = seedClueLettersBestEffort({ clues: first, cols: cols, rows: rows, rng: rngFactory() });
+    var realized2 = Object.keys(pass2.cluePaths);
+    if (realized2.length === target) {
+      return { letters: pass2.letters, cluePaths: pass2.cluePaths, realized: realized2, usedFallback: false };
+    }
+    // pass 2 (tighter set, fresh rng) placed fewer than `target` — fall back to pass 1's board,
+    // which DID place all of `first` (that's how `first` was derived), just alongside extras.
+    return { letters: pass1.letters, cluePaths: pass1.cluePaths, realized: first, usedFallback: true };
+  }
+
   // Re-stamp unfindable clues broken by play. For each unfound clue where isFindable(word)
   // is false, stamp it onto the current board's cells, avoiding reserve + other unfound
   // clues' chosen cells this pass. Returns flat list of cell changes [{r,c,letter}].
@@ -131,7 +166,7 @@
     return changes;
   }
 
-  var API = { stampWord: stampWord, seedClueLetters: seedClueLetters, seedClueLettersBestEffort: seedClueLettersBestEffort, reseedBroken: reseedBroken, _shuffle: shuffle };
+  var API = { stampWord: stampWord, seedClueLetters: seedClueLetters, seedClueLettersBestEffort: seedClueLettersBestEffort, seedClueLettersTwoPass: seedClueLettersTwoPass, reseedBroken: reseedBroken, _shuffle: shuffle };
   root.SworbleSeed = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);
