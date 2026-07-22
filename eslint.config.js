@@ -54,6 +54,9 @@ const pureModuleGlobals = {
   // the IIFE wrapper's root-detection ternary + a couple of runtime feature checks
   window: 'readonly', globalThis: 'readonly', module: 'writable',
   fetch: 'readonly', AbortController: 'readonly', localStorage: 'readonly',
+  // sworble-net.js's QUEUE_KEY reads SworbleStore.K.PENDING_SUBMITS via require() when
+  // module.exports is present (Node) — the ONLY pure module that touches require() itself.
+  require: 'readonly',
 };
 
 const nodeTestGlobals = {

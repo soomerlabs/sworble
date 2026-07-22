@@ -141,19 +141,22 @@ function jsonResponse(status, body) {
     assert.strictEqual(SworbleApi.pendingCount(), 1, 'same day+mode replaces, never duplicates');
   }
 
-  // --- QUEUE_KEY contract: sworble-net.js's own QUEUE_KEY is a hand-maintained literal
-  // duplicate of SworbleStore.K.PENDING_SUBMITS (this module stays dependency-free of
-  // sworble-store.js — see the QUEUE_KEY comment in sworble-net.js). This test enforces
-  // the two never drift apart: it queues a submit through SworbleApi, then reads it back
-  // from raw storage using the STORE's key, not net.js's own.
+  // --- QUEUE_KEY contract: sworble-net.js now reads SworbleStore.K.PENDING_SUBMITS directly
+  // (require() in Node — see the QUEUE_KEY comment in sworble-net.js) instead of hand-copying
+  // the literal. SworbleApi.QUEUE_KEY is exposed for exactly this assertion: `===` against the
+  // store's own constant is an IDENTITY check (there is only ever one value, read from one
+  // place), replacing the old test's purely-behavioral proof (which could only show the two
+  // independently-typed literals happened to still match).
   {
     const { K } = require('../sworble-store.js');
+    assert.strictEqual(SworbleApi.QUEUE_KEY, K.PENDING_SUBMITS, 'sworble-net.js must read the store constant directly, not a hand-copied literal');
     const storage = memStorage();
     SoomerNet.setup({ appId: 'x', environment: 'prod', retryBaseMs: 1, fetchFn: async () => { throw new TypeError('down'); } });
     SworbleApi.setup({ storage, playerId: 'pid-contract' });
     await SworbleApi.submitScore({ date: '2026-07-22', mode: 'puzzle', displayName: 'P', score: 1, seven: [] });
+    // behavioral proof: the queue really did land under the store's key
     const raw = storage.getItem(K.PENDING_SUBMITS);
-    assert.ok(raw, "SworbleApi's durable queue must be stored under SworbleStore.K.PENDING_SUBMITS ('" + K.PENDING_SUBMITS + "') — sworble-net.js's QUEUE_KEY literal has drifted from the store contract");
+    assert.ok(raw, "SworbleApi's durable queue must be stored under SworbleStore.K.PENDING_SUBMITS ('" + K.PENDING_SUBMITS + "')");
     const parsed = JSON.parse(raw);
     assert.strictEqual(parsed.length, 1);
     assert.strictEqual(parsed[0].score, 1);

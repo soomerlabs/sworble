@@ -103,14 +103,20 @@
   };
 
   // ---- SworbleApi: app endpoints + validation + durable submit queue ---------------
-  // QUEUE_KEY is a hand-maintained literal duplicate of SworbleStore's K.PENDING_SUBMITS —
-  // this file stays free of a hard dependency on sworble-store.js (this module is required
-  // standalone in tests/sworble-net.test.js, with no SworbleStore loaded alongside it) and
-  // <script src> load order in index.html isn't a contract this file should lean on either.
-  // The two MUST stay identical; tests/sworble-net.test.js enforces it behaviorally (queues
-  // a submit through SworbleApi, then reads it back via SworbleStore.K.PENDING_SUBMITS) so
-  // any drift fails loudly instead of silently splitting the queue across two keys.
-  const QUEUE_KEY = 'sworble_pending_submits';
+  // QUEUE_KEY reads SworbleStore.K.PENDING_SUBMITS directly — single source, no hand-copied
+  // literal to drift. Two ways to resolve SworbleStore depending on realm:
+  //   • Node (tests, or any CommonJS consumer): require() it — Node's module cache means
+  //     this returns the EXACT SAME object tests/sworble-net.test.js gets from its own
+  //     require('../sworble-store.js'), so the two are reference-identical, not just
+  //     string-equal.
+  //   • browser: read window.SworbleStore. index.html's <script src> load order puts
+  //     sworble-store.js BEFORE sworble-net.js in <helmet> — that order IS the contract this
+  //     line leans on (unlike the old hand-copied literal, which deliberately avoided leaning
+  //     on load order; now that this reads the store directly, load order is unavoidable and
+  //     enforced by that same script ordering).
+  const QUEUE_KEY = ((typeof module !== 'undefined' && module.exports)
+    ? require('./sworble-store.js')
+    : root.SworbleStore).K.PENDING_SUBMITS;
   let app = null; // { storage, playerId }
 
   function isNum(v) { return typeof v === 'number' && isFinite(v); }
@@ -191,6 +197,8 @@
     },
     pendingCount() { return app ? readQueue().length : 0; },
     isReady() { return !!app; }, // callers re-run setup() when false (see netApi in the game)
+    QUEUE_KEY, // exposed ONLY so tests/sworble-net.test.js can assert identity against
+    // SworbleStore.K.PENDING_SUBMITS directly — not meant as an app-facing API.
   };
 
   const API = { SoomerNet, SworbleApi };
