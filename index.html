@@ -2342,7 +2342,12 @@ class Component extends DCLogic {
     this._tutNow = false; this._tutPending = false; // a saved run implies the tutorial is behind them
     this.mergedOnce = !!run.mergedOnce;
     this.progV = 0;
-    this.timeLeftV = this.roundSecs();
+    // resume with REMAINING round time, not a fresh full clock — boardElapsedMs (the time
+    // actually spent on the board this run, saved in the snapshot) is subtracted so a reload
+    // can't be used to farm extra time. If the budget is already spent, hand frame() a
+    // 1s clock and let its own timeLeft<=0 tick fire endRound naturally (never call it here).
+    const remaining = this.roundSecs() - Math.floor((run.boardElapsedMs || 0) / 1000);
+    this.timeLeftV = remaining > 0 ? remaining : 1;
     this.roundEndAt = performance.now() + this.timeLeftV * 1000;
     this.cycleStartAt = performance.now();
     this.dropMsV = this.optVal('dropSeconds', 10) * 1000;
@@ -2363,7 +2368,7 @@ class Component extends DCLogic {
       scoreShown: run.score, bestLit: false, roundWords: run.roundWords || [], hopSwap: null, boom: null, rattle: 0, _tr: (this.timeRoll = 0),
       nextRow: (Array.isArray(run.nextRow) && run.nextRow.length === this.cols()) ? run.nextRow : this.genRow(),
       dropMs: this.dropMsV,
-      timeLeft: this.roundSecs(),
+      timeLeft: this.timeLeftV,
       candyIntro: false, introDrain: false, worb: null, worbFlip: false, worbBack: false,
     });
     this.later(() => this.syncMines(), 600);
