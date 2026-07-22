@@ -6495,12 +6495,24 @@ class Component extends DCLogic {
         transition: 'filter 0.42s ease, transform 0.46s cubic-bezier(0.22, 1, 0.36, 1)',
         willChange: 'filter',
       },
-      homeDockStyle: {
-        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 6, boxSizing: 'border-box',
-        display: 'flex', justifyContent: 'center',
-        padding: mobile ? '22px 16px calc(16px + env(safe-area-inset-bottom))' : '24px 16px 22px',
-        background: 'linear-gradient(to top, var(--home-bg) 56%, transparent)', pointerEvents: 'none',
-      },
+      homeDockStyle: (() => {
+        // OFF-SCREEN STORM BURN FIX (part a2): the STORM lives in THIS dock layer, not in
+        // homeScreenStyle — so the visibility ride-along must happen here too, or the goo
+        // field keeps painting behind the game/lb/profile screens (found by the controller's
+        // post-fix browser probe: dock stayed visible+opacity:1 on the lb screen). Same
+        // recipe as homeScreenStyle: fade opacity, then flip visibility after the fade;
+        // flipping back is immediate so the return fade is never starved.
+        const dockHidden = st.screen === 'profile' || st.screen === 'lb' || st.screen === 'game' || st.screen === 'wordbank';
+        return {
+          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 6, boxSizing: 'border-box',
+          display: 'flex', justifyContent: 'center',
+          opacity: dockHidden ? 0 : 1,
+          visibility: dockHidden ? 'hidden' : 'visible',
+          transition: dockHidden ? 'opacity 0.26s ease, visibility 0s linear 0.26s' : 'opacity 0.26s ease',
+          padding: mobile ? '22px 16px calc(16px + env(safe-area-inset-bottom))' : '24px 16px 22px',
+          background: 'linear-gradient(to top, var(--home-bg) 56%, transparent)', pointerEvents: 'none',
+        };
+      })(),
       // LAYERING FIX (item A2): was a hardcoded 'auto' regardless of screen — same home-subtree
       // punch-through as homeHintsLayerStyle/homeKbLayerStyle above. Gated on st.screen==='home'
       // so the swipe-up dock stays clickable on home but can't intercept taps on other screens.
