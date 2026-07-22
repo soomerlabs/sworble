@@ -377,22 +377,9 @@
                 <div style="{{ homeMorphStyle }}">
                 <div style="width:100%; display:flex; flex-direction:column; align-items:stretch; text-align:left; gap:11px; box-sizing:border-box; padding:0 2px;">
                   <div style="display:flex; flex-direction:column; gap:14px;">
-                    <div style="{{ modePicker.cardStyle }}">
-                      <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
-                        <div style="font-size:9px; font-weight:800; letter-spacing:1.5px; color:var(--ghost);">MODE</div>
-                        <div style="{{ modePicker.sworbTagStyle }}">{{ modePicker.sworbTag }}</div>
-                      </div>
-                      <div style="display:flex; gap:8px; width:100%;">
-                        <button onClick="{{ armCasual }}" style="{{ modePicker.casualBtnStyle }}">
-                          <span style="{{ modePicker.casualLabelStyle }}">casual</span>
-                          <span style="{{ modePicker.casualStatStyle }}">{{ modePicker.casualStat }}</span>
-                        </button>
-                        <button onClick="{{ armStackl }}" style="{{ modePicker.stacklBtnStyle }}">
-                          <span style="{{ modePicker.stacklLabelStyle }}">stacks</span>
-                          <span style="{{ modePicker.stacklStatStyle }}">{{ modePicker.stacklStat }}</span>
-                        </button>
-                      </div>
-                    </div>
+                    <!-- mode picker (casual/stacks arm+launch) retired in Task 4 — the daily is the
+                         only round now, launched by the swipe-up dock button (startDaily). Task 5
+                         rebuilds this stretch of home; for now it's simply gone. -->
                     <sc-if value="{{ homeSworb.active }}" hint-placeholder-val="{{ false }}">
                       <div style="{{ homeSworb.cardStyle }}">
                         <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
@@ -462,7 +449,7 @@
                         <div style="position:absolute; inset:0; filter:blur(17px); background:radial-gradient(34px 27px at 36% 52%, rgba(8,6,16,0.92) 0%, transparent 70%), radial-gradient(26px 22px at 58% 46%, rgba(8,6,16,0.86) 0%, transparent 70%), radial-gradient(24px 20px at 82% 60%, rgba(8,6,16,0.82) 0%, transparent 70%), radial-gradient(22px 18px at 14% 46%, rgba(8,6,16,0.8) 0%, transparent 70%); animation:smokeDriftB 17s ease-in-out infinite;"></div>
                         <div style="position:absolute; inset:0; filter:blur(11px); background:radial-gradient(48px 32px at 52% 42%, rgba(233,240,255,0.95) 0%, transparent 62%); opacity:0; animation:{{ storm.lightAnim }};"></div>
                       </div>
-                      <button onClick="{{ launchArmed }}" aria-label="{{ homeSwipeLabel }}" style="position:relative; z-index:1; width:100%; box-sizing:border-box; background:transparent; border:none; padding:8px 0 4px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; font-family:inherit; transition:transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);" style-active="transform:translateY(-5px)">
+                      <button onClick="{{ startDaily }}" aria-label="{{ homeSwipeLabel }}" style="position:relative; z-index:1; width:100%; box-sizing:border-box; background:transparent; border:none; padding:8px 0 4px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; font-family:inherit; transition:transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);" style-active="transform:translateY(-5px)">
                         <span style="font-family:'Material Symbols Rounded'; font-weight:normal; font-size:30px; line-height:0.7; color:#8971FF; font-feature-settings:'liga'; -webkit-font-feature-settings:'liga'; -webkit-font-smoothing:antialiased; animation:swipeUpHint 1.7s ease-in-out infinite, arrowHue 7.2s linear infinite;">keyboard_arrow_up</span>
                         <span style="font-family:'Fredoka','Manrope',sans-serif; font-size:15px; font-weight:600; letter-spacing:0.3px; color:var(--sheet-ink);">{{ homeSwipeLabel }}</span>
                       </button>
@@ -973,19 +960,6 @@
         <sc-if value="{{ endRound.rankShow }}" hint-placeholder-val="{{ false }}">
           <span style="position:relative; font-size:12px; font-weight:800; letter-spacing:0.5px; color:#8971FF; margin-top:5px;">you&rsquo;re {{ endRound.rank }} today</span>
         </sc-if>
-        <!-- Stackl's OWN leaderboard stub (Task 3) — separate `|stackl` partition, distinct from casual's standings; only ever shows for an actual stackl run -->
-        <sc-if value="{{ stacklLbShow }}" hint-placeholder-val="{{ false }}">
-          <div style="position:relative; width:100%; box-sizing:border-box; margin-top:14px; display:flex; flex-direction:column; gap:5px;">
-            <span style="font-size:10px; font-weight:800; letter-spacing:1.5px; color:var(--ghost);">STACKS BOARD &middot; {{ stacklLbCount }}</span>
-            <sc-for list="{{ stacklLbRows }}" as="row" hint-placeholder-count="5">
-              <div style="{{ row.rowStyle }}">
-                <div style="{{ row.rankStyle }}">{{ row.rank }}</div>
-                <div style="{{ row.nameStyle }}">{{ row.name }}</div>
-                <div style="{{ row.scoreStyle }}">{{ row.score }}</div>
-              </div>
-            </sc-for>
-          </div>
-        </sc-if>
         <button onClick="{{ finishToLb }}" style="position:relative; width:100%; box-sizing:border-box; margin-top:16px; background:#8971FF; color:#fff; border:none; border-radius:14px; padding:13px 0; font-family:'Fredoka','Manrope',sans-serif; font-size:16px; font-weight:600; letter-spacing:0.5px; cursor:pointer; box-shadow:0 4px 0 #5A43C9;" style-active="transform:translateY(2px); box-shadow:0 2px 0 #5A43C9;">leaderboard</button>
         <div style="position:relative; display:flex; gap:10px; width:100%; margin-top:10px;">
           <button onClick="{{ startPractice }}" style="flex:1; box-sizing:border-box; background:color-mix(in srgb, var(--sheet-ink) 8%, transparent); color:var(--sheet-ink); border:none; border-radius:12px; padding:11px 0; font-family:'Fredoka','Manrope',sans-serif; font-size:14px; font-weight:600; cursor:pointer;" style-active="transform:scale(0.97)">practice</button>
@@ -1197,12 +1171,11 @@ class Component extends DCLogic {
     this.initOpts = opts;
     this.state = {
       tiles: [], nextRow: [], score: 0, best,
-      dropStamp: 0, prog: 0, paused: false, over: false, dropSoon: false, stacklMode: false,
-      armedMode: 'casual', // home mode picker: 'casual' (endless, no timer) or 'stackl' (2-min timed) — swipe-up launches whichever is armed
+      dropStamp: 0, prog: 0, paused: false, over: false, dropSoon: false,
       path: [], banner: null, streak: 0, maxStreak: 0,
       scoreShown: 0, bestLit: false, roundWords: [],
       nextFresh: false, muted, opts, activeModal: null, modalStack: [], contentFading: false, heightAnim: false, modalW: 320, modalFromHome: false,
-      lbData: null, homeLb: null, stacklLb: null, nameInput: '', nameError: '', sheetH: 0,
+      lbData: null, homeLb: null, nameInput: '', nameError: '', sheetH: 0,
       sworbInput: '', sworbShake: 0, sworbColors: null, clueGlowIds: null, // sworb guess: current typed letters, wrong-guess shake counter, last-guess Wordle colors (UI-only)
       stepperMode: 'play', sworbTyping: false, sworbWin: false, sworbFlipKey: 0, // stepper flip (play<->sworb), board-morph keyboard open, win-flash, flip-anim rekey
       finale: false, // THE FINALE: 0:00 board-morph guess-off is live (set by endRound, cleared by sworbSubmit on resolve)
@@ -1319,12 +1292,11 @@ class Component extends DCLogic {
   // Puzzle mode: the optimization-puzzle identity — fixed clock with no time economy,
   // visible word-fuse bombs, bot-anchored Bronze/Silver/Gold tiers on the daily. BAKED:
   // budget mode IS the game (classic fully retired) — always live, no toggle.
-  // Stackl (2-minute timed mode): orthogonal to puzzle mode — a session-only run flag set
-  // at launch (startStackl). The daily/practice puzzle stays baked on and unaffected.
-  stacklOn() { return !!this.state.stacklMode; }
+  // Task 4 (mode collapse): Stackl (the session-only 2-min timed arm) is retired — the daily
+  // round IS the one timed game now. stacklOn()/stacklMode are gone; liveDaily() alone judges
+  // the live countdown.
   // A daily round is "live" while it's actually running — dealt, on the game screen, not
-  // yet ended, and past the throwaway warm-up. Stackl's live countdown is judged separately
-  // (stacklOn()); this is the daily-round counterpart the TIME HUD / low-time warning key off.
+  // yet ended, and past the throwaway warm-up. This is the TIME HUD / low-time warning's key.
   liveDaily(st) { st = st || this.state; return st.screen === 'game' && this.optVal('dailyMode', true) && !st.over && !st.tut; }
   // The Sworble Seven: 7 words per run (dev-tunable). Fewer picks = each one is high-stakes
   // (grab the safe word or hunt the monster?) — that agony IS the game.
@@ -1334,12 +1306,18 @@ class Component extends DCLogic {
   // IS the sum of every distinct word you've spelled, recomputed live as you spend your tries.
   cumulativeTotal(roundWords) { return SworbleStatus.cumulativeTotal(roundWords); }
   // ONE-GAME pivot: the daily round is now TIMED like everything else — a dev-tunable knob
-  // (default 5:00), clamped to a sane 30s–15min range. stacklOn()/practice inherit the same
-  // clock (their own start paths just re-anchor to it); the old stackl-only 120/180 split is gone.
+  // (default 5:00), clamped to a sane 30s–15min range. Practice inherits the same clock (its
+  // start path just re-anchors to it); the old stackl-only 120/180 split is gone.
   roundSecs() { const n = Math.round(this.optVal('roundSecs', 300)); return Math.max(30, Math.min(900, isFinite(n) ? n : 300)); }
   isV1() { return !this.isV2(); }
-  cols() { return Math.max(4, Math.min(9, Math.round(this.optVal('cols', 5)))); }
-  rows() { return Math.max(4, Math.min(14, Math.round(this.optVal('rows', 6)))); }
+  // Task 4: the daily round PINS the board to 5x6 — clue packing (SWORB_CLUE_COUNT=6) and
+  // the leaderboard both depend on every player getting the identical board shape, so the
+  // dev cols/rows knobs (settings sheet +/-) must not be able to skew a daily run. Practice
+  // still honors them (it's the dev/tuning surface). optVal('dailyMode', true) is the same
+  // flag that already distinguishes "the daily experience" (live round, resume, finale) from
+  // practice everywhere else in this file — reusing it here is the narrowest possible seam.
+  cols() { return this.optVal('dailyMode', true) ? 5 : Math.max(4, Math.min(9, Math.round(this.optVal('cols', 5)))); }
+  rows() { return this.optVal('dailyMode', true) ? 6 : Math.max(4, Math.min(14, Math.round(this.optVal('rows', 6)))); }
   diag() { return true; } // diagonals are always on — never a toggle
   saveOpts(opts) { try { LS.setItem(K.OPTS, JSON.stringify(opts)); } catch (e) {} }
   isDark() { return this.optVal('theme', this.prefersDark ? 'dark' : 'light') === 'dark'; }
@@ -2106,7 +2084,7 @@ class Component extends DCLogic {
     // daily mode: everyone gets the same letter sequence for the calendar day
     const d = new Date();
     this.dailyKey = SworbleCore.dayKey(d);
-    if (this.optVal('dailyMode', true) || this.stacklOn()) {
+    if (this.optVal('dailyMode', true)) {
       const seedN = SworbleCore.hashSeed(this.dailyKey);
       this.seedN = seedN;                     // profanity scrub reads this so its fixes are identical for every player
       // every seeded stream is wrapped in a call counter (_rngN) so a mid-run snapshot can
@@ -2126,8 +2104,7 @@ class Component extends DCLogic {
       this.letterQueue = shuffledBag(FRIENDLY, qr)
         .concat(shuffledBag(BAG, qr), shuffledBag(BAG, qr), shuffledBag(BAG, qr));
       this.queueIdx = 0;
-      // count this attempt at today's puzzle — casual-only bookkeeping: stackl reuses this
-      // branch for its themed deal, but must not touch casual's unsuffixed ATT/run-state keys
+      // count this attempt at today's puzzle
       if (this.optVal('dailyMode', true)) {
         if (!this.skipAttCount) {
           try {
@@ -2187,7 +2164,7 @@ class Component extends DCLogic {
     // retry loop) — the REALIZED set (words that packed AND verify findable) is the source of
     // truth (see SworbleSeed.seedClueLettersTwoPass; dailies-check.js simulates this exact path).
     const _pool = this.themePool();
-    if (_pool && (this.optVal('dailyMode', true) || this.stacklOn())) {
+    if (_pool && this.optVal('dailyMode', true)) {
       // pass 1's candidate pool is the FULL curated theme-word list (not themeTarget()-sliced):
       // a wider pool packs strictly better, and dailies-check.js's guardrail simulates this
       // EXACT full-pool call — slicing here would let the app under-place clues the guardrail
@@ -2561,15 +2538,6 @@ class Component extends DCLogic {
     if (this.optVal('dailyMode', true)) {
       try { const d = this.dailyKey || this.dayKey(new Date()), k = K.PUZZLE_BEST_PREFIX + d, p = Number(LS.getItem(k) || 0) || 0; if ((this.state.score || 0) > p) LS.setItem(k, String(this.state.score || 0)); } catch (e) {}
     }
-    // stackl (2-min timed) per-day best: own prefix, own board — never touches puzzle's best/leaderboard
-    if (this.stacklOn()) {
-      try {
-        const k = K.STACKL_BEST_PREFIX + this.dailyKey;
-        const prev = parseInt(LS.getItem(k) || '0', 10) || 0;
-        if ((this.state.score || 0) > prev) LS.setItem(k, String(this.state.score));
-        this.loadStacklLb(); // refresh the stub so the result sheet's stackl board reflects THIS run
-      } catch (e) {}
-    }
     // PERFECT RUN: every word of a full budget was a best word (legendary, crowned on the result sheet)
     this._lastRunPerfect = (this._bestHits || 0) >= this.parGuesses();
     // THE FINALE GATE: a daily round whose sworb is still unresolved (unsolved, a guess still
@@ -2658,6 +2626,17 @@ class Component extends DCLogic {
       return !!(sw && sw.active && !sw.solved && sw.guessesLeft > 0);
     } catch (e) { return false; }
   }
+  // Task 4 (one-shot day): today's daily is fully spent — the run ended (DONE_PREFIX) AND
+  // there's no finale left to resolve — once true, PLAY must not deal a fresh round; the
+  // after-state (home's result surfaces) IS the day. Practice (dailyMode:false) never
+  // locks — it has no daily state to consume.
+  dailyConsumed() {
+    if (!this.optVal('dailyMode', true)) return false;
+    try {
+      const day = this.dailyKey || this.dayKey(new Date());
+      return !!LS.getItem(K.DONE_PREFIX + day) && !this.finalePending();
+    } catch (e) { return false; }
+  }
   // land directly on the finale's board-morph (no home stop-over first — there's no "resume"
   // preview for it, unlike a paused live run): guesses remaining, keyboard up, over false.
   enterFinale() {
@@ -2727,8 +2706,8 @@ class Component extends DCLogic {
         });
       }
     }
-    // --- round clock: ONE-GAME pivot — every mode (daily, practice, Stackl) now runs a
-    // LIVE countdown off roundEndAt; the old "daily/practice frozen at 9999" split is gone.
+    // --- round clock: ONE-GAME pivot — daily and practice both now run a LIVE countdown
+    // off roundEndAt; the old "daily/practice frozen at 9999" split is gone.
     const timeLeft = Math.max(0, (this.roundEndAt - now) / 1000);
     this.timeLeftV = timeLeft;
     if (timeLeft <= 0) {
@@ -2738,7 +2717,7 @@ class Component extends DCLogic {
     const ceilNow = Math.ceil(timeLeft), ceilPrev = Math.ceil(st.timeLeft);
     if (ceilNow !== ceilPrev) {
       if (ceilNow <= 5) this.sfxTick();
-      if (ceilPrev > 60 && ceilNow <= 60 && (this.stacklOn() || this.liveDaily(st))) { this.showBanner({ timeWarn: true }); this.sfxTimeWarn(); } // low-time cue on any live countdown (Stackl or a live daily round)
+      if (ceilPrev > 60 && ceilNow <= 60 && this.liveDaily(st)) { this.showBanner({ timeWarn: true }); this.sfxTimeWarn(); } // low-time cue on a live daily round's countdown
       this.setState({ timeLeft });
     }
     if (this.isV1()) {
@@ -3327,12 +3306,6 @@ class Component extends DCLogic {
   // (radius 1 for 4-5 letters, 2 for 6+); spend it on a ≤3 word and the fizzle
   // costs 5s. Armed from a dedicated seeded stream so daily runs stay fair.
   mineQuota() {
-    // stackl (timed run): SPARSE bombs on the themed board — deterministic per day seed,
-    // catch it in a 4+ word for a blast bonus, spend a ≤3 word on it and fizzle (tune later).
-    if (this.stacklOn()) {
-      if (this.state.over) return 0;
-      return this.state.tut ? 1 : 2;
-    }
     // puzzle mode: hidden always — and the minefield ESCALATES as the budget drains:
     // 2 early, 3 mid-run, 4 for the last 3 words (comeback targets right when easy
     // words run dry; overlapping sonar patches finally produce real 2s and 3s)
@@ -3609,17 +3582,11 @@ class Component extends DCLogic {
       // NEW BEST: fires once per round, the moment you pass your old record
       const newBest = !this.bestFlashed && prevBest > 0 && this.state.score > prevBest;
       if (newBest) this.bestFlashed = true;
-      // v2: words BUY time — +1s per letter beyond two, straight onto the clock
+      // Task 4: Stackl's words-buy-time / fizzle-costs-time clock economy is retired along
+      // with the mode itself — the daily is a pure countdown per spec, no clock modification
+      // on any word. timeBonus stays 0 (kept as a var: showBanner/timeFxEl below still read
+      // it, now always falsy).
       let timeBonus = 0;
-      if (this.isV2() && !this.state.over && this.stacklOn()) { // stackl: words BUY time, fizzles cost it — daily/puzzle clock stays fixed
-        if (mineTripped) {
-          this.roundEndAt -= 3000; // the fizzle COSTS time — softened; the point hit is the main bite now
-        } else {
-          timeBonus = Math.max(1, ids.length - 2);
-          this.roundEndAt += timeBonus * 1000;
-          this.timeRoll = (this.timeRoll || 0) + timeBonus; // clock ROLLS up to the new time
-        }
-      }
       // celebration tiers: BEST word = a gold shockwave ring; any big word (best or 6+)
       // gives the board a quick zoom-punch. no text over the board (removed — too showy).
       const bump = {};
@@ -4067,9 +4034,8 @@ class Component extends DCLogic {
   // A committed word matching an un-caught target: record it and return {n,total} for the
   // banner pill. Returns null when it isn't a fresh catch (so the pill stays hidden).
   checkTargetCatch(word) {
-    // record a found theme word into the SHARED per-day safe for BOTH casual (dailyMode) AND
-    // stacks (stacklOn) — the safe/sworb are shared, so a hint found in stacks must bank too.
-    if ((!this.optVal('dailyMode', true) && !this.stacklOn()) || !word) return null;
+    // record a found theme word into the per-day safe — daily only (practice has no sworb)
+    if (!this.optVal('dailyMode', true) || !word) return null;
     const day = this.dailyKey, w = ('' + word).toLowerCase();
     let targets = [];
     try { targets = JSON.parse(LS.getItem(K.TARGETS_PREFIX + day) || '[]') || []; } catch (e) { return null; }
@@ -4091,11 +4057,11 @@ class Component extends DCLogic {
   // SOOMER_APP.appId is empty); when the Soomer backend is configured, the real board
   // upgrades in place and every submit carries its seven as proof-of-play. Remote I/O
   // lives in sworble-net.js (validated, retried, queued) — never raw fetch here.
-  // one leaderboard bucket PER MODE: puzzle (3:00) and classic (2:00) scores are set
-  // under different rules, so they must never share a board. The mode suffix on the
-  // board id keeps them apart for the local stub; the Soomer API takes mode explicitly.
-  lbBoardId(date) { return date + (this.stacklOn() ? '|stackl' : '|puzzle'); }
-  lbMode() { return this.stacklOn() ? 'stackl' : 'puzzle'; }
+  // Task 4 (mode collapse): ONE game, ONE leaderboard partition — the old `|stackl` suffix
+  // is retired along with the Stackl arm. `|puzzle` stays as the board-id suffix (a stable,
+  // already-live key on real player data — renaming it would orphan every existing entry).
+  lbBoardId(date) { return date + '|puzzle'; }
+  lbMode() { return 'puzzle'; }
   async lbSubmit(date, name, score) {
     if (!name || !score) return;
     // the local stub entry ALWAYS updates first — offline play keeps a live board
@@ -4125,7 +4091,11 @@ class Component extends DCLogic {
     const entries = [];
     for (let i = 0; i < n; i++) {
       const sc = Math.round(1200 + Math.pow(rnd(), 1.7) * 3200);
-      entries.push({ name: pool[i], score: sc });
+      // Task 4: single solved-first leaderboard — stub entries need a deterministic solved
+      // flag (same seeded stream as name/score, so it's stable across renders) to rank
+      // realistically against a player who's cracked today's sworb.
+      const solved = rnd() < 0.6;
+      entries.push({ name: pool[i], score: sc, solved });
     }
     let me = null; try { me = JSON.parse(LS.getItem(K.LB_ME_PREFIX + this.lbBoardId(date)) || 'null'); } catch (e) {}
     return { entries, me, count: entries.length + (me ? 1 : 0) };
@@ -4141,34 +4111,6 @@ class Component extends DCLogic {
     const date = this.dailyKey || this.dayKey(new Date());
     this.setState({ homeLb: this.lbStub(date) }); // local renders NOW
     this.lbRemote(date).then(remote => { if (remote) this.setState({ homeLb: remote }); });
-  }
-  // ===== Stackl (2-min timed) leaderboard — a SEPARATE stub board, own `|stackl` partition =====
-  // Ranked by K.STACKL_BEST_PREFIX (banked in endRound), NOT K.LB_ME_PREFIX — stackl has no
-  // submit flow yet, so "me" reads straight from the per-day best rather than a submitted score.
-  // Parallel to lbStub() on purpose: lbStub's "me" and score range are wired to the puzzle/classic
-  // submit path, which stackl doesn't use, so reusing it here would show a permanently-empty "me" row.
-  lbStubStackl(date) {
-    const boardId = date + '|stackl';
-    const seed = SworbleCore.hashSeed('lb' + boardId);
-    const rnd = mulberry32(seed >>> 0);
-    const POOL = ['ORDA','MILO','JUNO','PIXL','NOVA','ZEKE','FINN','REMY','ODIE','WREN','QUILL','TOVA','KAII','BIRD','SAGE','ELIO','MARLO','POPPY','DASH','LUMA','OTTO','MAVE','CLEO','IGGY','ROON','VESP','BODE','NELL'];
-    const pool = POOL.filter(n => n !== (this.playerName || '').toUpperCase());
-    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
-    const n = Math.min(pool.length, 16 + Math.floor(rnd() * 12));
-    const entries = [];
-    for (let i = 0; i < n; i++) entries.push({ name: pool[i], score: Math.round(150 + Math.pow(rnd(), 1.8) * 950) }); // stackl's own 2-min score range (distinct from puzzle/classic)
-    let me = null;
-    try {
-      const best = parseInt(LS.getItem(K.STACKL_BEST_PREFIX + date) || '0', 10) || 0;
-      if (best > 0 && this.playerName) me = { name: this.playerName, score: best }; // no name yet → not a "you" row (matches how the rest of the app treats an unnamed player)
-    } catch (e) {}
-    return { entries, me, count: entries.length + (me ? 1 : 0) };
-  }
-  // stub for the minimal Stackl result-sheet card (Task 3) — local-only for now; a real
-  // remote submit/fetch for stackl rides on a later task, same as puzzle's lbRemote did
-  loadStacklLb() {
-    const date = this.dailyKey || this.dayKey(new Date());
-    this.setState({ stacklLb: this.lbStubStackl(date) });
   }
   submitDaily() {
     if (!this.playerName || !this.optVal('dailyMode', true)) return;
@@ -4984,10 +4926,13 @@ class Component extends DCLogic {
         const ds = this.dailyStatus();
         const bestT = ds.bestToday;
         const played = ds.played;
+        const meSolved = !!(ds.sworb && ds.sworb.solved);
         let field = []; try { field = ((st.homeLb && st.homeLb.entries) || this.lbStub(day).entries || []).slice(); } catch (e) {}
-        field.sort((a, b) => b.score - a.score);
+        // single leaderboard, solved-first: a player who cracked today's sworb outranks one
+        // who didn't, regardless of score; ties within a bucket fall back to score.
+        field.sort((a, b) => (!!b.solved - !!a.solved) || (b.score - a.score));
         const meName = this.playerName || '';
-        const rank = SworbleStatus.rankFor(field, bestT);
+        const rank = SworbleStatus.rankFor(field, { score: bestT, solved: meSolved });
         const mk = (rk, name, score, me, gold, top) => ({
           rk, name, score,
           rowStyle: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', marginBottom: 5, borderRadius: 12, background: me ? 'rgba(137,113,255,0.16)' : 'color-mix(in srgb, var(--sheet-ink) 4%, transparent)' },
@@ -5076,33 +5021,6 @@ class Component extends DCLogic {
         };
       }
 
-  // Minimal Stackl leaderboard card (Task 3) — DISTINCT from casual's standings above:
-  // reads state.stacklLb (loadStacklLb, own `|stackl`-partitioned stub), not state.homeLb/lbData.
-  // Deliberately plain rows (no podium/graph) — a real surface lands in a later task.
-  stacklLbVals() {
-    const data = this.state.stacklLb;
-    if (!data) return { stacklLbShow: false, stacklLbRows: [], stacklLbCount: '' };
-    const dark = this.isDark();
-    const all = data.entries.slice();
-    if (data.me) all.push({ name: data.me.name, score: data.me.score, you: true });
-    all.sort((a, b) => b.score - a.score || (a.name < b.name ? -1 : 1));
-    const ranked = all.map((e, i) => ({ ...e, rank: i + 1 }));
-    const rowFor = (e) => ({
-      rank: '#' + e.rank, name: e.name, score: e.score.toLocaleString(),
-      rowStyle: { display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', borderRadius: 10,
-        background: e.you ? (dark ? 'rgba(137,113,255,0.16)' : '#ECE7FF') : 'color-mix(in srgb, var(--sheet-ink) 4%, transparent)' },
-      rankStyle: { width: 22, flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: e.you ? '#8971FF' : 'var(--ghost)' },
-      nameStyle: { flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800, textTransform: 'lowercase', color: e.you ? '#8971FF' : 'var(--sheet-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-      scoreStyle: { fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 13, fontWeight: 600, color: e.you ? '#8971FF' : 'var(--sheet-ink)' },
-    });
-    const rows = ranked.slice(0, 5).map(rowFor);
-    return {
-      stacklLbShow: rows.length > 0,
-      stacklLbRows: rows,
-      stacklLbCount: (data.count || ranked.length) + ' today',
-    };
-  }
-
   _exitGame() {
     this.sfxClick();
     const opts = { ...(this.state.opts || {}), dailyMode: true };
@@ -5110,16 +5028,14 @@ class Component extends DCLogic {
     // finale:false here is a display reset ONLY — leaving mid-finale doesn't forfeit it
     // (finalePending/enterFinale re-derive "still pending" from persisted state on the way back in).
     const sworbReset = { sworbTyping: false, stepperMode: 'play', sworbSlots: [], sworbColors: null, finale: false };
-    // a Stackl run never resumes from home (session-only) — clear the flag on the way out
-    // so the daily/practice never inherit a live countdown from a prior Stackl run.
     if (this._dailyLive && !this.state.over && this.optVal('dailyMode', true)) {
-      this.setState({ opts, stacklMode: false, screen: 'home', paused: true, path: [], banner: null, homeSeq: (this.state.homeSeq || 0) + 1, ...sworbReset });
+      this.setState({ opts, screen: 'home', paused: true, path: [], banner: null, homeSeq: (this.state.homeSeq || 0) + 1, ...sworbReset });
       this.loadHomeLb();
       return;
     }
     this.timeLeftV = this.roundSecs();
     this.progV = 0;
-    this.setState({ opts, stacklMode: false, screen: 'home', paused: false, over: false, tiles: [], path: [], banner: null, bombArmed: false, boom: null, rattle: 0, score: 0, scoreShown: 0, streak: 0, prog: 0, timeLeft: this.optVal('gameSeconds', 120), homeSeq: (this.state.homeSeq || 0) + 1, ...sworbReset });
+    this.setState({ opts, screen: 'home', paused: false, over: false, tiles: [], path: [], banner: null, bombArmed: false, boom: null, rattle: 0, score: 0, scoreShown: 0, streak: 0, prog: 0, timeLeft: this.optVal('gameSeconds', 120), homeSeq: (this.state.homeSeq || 0) + 1, ...sworbReset });
     this.loadHomeLb();
   }
   renderVals() {
@@ -5578,7 +5494,7 @@ class Component extends DCLogic {
       wordsBtnLabel: (() => { const p = (st.roundWords || []).length, m = (st.missedWords || []).length; if (!p) return m + ' MISSED WORD' + (m === 1 ? '' : 'S'); return p + ' WORD' + (p === 1 ? '' : 'S') + (m ? ' \u00b7 ' + m + ' MISSED' : ''); })(),
       openWords: () => this.goModal('words'),
       closeWords: () => { this.sfxClick(); this.closeModal(); },
-      htBombShow: this.optVal('debugMine', false) || this.stacklOn(), // bombs live on stackl's themed board (and via dev debugMine elsewhere) — surface the how-to line there
+      htBombShow: this.optVal('debugMine', false), // bombs are dev-only now (debugMine) — surface the how-to line there
       // SWORB home reveal: pre-solve shows the X/5 clue-find progress; once solved, reveals
       // the theme word (from dailyEntry().sworb) + the guess bonus earned (sworbState().bonus).
       // Display-only now (THE FINALE, Task 3) — guessing happens ONLY in the 0:00 board-morph;
@@ -5785,42 +5701,9 @@ class Component extends DCLogic {
         // glows this word's tiles). Closes settings first so the board is visible; auto-clears after ~3.6s.
         onTap: () => { this.closeModal(); this.later(() => { this.setState({ debugBestIds: w.ids }); this.later(() => this.setState(s => (s.debugBestIds === w.ids ? { debugBestIds: null } : null)), 3600); }, 260); },
       })),
-      // ---- Home mode picker (Task 4): arm casual or stackl; swipe-up launches whichever is armed.
-      // armedMode lives in state (session-only, resets to 'casual' on reload — casual stays the
-      // default experience). The shared sworb progress + each mode's own best surface on the card.
-      armCasual: () => { this.sfxClick(); this.setState({ armedMode: 'casual' }); },
-      armStackl: () => { this.sfxClick(); this.setState({ armedMode: 'stackl' }); },
-      modePicker: (() => {
-        const casualArmed = (st.armedMode || 'casual') !== 'stackl';
-        const stacklArmed = !casualArmed;
-        const ds = this.dailyStatus();
-        const sw = ds.sworb;
-        const sworbShow = !!(sw && sw.active);
-        const sworbTag = sworbShow ? (sw.solved ? 'sworb solved' : (sw.foundCount + '/' + sw.total + ' clues')) : '';
-        const dayKey = this.dailyKey || this.dayKey(new Date());
-        let stacklBest = 0;
-        try { stacklBest = parseInt(LS.getItem(K.STACKL_BEST_PREFIX + dayKey) || '0', 10) || 0; } catch (e) {}
-        const casualStat = ds.played ? ('best ' + ds.bestToday.toLocaleString()) : 'not played yet';
-        const stacklStat = stacklBest > 0 ? ('best ' + stacklBest.toLocaleString()) : 'not played yet';
-        const armedBtnStyle = { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '10px 8px', borderRadius: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit', background: '#8971FF', boxShadow: '0 3px 0 #5A43C9' };
-        const idleBtnStyle = { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '10px 8px', borderRadius: 12, border: '1.5px solid var(--line)', cursor: 'pointer', fontFamily: 'inherit', background: 'transparent', boxShadow: 'none' };
-        const armedLabelStyle = { fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 13, fontWeight: 800, letterSpacing: '0.4px', color: '#FFFFFF', textTransform: 'uppercase' };
-        const idleLabelStyle = { fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 13, fontWeight: 800, letterSpacing: '0.4px', color: 'var(--sheet-ink)', textTransform: 'uppercase' };
-        const armedStatStyle = { fontSize: 10.5, fontWeight: 700, color: 'rgba(255,255,255,0.85)' };
-        const idleStatStyle = { fontSize: 10.5, fontWeight: 700, color: 'var(--ghost)' };
-        return {
-          cardStyle: { display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--card)', borderRadius: 16, padding: '13px 14px', boxShadow: '0 4px 0 var(--card-edge)' },
-          sworbTag,
-          sworbTagStyle: sworbShow ? { fontSize: 11, fontWeight: 800, letterSpacing: '0.5px', color: 'var(--ghost)' } : { display: 'none' },
-          casualBtnStyle: casualArmed ? armedBtnStyle : idleBtnStyle,
-          stacklBtnStyle: stacklArmed ? armedBtnStyle : idleBtnStyle,
-          casualLabelStyle: casualArmed ? armedLabelStyle : idleLabelStyle,
-          stacklLabelStyle: stacklArmed ? armedLabelStyle : idleLabelStyle,
-          casualStatStyle: casualArmed ? armedStatStyle : idleStatStyle,
-          stacklStatStyle: stacklArmed ? armedStatStyle : idleStatStyle,
-          casualStat, stacklStat,
-        };
-      })(),
+      // Task 4 (mode collapse): the home mode picker (casual/stackl arm+launch) is retired —
+      // the daily round is the ONLY game now, launched directly by startDaily (dock button +
+      // swipe-up gesture both call it).
       startDaily: (this._startDaily = () => {
         this.sfxClick();
         // RESUME a live, unfinished daily run — you only paused it by visiting home. Never re-roll.
@@ -5831,14 +5714,16 @@ class Component extends DCLogic {
         // RE-ENTER a pending finale — leaving it early (back/swipe-down) never forfeits it;
         // PLAY picks the SAME unresolved guess back up instead of dealing a fresh round.
         if (this.finalePending()) { this.enterFinale(); return; }
+        // DAY CONSUMED: the run ended AND there's no finale left pending — one-shot day, no
+        // replay. Stay on home (there's nothing to deal); the after-state IS the result.
+        if (this.dailyConsumed()) return;
         // (reload-resume happens at BOOT now — componentDidMount rehydrates the saved run
         // into memory, so the in-memory branch above already covers the reload case)
         try { this._tutPending = this._tutForce || !LS.getItem(K.TUT_DONE); } catch (e) { this._tutPending = !!this._tutForce; } // first play ever (or dev replay): warm-up round
         this._tutForce = false;
         const opts = { ...(this.state.opts || {}), dailyMode: true };
         this.saveOpts(opts); // also heals any stale dailyMode:false from the removed toggle
-        // a prior Stackl run must never leak its live-countdown flag into the daily
-        this.setState({ opts, stacklMode: false, screen: 'game', sworbTyping: false, stepperMode: 'play' }, () => {
+        this.setState({ opts, screen: 'game', sworbTyping: false, stepperMode: 'play' }, () => {
           this.newGame(true);
           if (this.firstRunPending) this.setState({ activeModal: 'howto', modalW: 350, paused: true });
         });
@@ -5847,29 +5732,12 @@ class Component extends DCLogic {
         this.sfxClick();
         // session-only: never persisted, so daily is always the default experience
         const opts = { ...(this.state.opts || {}), dailyMode: false };
-        // launched from settings now — close the sheet on the way out; also clears any
-        // stale stacklMode from a prior Stackl run (practice is not Stackl)
-        this.setState({ opts, stacklMode: false, screen: 'game', activeModal: null, modalStack: [], endModal: false }, () => {
+        // launched from settings now — close the sheet on the way out
+        this.setState({ opts, screen: 'game', activeModal: null, modalStack: [], endModal: false }, () => {
           this.newGame(true);
           if (this.firstRunPending) this.setState({ activeModal: 'howto', modalW: 350, paused: true });
         });
       }),
-      // Stackl (2-minute timed mode): mirrors startPractice but flips stacklMode on so
-      // frame()/roundSecs() revive the live countdown. Reached via the home mode picker
-      // (armStackl) + swipe-up (launchArmed), same as casual's startDaily.
-      startStackl: (this._startStackl = () => {
-        this.sfxClick();
-        // session-only, like practice: never persisted
-        const opts = { ...(this.state.opts || {}), dailyMode: false };
-        this.setState({ opts, stacklMode: true, screen: 'game', activeModal: null, modalStack: [], endModal: false }, () => {
-          this.newGame(true);
-          if (this.firstRunPending) this.setState({ activeModal: 'howto', modalW: 350, paused: true });
-        });
-      }),
-      // dock swipe-up routes to whichever mode is armed on the home picker — casual (endless)
-      // by default, or stackl (2-min timed) once armed. Reads live state, not the render-start
-      // snapshot, so it always launches whatever's armed at the moment of the tap.
-      launchArmed: () => (this.state.armedMode === 'stackl' ? this._startStackl() : this._startDaily()),
       goHome: () => this._exitGame(),
       onGameDismissDown: (e) => {
         if (this.state.screen !== 'game') { this._gh = null; return; }
@@ -5885,11 +5753,8 @@ class Component extends DCLogic {
       ...(this._ov = this.overParVals(st, dailyOn)),
       // Quiet home: top-3 leaders (your row folds in, highlighted) — no target on the front door
       ...this.homeLeadersVals(st, dailyOn),
-      // Stackl's OWN minimal leaderboard card (separate partition from casual's standings above);
-      // only surfaces on the shared practice/stackl result sheet, and only for an actual stackl run
-      ...(() => { const v = this.stacklLbVals(); return { ...v, stacklLbShow: this.stacklOn() && v.stacklLbShow }; })(),
       ...(this.dailyStatus().resumable && this.optVal('dailyMode', true) ? { homePlayLabel: 'RESUME' } : {}), // a paused live run resumes on PLAY, it never restarts — even across a reload (the selector knows both)
-      homeSwipeLabel: st.armedMode === 'stackl' ? 'swipe up · stacks' : 'swipe up to play',
+      homeSwipeLabel: 'swipe up to play',
       againLabel: dailyOn ? 'REPLAY' : 'PLAY AGAIN',
       isDaily: dailyOn,
       dailyLabel: dailyOn ? 'ON' : 'OFF',
@@ -5982,7 +5847,7 @@ class Component extends DCLogic {
         if (dt >= 800) return;
         const scr = this.state.screen;
         if (Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx) * 1.4) {
-          if (scr === 'home' && dy < 0 && (!el || el.scrollTop <= 4) && this._startDaily) { (this.state.armedMode === 'stackl' && this._startStackl ? this._startStackl : this._startDaily)(); } // swipe-up GESTURE must honor the armed mode picker, same as the dock BUTTON's launchArmed
+          if (scr === 'home' && dy < 0 && (!el || el.scrollTop <= 4) && this._startDaily) { this._startDaily(); } // swipe-up GESTURE always starts THE daily round, same as the dock BUTTON
           return;
         }
         if (scr === 'wordbank' && dx > 55 && Math.abs(dx) > Math.abs(dy) * 1.4) { this.sfxClick(); this.setState({ screen: 'home' }); }
@@ -6034,7 +5899,10 @@ class Component extends DCLogic {
           animA: 'smokeDriftA 14s ease-in-out infinite', lightAnim: 'lightningFlash 9s ease-in-out infinite',
         };
       })(),
-      dailyNotDone: true,
+      // Task 4: hides the swipe-up dock once today's daily is fully spent (dailyConsumed) —
+      // a played day has nothing left to (re)start. Task 5 owns the done-state visuals; for
+      // now the dock area simply goes quiet (the home result surfaces already tell the story).
+      dailyNotDone: !this.dailyConsumed(),
       nextPuzzleIn: (() => { try { const now = new Date(); const mid = new Date(now); mid.setHours(24, 0, 0, 0); const ms = mid - now; const h = Math.floor(ms / 3600000); const m = Math.floor((ms % 3600000) / 60000); return h > 0 ? (h + 'h ' + m + 'm') : (m + 'm'); } catch (e) { return ''; } })(),
 
       bannerZoneStyle: {
@@ -6052,17 +5920,17 @@ class Component extends DCLogic {
         return Math.max(this._tb || 0, st.score).toLocaleString();
       })(),
       hopperMsgRef: this.hopperMsgRef,
-      timeHudLabel: (this.stacklOn() || this.liveDaily(st)) ? 'TIME' : (st.tut ? 'WARMUP' : 'WORDS'),
+      timeHudLabel: this.liveDaily(st) ? 'TIME' : (st.tut ? 'WARMUP' : 'WORDS'),
       timeText: (() => {
-        if (this.stacklOn() || this.liveDaily(st)) { const shown = Math.max(0, Math.ceil(st.timeLeft - (this.timeRoll || 0))); return Math.floor(shown / 60) + ':' + String(shown % 60).padStart(2, '0'); }
+        if (this.liveDaily(st)) { const shown = Math.max(0, Math.ceil(st.timeLeft - (this.timeRoll || 0))); return Math.floor(shown / 60) + ':' + String(shown % 60).padStart(2, '0'); }
         if (st.tut) return '\u2014';
         return String((this.state.roundWords || []).length); // words found so far (no cap)
       })(),
-      timeKey: (this.stacklOn() || this.liveDaily(st)) ? 'clock' : (!st.tut ? ('w' + (this.state.roundWords || []).length) : 'clock'), // remount per word — replays the pop
+      timeKey: this.liveDaily(st) ? 'clock' : (!st.tut ? ('w' + (this.state.roundWords || []).length) : 'clock'), // remount per word — replays the pop
       timeValStyle: {
         fontSize: valFont, fontWeight: 800, lineHeight: 1,
         color: (() => {
-          if (this.stacklOn() || this.liveDaily(st)) { return st.timeLeft <= 10 ? '#FF8A8E' : st.timeLeft <= 60 ? '#F5B84A' : 'var(--card-ink)'; }
+          if (this.liveDaily(st)) { return st.timeLeft <= 10 ? '#FF8A8E' : st.timeLeft <= 60 ? '#F5B84A' : 'var(--card-ink)'; }
           const g = st.guessesLeft ?? 15; return g <= 3 ? '#FF8A8E' : g <= 6 ? '#F5B84A' : 'var(--card-ink)';
         })(),
         animation: payCelebrate && st.banner.timeBonus ? 'bestPop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.15s' : 'none',

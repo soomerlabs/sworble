@@ -49,7 +49,8 @@ const S = require('../sworble-status.js');
   assert.strictEqual(ds.seven.words.length, 7, 'display list still capped at 7');
 }
 
-// --- rankFor ----------------------------------------------------------------------
+// --- rankFor ------------------------------------------------------------------------
+// back-compat: plain-number "me" against a score-only field behaves exactly like before
 {
   const field = [{ name: 'A', score: 300 }, { name: 'B', score: 200 }, { name: 'C', score: 100 }];
   assert.strictEqual(S.rankFor(field, 250), 2);
@@ -57,6 +58,20 @@ const S = require('../sworble-status.js');
   assert.strictEqual(S.rankFor(field, 50), 4);
   assert.strictEqual(S.rankFor([], 10), 1);
   assert.strictEqual(S.rankFor(null, 10), 1);
+}
+// solved-first, score-second: a solved entry always outranks an unsolved one, regardless
+// of score; ties within the same solved bucket fall back to score.
+{
+  const A = { score: 1480, solved: true };
+  const B = { score: 1360, solved: false };
+  const C = { score: 1240, solved: true };
+  const field = [A, B, C];
+  const others = (me) => field.filter(e => e !== me);
+  assert.strictEqual(S.rankFor(others(A), A), 1, 'A: highest score, solved -> #1');
+  assert.strictEqual(S.rankFor(others(B), B), 3, 'B: higher score than C but unsolved -> behind both solved entries');
+  assert.strictEqual(S.rankFor(others(C), C), 2, 'C: solved but outscored by solved A -> #2, still ahead of unsolved B');
+  // an unsolved "me" against an all-unsolved field falls back to plain score ordering
+  assert.strictEqual(S.rankFor([{ score: 900, solved: false }, { score: 700, solved: false }], { score: 800, solved: false }), 2);
 }
 
 // --- dailyStatus ------------------------------------------------------------------

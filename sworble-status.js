@@ -38,10 +38,22 @@
     return Object.values(map).reduce((a, b) => a + b, 0);
   }
 
-  // Standing rank for a score against a field of {score} entries (1-based).
-  function rankFor(entries, score) {
+  // Standing rank (1-based) for `me` against a field of opponents — solved-first,
+  // score-second: an entry that solved the sworb outranks one that didn't, no matter the
+  // score gap; within the same solved/unsolved bucket, higher score wins.
+  // `me` is {score, solved} (the ONE-GAME shape). Back-compat: a plain number is treated
+  // as {score: number, solved: false}, and field entries without a `solved` key are
+  // treated as unsolved too — so a legacy all-score field ranks exactly as it always did.
+  function rankFor(entries, me) {
     const f = Array.isArray(entries) ? entries : [];
-    return f.filter(e => e && num(e.score) > num(score)).length + 1;
+    const target = (me && typeof me === 'object') ? { score: num(me.score), solved: !!me.solved } : { score: num(me), solved: false };
+    const ahead = (e) => {
+      if (!e) return false;
+      const es = !!e.solved;
+      if (es !== target.solved) return es; // solved beats unsolved regardless of score
+      return num(e.score) > target.score;
+    };
+    return f.filter(ahead).length + 1;
   }
 
   // src = {

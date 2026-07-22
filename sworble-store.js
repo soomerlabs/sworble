@@ -48,7 +48,9 @@
     SEVEN_PREFIX: 'sworble_seven_',
     RUNS_PREFIX: 'sworble_runs_',
     PUZZLE_BEST_PREFIX: 'sworble_puzzle_best_',
-    STACKL_BEST_PREFIX: 'sworble_stackl_best_', // per-day Stackl (2-min timed) best score — separate from puzzle's, banked on every stackl run-over
+    // STACKL_BEST_PREFIX retired in Task 4 (mode collapse) — the Stackl (2-min timed) arm no
+    // longer exists, so its per-day best key is dead. Not reused: any orphaned
+    // sworble_stackl_best_* entries in a returning player's storage are simply inert.
     PUZZLE_PAR_PREFIX: 'sworble_puzzle_par_',
     TARGETS_PREFIX: 'sworble_targets_',
     FOUND_PREFIX: 'sworble_found_',
