@@ -30,13 +30,20 @@ to crack the word of the day."*
   anytime" model is dead; guesses live only inside the finale.)
 - **Score shape (proposed):** word points (cumulative) + solve bonus. Everyone uses the same fixed
   clock, so rank = solved-at-finale (primary) + word score (secondary). ONE leaderboard.
-- **LOCKED (2026-07-22): finale = 3 guesses with Wordle coloring.** After each miss the blocks
-  color green/yellow/gray (reuses SworbleDaily.scoreGuess + the built colored persistence blocks).
-  The finale is a deduction mini-game: banked clues + letter feedback.
+- **LOCKED (2026-07-22): finale = 6 guesses with Wordle coloring** (owner bumped 3→6). After each
+  miss the blocks color green/yellow/gray (reuses SworbleDaily.scoreGuess + the built colored
+  persistence blocks). The finale is a deduction mini-game: banked clues + letter feedback.
+
+- **LOCKED (2026-07-22): clues fixed at exactly 6 per day** ("6 to find, 6 to crack it"); seeder
+  places exactly 6 from the pool (guardrail already proves ≥6 fit).
+- **LOCKED (2026-07-22): the HOME is mock v18** (`../mocks/2026-07-22-home-final-v18.html`) —
+  one page, before/after states on one skeleton, progress-to-top link-bar (dashed-block head,
+  fills candy on hit), ✓-tiles on the standings graph, storm brewing→resting, countdown-only dock.
+  Full spec: `2026-07-22-sworbl-one-game-design.md`.
 
 ### The complete game (all mechanics locked 2026-07-22)
 > **sworbl:** one daily round. 5:00 on the themed board — spell words for points, theme words bank
-> as clue pills. At 0:00 the board morphs into the keyboard: 3 guesses, Wordle-colored, to crack
+> as clue pills. At 0:00 the board morphs into the keyboard: 6 guesses, Wordle-colored, to crack
 > the word of the day. Solved or not — that was your shot; share card; see you tomorrow.
 > Rank: solved first, word score second. One leaderboard. Practice = untimed sandbox.
 

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sworbl · one-game home v18 (breathing room)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+<style>
+  :root{
+    --home-bg:#101014; --ink:#EDEFF7; --sheet-ink:#EDEFF7; --sheet-sub:#C6C9D4;
+    --ghost:#9DA2B3; --line:#3A3A44; --violet:#8971FF; --violet2:#A78BFA;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:#0a0a0f;color:var(--ink);font-family:'Manrope','Trebuchet MS',sans-serif;-webkit-font-smoothing:antialiased}
+  .page{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px 16px 44px}
+  .note{color:var(--ghost);font-size:12px;line-height:1.5;max-width:700px;text-align:center;margin:0 0 16px}
+  .note b{color:var(--ink)}
+  .row{display:flex;gap:34px;justify-content:center;flex-wrap:wrap}
+  .cap{font-size:12px;color:var(--ghost);line-height:1.5;margin:12px 6px 0;text-align:center;max-width:330px}
+  .cap b{color:var(--ink)}
+  .cnum{display:inline-block;font-weight:800;color:var(--ink);background:#1a1630;border:1px solid #2c2550;border-radius:999px;padding:1px 9px;font-size:11px;margin-bottom:7px}
+
+  .phone{position:relative;width:375px;height:812px;border-radius:48px;overflow:hidden;
+    background:var(--home-bg);border:1px solid #26262e;box-shadow:0 40px 90px -34px #000,inset 0 0 0 1px #ffffff05}
+  .screen{position:absolute;inset:0;padding:26px 26px 0;display:flex;flex-direction:column;z-index:1}
+
+  .floaters{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+  .fl{position:absolute;border-radius:8px;opacity:.13;animation:float var(--fd,22s) ease-in-out infinite}
+  @keyframes float{0%,100%{transform:translateY(0) rotate(var(--r,0deg))}50%{transform:translateY(-16px) rotate(calc(var(--r,0deg) + 8deg))}}
+
+  .rise{opacity:0;transform:translateY(10px);animation:enter .6s cubic-bezier(.2,.8,.2,1) forwards}
+  .d1{animation-delay:.05s}.d2{animation-delay:.13s}.d3{animation-delay:.22s}.d4{animation-delay:.3s}.d5{animation-delay:.4s}
+  @keyframes enter{to{opacity:1;transform:none}}
+
+  /* top nav — real app: profile / logo+wordmark / settings */
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:6px 0 0}
+  .navic{font-family:'Material Symbols Rounded';font-size:26px;color:#C6C9D4;font-feature-settings:'liga'}
+  .brand{display:flex;align-items:center;gap:10px}
+  .logotile{position:relative;width:34px;height:34px;border-radius:11px;background:linear-gradient(150deg,#5FD6A8,#8971FF)}
+  .logotile i{position:absolute;inset:1.5px;border-radius:9px;background:#A78BFA;box-shadow:0 2px 0 #7C5CE0, inset 0 1.5px 0 rgba(255,255,255,.35);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Fredoka',sans-serif;font-size:18px;font-weight:600;font-style:normal;padding-bottom:2px}
+  .wordmark{font-family:'Fredoka','Manrope',sans-serif;font-size:22px;font-weight:600;letter-spacing:.3px;color:var(--sheet-ink)}
+
+  .eyebrow{font-size:11px;font-weight:800;letter-spacing:2.6px;color:var(--ghost);text-transform:uppercase;margin-top:34px}
+  .date{display:flex;gap:10px;align-items:baseline;margin-top:6px;font-family:'Fredoka','Manrope',sans-serif;font-weight:600;font-size:34px;line-height:1.05}
+  .date .d2c{color:var(--violet)}
+  .divider{height:1.5px;background:var(--line);margin-top:16px}
+
+  .sworb{margin-top:30px;display:flex;flex-direction:column;align-items:center;gap:16px;position:relative;z-index:3}
+  .blocks{display:flex;gap:7px}
+  .blk{flex:none;width:54px;height:60px;border-radius:13px;display:flex;align-items:center;justify-content:center;
+    font-family:'Fredoka','Manrope',sans-serif;font-size:28px;font-weight:600;background:transparent;border:2.5px dashed var(--line);color:var(--sheet-ink)}
+  .blk.c0{border:none;background:#A78BFA;box-shadow:inset 0 -4px 0 #7C5CE0;color:#1F1442}
+  .blk.c1{border:none;background:#5BC8F5;box-shadow:inset 0 -4px 0 #2E9FD0;color:#1F1442}
+  .blk.c2{border:none;background:#5FD6A8;box-shadow:inset 0 -4px 0 #38AD7F;color:#1F1442}
+  .blk.c3{border:none;background:#F58FB8;box-shadow:inset 0 -4px 0 #D06090;color:#1F1442}
+  .blk.c4{border:none;background:#F5B84A;box-shadow:inset 0 -4px 0 #CE9022;color:#1F1442}
+  .fan{display:flex;flex-direction:column;gap:8px;align-items:center}
+  .fanrow{display:flex;gap:8px;justify-content:center}
+  .pill{font-family:'Fredoka','Manrope',sans-serif;font-size:13px;font-weight:600;letter-spacing:.4px;padding:6px 14px;border-radius:999px;color:#1F1442;box-shadow:inset 0 -2px 0 rgba(0,0,0,.18)}
+  .pill.p1{background:#5FD6A8}.pill.p2{background:#5BC8F5}.pill.p3{background:#A78BFA}.pill.p4{background:#F5B84A}
+  .ghost{width:46px;height:27px;border-radius:999px;border:2px dashed var(--line)}
+  .subline{font-size:11px;font-weight:800;letter-spacing:1.6px;color:var(--ghost);text-transform:uppercase}
+
+  /* stats row (after) — old scoreboard style */
+  .rstats{display:flex;gap:34px;justify-content:center;margin-top:24px;position:relative;z-index:3}
+  .rstat{display:flex;flex-direction:column;align-items:center;gap:3px}
+  .rl{font-size:10px;font-weight:800;letter-spacing:1.8px;color:var(--ghost);text-transform:uppercase}
+  .rv{font-family:'Fredoka','Manrope',sans-serif;font-weight:600;font-size:23px;color:var(--sheet-ink)}
+  .hero{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:26px;position:relative;z-index:3}
+  .heroTile{min-width:132px;padding:12px 26px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+    font-family:'Fredoka','Manrope',sans-serif;font-weight:600;font-size:32px;color:#1F1442;
+    background:#A78BFA;box-shadow:inset 0 -5px 0 #7C5CE0}
+  .heroTile.empty{background:transparent;box-shadow:none;border:2.5px dashed var(--line);color:#4A4A56}
+  .heroCap{font-size:11px;font-weight:800;letter-spacing:1.8px;color:var(--ghost);text-transform:uppercase}
+  /* progress-to-top bar (owner's pick) */
+  .prog{margin-top:26px;position:relative;z-index:3;display:flex;flex-direction:column;gap:12px}
+  .progHead{display:flex;align-items:flex-end;justify-content:space-between}
+  .bigScore{display:flex;align-items:baseline;gap:7px}
+  .bigScore b{font-family:'Fredoka','Manrope',sans-serif;font-weight:600;font-size:40px;line-height:1;color:var(--sheet-ink)}
+  .bigScore span{font-size:14px;font-weight:700;color:var(--ghost)}
+  .topSide{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+  .topLine{display:flex;align-items:center;gap:7px}
+  .topLine b{font-family:'Fredoka','Manrope',sans-serif;font-weight:600;font-size:19px;color:var(--sheet-ink)}
+  .topCap{font-size:10px;font-weight:800;letter-spacing:1.8px;color:var(--ghost);text-transform:uppercase}
+  /* the bar IS a tile-link: ghost dashed path underneath, glowing link-line fill, dashed block head */
+  .track{position:relative;height:26px}
+  .track::before{content:'';position:absolute;left:2px;right:2px;top:50%;border-top:2.5px dashed var(--line)}
+  .fill{position:absolute;left:0;top:50%;transform:translateY(-50%);height:7px;border-radius:999px;
+    background:color-mix(in srgb,#8971FF 88%,transparent);filter:blur(1.5px);box-shadow:0 0 12px -1px #8971FF}
+  .knob{position:absolute;top:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:8px;
+    background:var(--home-bg);border:2.5px dashed var(--line);box-sizing:border-box}
+  .knob.hit{border:none;background:#A78BFA;box-shadow:inset 0 -3px 0 #7C5CE0, 0 0 14px -2px #A78BFA}
+  .progFoot{display:flex;align-items:center;justify-content:space-between}
+  .chase{display:flex;align-items:center;gap:7px;font-family:'Fredoka','Manrope',sans-serif;font-weight:600;font-size:14.5px;color:#A78BFA}
+  .chase .tri{width:0;height:0;border-left:5.5px solid transparent;border-right:5.5px solid transparent;border-bottom:8px solid #A78BFA}
+  .pct{font-size:14px;font-weight:800;color:var(--ghost)}
+
+  /* standings — big, breathing */
+  .stand{margin-top:34px;position:relative;z-index:3}
+  .standHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .sname{font-family:'Fredoka','Manrope',sans-serif;font-weight:600;font-size:21px;color:var(--sheet-ink)}
+  .sicon{font-family:'Material Symbols Rounded';font-size:20px;color:var(--violet);font-feature-settings:'liga';font-variation-settings:'FILL' 1}
+  .graph{position:relative;width:100%;aspect-ratio:282/210}
+  .axlbl{position:absolute;font-family:'Fredoka','Manrope',sans-serif;font-style:italic;font-size:13px;font-weight:600;color:var(--ghost);opacity:.6;z-index:0}
+  .slot{position:absolute;transform:translateX(-50%);width:96px;z-index:1;display:flex;flex-direction:column;align-items:center;gap:7px}
+  .pod{position:relative;display:flex;align-items:center;justify-content:center;font-family:'Fredoka','Manrope',sans-serif;font-weight:600;color:#1F1442;padding-bottom:2px}
+  .aura{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:200%;height:200%;border-radius:50%;z-index:-1;pointer-events:none;animation:auraPulse 3.2s ease-in-out infinite}
+  @keyframes auraPulse{0%,100%{opacity:.45}50%{opacity:.72}}
+  .badge{position:absolute;top:-9px;left:-9px;width:24px;height:24px;border-radius:9px;background:#1F1442;color:#fff;
+    font-family:'Fredoka','Manrope',sans-serif;font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:center;padding-bottom:1px}
+  .check{position:absolute;top:-9px;right:-9px;width:21px;height:21px;border-radius:8px;background:#5FD6A8;box-shadow:0 0 0 2px #38AD7F;
+    color:#1F1442;font-family:'Material Symbols Rounded';font-size:14px;display:flex;align-items:center;justify-content:center;font-feature-settings:'liga'}
+  .pname{font-size:12.5px;font-weight:800;color:var(--sheet-sub);letter-spacing:.4px}
+  .pscore{font-family:'Fredoka','Manrope',sans-serif;font-size:15px;font-weight:600;color:var(--sheet-sub);font-variant-numeric:tabular-nums}
+  .bob1{animation:bob 4.2s ease-in-out infinite}.bob2{animation:bob 4.8s ease-in-out .4s infinite}.bob3{animation:bob 5.4s ease-in-out .8s infinite}
+  @keyframes bob{0%,100%{margin-top:0}50%{margin-top:-5px}}
+  .conf{position:absolute;width:5px;height:9px;border-radius:2px;animation:confFade 5s linear infinite}
+  @keyframes confFade{0%{opacity:0;transform:translateY(-4px)}12%{opacity:1}62%{opacity:1}100%{opacity:0;transform:translateY(30px) rotate(50deg)}}
+
+  .spring{flex:1;min-height:10px}
+
+  /* storm (locked) */
+  .aurast{position:absolute;left:0;right:0;bottom:0;height:280px;z-index:0;overflow:hidden;
+    -webkit-mask-image:radial-gradient(135% 96% at 50% 110%, #000 34%, rgba(0,0,0,.5) 66%, transparent 88%);mask-image:radial-gradient(135% 96% at 50% 110%, #000 34%, rgba(0,0,0,.5) 66%, transparent 88%)}
+  .aurast.dim{opacity:.4;filter:saturate(.55)}
+  .blockwrap{position:absolute;inset:0;filter:blur(13px)}
+  .goofield{position:absolute;inset:0;filter:url(#goo);--sp:16s}
+  .tileblob{position:absolute;border-radius:24px;mix-blend-mode:screen;animation-duration:var(--sp)!important}
+  .b1{left:1%;bottom:-2px;width:62px;height:62px;background:#5FD6A8;animation:eL var(--sp) ease-in-out infinite}
+  .b2{left:19%;bottom:-16px;width:78px;height:78px;background:#A78BFA;animation:mB var(--sp) ease-in-out infinite}
+  .b3{left:38%;bottom:-34px;width:96px;height:96px;background:#5BC8F5;animation:cA var(--sp) ease-in-out infinite}
+  .b4{left:55%;bottom:-30px;width:92px;height:92px;background:#F58FB8;animation:cB var(--sp) ease-in-out infinite}
+  .b5{left:74%;bottom:-16px;width:78px;height:78px;background:#F5B84A;animation:mA var(--sp) ease-in-out infinite}
+  .b6{right:1%;bottom:-2px;width:62px;height:62px;background:#F58A66;animation:eR var(--sp) ease-in-out infinite}
+  @keyframes eL{0%{transform:translate(-6px,8px) scale(.9)}50%{transform:translate(18px,-18px) scale(1.02)}100%{transform:translate(-6px,8px) scale(.9)}}
+  @keyframes eR{0%{transform:translate(6px,8px) scale(.9)}50%{transform:translate(-18px,-18px) scale(1.02)}100%{transform:translate(6px,8px) scale(.9)}}
+  @keyframes mB{0%{transform:translate(9px,7px) scale(1.02)}50%{transform:translate(-25px,-36px) scale(.93)}100%{transform:translate(9px,7px) scale(1.02)}}
+  @keyframes mA{0%{transform:translate(-9px,7px) scale(.96)}50%{transform:translate(27px,-34px) scale(1.06)}100%{transform:translate(-9px,7px) scale(.96)}}
+  @keyframes cA{0%{transform:translate(-13px,11px) scale(.94)}50%{transform:translate(18px,-56px) scale(1.12)}100%{transform:translate(-13px,11px) scale(.94)}}
+  @keyframes cB{0%{transform:translate(13px,9px) scale(1.05)}50%{transform:translate(-18px,-50px) scale(.9)}100%{transform:translate(13px,9px) scale(1.05)}}
+
+  .dock{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 30px}
+  .chev{font-family:'Material Symbols Rounded';font-size:32px;line-height:.7;color:var(--violet);animation:up 1.7s ease-in-out infinite;font-feature-settings:'liga'}
+  .launch{font-family:'Fredoka','Manrope',sans-serif;font-size:17px;font-weight:600;color:var(--sheet-ink)}
+  @keyframes up{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-6px);opacity:1}}
+  .countdown{font-size:11px;font-weight:800;letter-spacing:1.8px;color:var(--ghost);text-transform:uppercase}
+  .countdown b{color:var(--violet2)}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="note"><b>v18 — real-app breathing room.</b> Top nav (profile · logo · settings), big lowercase date, bigger candy tiles, the standings graph owns its space, generous gaps. Same locked design: 6 ghost clue slots, ✓ = cracked it, gray reveal if unsolved, storm under the swipe.</p>
+
+  <div class="row">
+    <!-- BEFORE -->
+    <div>
+      <div class="phone"><div class="screen">
+        <div class="floaters">
+          <div class="fl" style="left:3%;top:16%;width:26px;height:26px;background:#A78BFA;--r:-8deg;--fd:20s"></div>
+          <div class="fl" style="left:2%;top:48%;width:34px;height:34px;background:#5BC8F5;--r:10deg;--fd:26s"></div>
+          <div class="fl" style="left:7%;top:74%;width:20px;height:20px;background:#5FD6A8;--r:4deg;--fd:23s"></div>
+          <div class="fl" style="right:3%;top:13%;width:22px;height:22px;background:#F58FB8;--r:6deg;--fd:24s"></div>
+          <div class="fl" style="right:2%;top:42%;width:30px;height:30px;background:#F58A66;--r:-6deg;--fd:21s"></div>
+          <div class="fl" style="right:6%;top:70%;width:24px;height:24px;background:#F5B84A;--r:-10deg;--fd:27s"></div>
+          <div class="fl" style="left:47%;top:36%;width:15px;height:15px;background:#5FD6A8;--r:6deg;--fd:28s;opacity:.07"></div>
+        </div>
+
+        <div class="nav rise d1">
+          <span class="navic">person</span>
+          <span class="brand"><span class="logotile"><i>s</i></span><span class="wordmark">sworbl</span></span>
+          <span class="navic">settings</span>
+        </div>
+
+        <div class="eyebrow rise d1">daily puzzle &middot; N&ordm; 214</div>
+        <div class="date rise d1"><span>tuesday</span><span class="d2c">july 21</span></div>
+        <div class="divider rise d1"></div>
+
+        <div class="sworb rise d2" style="margin-top:26px">
+          <div class="blocks"><div class="blk"></div><div class="blk"></div><div class="blk"></div><div class="blk"></div><div class="blk"></div></div>
+          <div class="fan">
+            <div class="fanrow"><span class="ghost"></span><span class="ghost"></span><span class="ghost"></span><span class="ghost"></span></div>
+            <div class="fanrow"><span class="ghost"></span><span class="ghost"></span></div>
+          </div>
+        </div>
+
+        <div class="prog rise d3">
+          <div class="progHead">
+            <div class="bigScore"><b style="color:#4A4A56">0</b><span>pts</span></div>
+            <div class="topSide"><div class="topLine"><svg width="19" height="13" viewBox="0 0 34 24" fill="none"><path d="M3 21 L2 7 L10 13 L17 3 L24 13 L32 7 L31 21 Z" fill="#8971FF" stroke="#6A4FE0" stroke-width="1.5" stroke-linejoin="round"/><circle cx="2" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="32" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="17" cy="2.6" r="2.4" fill="#8971FF"/></svg><b>1,480</b></div><div class="topCap">top &middot; maya</div></div>
+          </div>
+          <div class="track"><div class="fill" style="width:0%"></div><div class="knob" style="left:2%;opacity:.45"></div></div>
+          <div class="progFoot"><div class="chase" style="color:var(--ghost)"><span class="tri" style="border-bottom-color:var(--ghost)"></span>1,480 to overtake maya</div><span class="pct">0%</span></div>
+        </div>
+
+        <div class="stand rise d4">
+          <div class="standHead"><span class="sname">standings</span><span class="sicon">leaderboard</span></div>
+          <div class="graph">
+            <span class="axlbl" style="left:2px;top:-6px">y</span>
+            <span class="axlbl" style="right:30px;bottom:-4px">x</span>
+            <svg width="100%" height="100%" viewBox="0 0 282 210" preserveAspectRatio="none" style="position:absolute;inset:0;z-index:0;overflow:visible">
+              <path d="M5 194 Q3 98 7 4" fill="none" stroke="var(--ghost)" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.5"/>
+              <path d="M3 10 L7 3.5 L11 9.5" fill="none" stroke="var(--ghost)" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.5"/>
+              <path d="M5 194 Q128 196 246 191" fill="none" stroke="var(--ghost)" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.5"/>
+              <path d="M239.5 186.5 L247 191 L239.5 195.5" fill="none" stroke="var(--ghost)" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.5"/>
+              <line x1="209" y1="44" x2="130" y2="102" style="fill:none;stroke:color-mix(in srgb,#5BC8F5 88%,transparent);stroke-width:6;stroke-linecap:round;filter:blur(2px)"/>
+              <line x1="130" y1="102" x2="52" y2="150" style="fill:none;stroke:color-mix(in srgb,#F5B84A 88%,transparent);stroke-width:6;stroke-linecap:round;filter:blur(2px)"/>
+            </svg>
+            <div class="conf" style="left:66%;top:2px;background:#F5B84A;animation-delay:-.4s"></div>
+            <div class="conf" style="left:78%;top:10px;background:#F58FB8;animation-delay:-1.4s"></div>
+            <div class="conf" style="left:62%;top:18px;background:#5BC8F5;animation-delay:-2.6s"></div>
+            <div class="conf" style="left:74%;top:-6px;background:#5FD6A8;animation-delay:-3.2s"></div>
+            <div class="slot bob1" style="left:74%;top:8px">
+              <div class="pod" style="width:64px;height:64px;border-radius:16px;background:#5FD6A8;box-shadow:inset 0 -6px 0 #38AD7F;font-size:30px">
+                <svg width="32" height="21" viewBox="0 0 34 24" fill="none" style="position:absolute;top:-24px;left:50%;transform:translateX(-50%)"><path d="M3 21 L2 7 L10 13 L17 3 L24 13 L32 7 L31 21 Z" fill="#8971FF" stroke="#6A4FE0" stroke-width="1.5" stroke-linejoin="round"/><circle cx="2" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="32" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="17" cy="2.6" r="2.4" fill="#8971FF"/></svg>
+                <div class="aura" style="background:radial-gradient(circle,#5FD6A8 0%,transparent 66%);filter:blur(14px)"></div>
+                <span class="badge">1</span><span class="check">check</span>M
+              </div>
+              <span class="pname">MAYA</span><span class="pscore">1,480</span>
+            </div>
+            <div class="slot bob2" style="left:46%;top:76px">
+              <div class="pod" style="width:54px;height:54px;border-radius:14px;background:#5BC8F5;box-shadow:inset 0 -5px 0 #2E9FD0;font-size:25px">
+                <div class="aura" style="background:radial-gradient(circle,#5BC8F5 0%,transparent 66%);filter:blur(12px);opacity:.5"></div>
+                <span class="badge">2</span><span class="check">check</span>J
+              </div>
+              <span class="pname">JONAS</span><span class="pscore">1,120</span>
+            </div>
+            <div class="slot bob3" style="left:18%;top:126px">
+              <div class="pod" style="width:48px;height:48px;border-radius:13px;background:#F5B84A;box-shadow:inset 0 -5px 0 #CE9022;font-size:22px">
+                <span class="badge">3</span>R
+              </div>
+              <span class="pname">RAE</span><span class="pscore">1,360</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="spring"></div>
+
+        <div class="aurast"><div class="blockwrap"><div class="goofield">
+          <div class="tileblob b1"></div><div class="tileblob b2"></div><div class="tileblob b3"></div><div class="tileblob b4"></div><div class="tileblob b5"></div><div class="tileblob b6"></div>
+        </div></div></div>
+        <div class="dock rise d5">
+          <span class="chev">keyboard_arrow_up</span>
+          <span class="launch">swipe up to play</span>
+        </div>
+      </div></div>
+      <div class="cap"><span class="cnum">before</span><br>Real rhythm: nav, date, dashed word + 6 empty clue slots, one stakes line, the standings graph with room, storm under “swipe up to play.”</div>
+    </div>
+
+    <!-- AFTER -->
+    <div>
+      <div class="phone"><div class="screen">
+        <div class="floaters">
+          <div class="fl" style="left:3%;top:16%;width:26px;height:26px;background:#A78BFA;--r:-8deg;--fd:20s"></div>
+          <div class="fl" style="right:2%;top:42%;width:30px;height:30px;background:#F58A66;--r:-6deg;--fd:21s"></div>
+          <div class="fl" style="left:2%;top:48%;width:34px;height:34px;background:#5BC8F5;--r:10deg;--fd:26s"></div>
+          <div class="fl" style="right:3%;top:13%;width:22px;height:22px;background:#F58FB8;--r:6deg;--fd:24s"></div>
+        </div>
+
+        <div class="nav rise d1">
+          <span class="navic">person</span>
+          <span class="brand"><span class="logotile"><i>s</i></span><span class="wordmark">sworbl</span></span>
+          <span class="navic">settings</span>
+        </div>
+
+        <div class="eyebrow rise d1">daily puzzle &middot; N&ordm; 214</div>
+        <div class="date rise d1"><span>tuesday</span><span class="d2c">july 21</span></div>
+        <div class="divider rise d1"></div>
+
+        <div class="sworb rise d3" style="margin-top:26px">
+          <div class="blocks">
+            <div class="blk c2">S</div><div class="blk c0">H</div><div class="blk c4">O</div><div class="blk c1">A</div><div class="blk c3">L</div>
+          </div>
+          <div class="fan">
+            <div class="fanrow"><span class="pill p1">reef</span><span class="pill p2">tide</span><span class="pill p3">salt</span><span class="pill p4">wave</span></div>
+            <div class="fanrow"><span class="ghost"></span><span class="ghost"></span></div>
+          </div>
+        </div>
+
+        <div class="prog rise d3">
+          <div class="progHead">
+            <div class="bigScore"><b>1,240</b><span>pts</span></div>
+            <div class="topSide"><div class="topLine"><svg width="19" height="13" viewBox="0 0 34 24" fill="none"><path d="M3 21 L2 7 L10 13 L17 3 L24 13 L32 7 L31 21 Z" fill="#8971FF" stroke="#6A4FE0" stroke-width="1.5" stroke-linejoin="round"/><circle cx="2" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="32" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="17" cy="2.6" r="2.4" fill="#8971FF"/></svg><b>1,480</b></div><div class="topCap">top &middot; maya</div></div>
+          </div>
+          <div class="track"><div class="fill" style="width:84%"></div><div class="knob" style="left:84%"></div></div>
+          <div class="progFoot"><div class="chase"><span class="tri"></span>240 to overtake maya</div><span class="pct">84%</span></div>
+        </div>
+
+        <div class="stand rise d4">
+          <div class="standHead"><span class="sname">standings</span><span class="sicon">leaderboard</span></div>
+          <div class="graph" style="aspect-ratio:282/188">
+            <svg width="100%" height="100%" viewBox="0 0 282 188" preserveAspectRatio="none" style="position:absolute;inset:0;z-index:0;overflow:visible">
+              <path d="M5 172 Q3 88 7 4" fill="none" stroke="var(--ghost)" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.5"/>
+              <path d="M3 10 L7 3.5 L11 9.5" fill="none" stroke="var(--ghost)" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.5"/>
+              <path d="M5 172 Q128 174 246 169" fill="none" stroke="var(--ghost)" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.5"/>
+              <path d="M239.5 164.5 L247 169 L239.5 173.5" fill="none" stroke="var(--ghost)" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.5"/>
+              <line x1="209" y1="38" x2="130" y2="88" style="fill:none;stroke:color-mix(in srgb,#A78BFA 88%,transparent);stroke-width:6;stroke-linecap:round;filter:blur(2px)"/>
+              <line x1="130" y1="88" x2="52" y2="132" style="fill:none;stroke:color-mix(in srgb,#F5B84A 88%,transparent);stroke-width:6;stroke-linecap:round;filter:blur(2px)"/>
+            </svg>
+            <div class="conf" style="left:66%;top:0;background:#F5B84A;animation-delay:-.4s"></div>
+            <div class="conf" style="left:78%;top:8px;background:#F58FB8;animation-delay:-1.4s"></div>
+            <div class="conf" style="left:62%;top:14px;background:#5BC8F5;animation-delay:-2.6s"></div>
+            <div class="slot bob1" style="left:74%;top:6px">
+              <div class="pod" style="width:60px;height:60px;border-radius:15px;background:#5FD6A8;box-shadow:inset 0 -6px 0 #38AD7F;font-size:28px">
+                <svg width="30" height="20" viewBox="0 0 34 24" fill="none" style="position:absolute;top:-23px;left:50%;transform:translateX(-50%)"><path d="M3 21 L2 7 L10 13 L17 3 L24 13 L32 7 L31 21 Z" fill="#8971FF" stroke="#6A4FE0" stroke-width="1.5" stroke-linejoin="round"/><circle cx="2" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="32" cy="6.5" r="2.4" fill="#8971FF"/><circle cx="17" cy="2.6" r="2.4" fill="#8971FF"/></svg>
+                <div class="aura" style="background:radial-gradient(circle,#5FD6A8 0%,transparent 66%);filter:blur(14px)"></div>
+                <span class="badge">1</span><span class="check">check</span>M
+              </div>
+              <span class="pname">MAYA</span><span class="pscore">1,480</span>
+            </div>
+            <div class="slot bob2" style="left:46%;top:66px">
+              <div class="pod" style="width:52px;height:52px;border-radius:14px;background:#A78BFA;box-shadow:inset 0 -5px 0 #7C5CE0, 0 0 0 3px #8971FF;font-size:24px">
+                <div class="aura" style="background:radial-gradient(circle,#A78BFA 0%,transparent 66%);filter:blur(12px);opacity:.5"></div>
+                <span class="badge">2</span><span class="check">check</span>P
+              </div>
+              <span class="pname" style="color:#8971FF">YOU</span><span class="pscore" style="color:#8971FF">1,240</span>
+            </div>
+            <div class="slot bob3" style="left:18%;top:112px">
+              <div class="pod" style="width:46px;height:46px;border-radius:12px;background:#F5B84A;box-shadow:inset 0 -5px 0 #CE9022;font-size:21px">
+                <span class="badge">3</span>R
+              </div>
+              <span class="pname">RAE</span><span class="pscore">1,360</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="spring"></div>
+
+        <div class="aurast dim"><div class="blockwrap"><div class="goofield">
+          <div class="tileblob b1"></div><div class="tileblob b2"></div><div class="tileblob b3"></div><div class="tileblob b4"></div><div class="tileblob b5"></div><div class="tileblob b6"></div>
+        </div></div></div>
+        <div class="dock rise d5">
+          <span class="countdown" style="font-family:'Fredoka','Manrope',sans-serif;font-size:17px;letter-spacing:1px;text-transform:none"><b>14:32:11</b></span>
+        </div>
+      </div></div>
+      <div class="cap"><span class="cnum">after (solved)</span><br>SHOAL in candy (earned), your pills + 2 unfound ghosts, SOLVED in mint, old-style stat row, YOU ringed on the graph, storm resting. Unsolved day = the reveal stays gray.</div>
+    </div>
+  </div>
+</div>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+  <filter id="goo"><feGaussianBlur in="SourceGraphic" stdDeviation="11" result="b"/>
+  <feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 30 -14" result="g"/>
+  <feBlend in="SourceGraphic" in2="g"/></filter>
+</defs></svg>
+</body>
+</html>
