@@ -44,8 +44,10 @@ tests, and deterministic (all randomness is injected seeded RNG).
 
 ```
 python3 -m http.server 8791     # serve — it's a static site; open http://localhost:8791
-npm ci && npm test              # lint (eslint) + 12 suites, incl. a headless test that plays
-                                # a full day (deal → spell → finale → solve → bank)
+npm ci && npm test              # lint (eslint) + 13 suites, incl. a headless test that plays
+                                # a full day (deal → spell → finale → solve → bank) and a jsdom
+                                # boot smoke that mounts the REAL index.html Component under
+                                # the REAL dc-runtime (tests/boot-smoke.test.js)
 node tests/seed-stress.js       # board-packing stress harness (optional, not in npm test)
 ```
 
