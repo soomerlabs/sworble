@@ -118,7 +118,51 @@
     };
   }
 
-  var API = { parseEntry: parseEntry, isClue: isClue, clueFor: clueFor, checkGuess: checkGuess, guessReward: guessReward, scoreGuess: scoreGuess, bankClue: bankClue, applySworbGuess: applySworbGuess, REWARD: REWARD };
+  // sentinel `ch` value for nextSlots meaning "backspace" rather than a typed letter —
+  // never collides with a real key (sworbKey's onClick only ever passes 'A'..'Z').
+  var BACKSPACE = '';
+
+  // sworbKey/sworbBackspace's shared slot-fill state machine, extracted pure. Wordle-
+  // persistence means slots can have interior gaps after a miss (green/yellow letters stay
+  // put), so typing always fills the first genuinely EMPTY slot (greens are skipped because
+  // they're never empty). A fresh keystroke also clears any soft YELLOW hints first (locked
+  // GREENS never move) so the player can freely override them. Backspace clears the LAST
+  // filled slot that isn't a locked green, scanning from the end.
+  //
+  // args = { slots, colors, ch, len } — `ch` is a letter to type, or the BACKSPACE
+  // sentinel. `len` (the sworb's length) is only used to pad `slots` on the typing path
+  // (backspace never extends the row — matches the original sworbBackspace, which never
+  // padded either). Returns { slots, colors } (colors is null when nothing is colored yet,
+  // matching the original `colors.some(Boolean) ? colors : null`), or null when the action
+  // is a no-op (full row with nothing empty to type into; nothing but greens/empties to
+  // backspace) — the ORIGINAL updaters returned `{}` for this case (no state change); null
+  // here is the same intent, made explicit for a pure function.
+  function nextSlots(args) {
+    var a = args || {};
+    var srcSlots = Array.isArray(a.slots) ? a.slots.slice() : [];
+    var srcColors = Array.isArray(a.colors) ? a.colors.slice() : [];
+    if (a.ch === BACKSPACE) {
+      var bSlots = srcSlots.slice(), bColors = srcColors.slice();
+      var bIdx = -1;
+      for (var i = bSlots.length - 1; i >= 0; i--) { if (bSlots[i] && bColors[i] !== 'green') { bIdx = i; break; } }
+      if (bIdx < 0) return null;
+      bSlots[bIdx] = ''; bColors[bIdx] = null;
+      return { slots: bSlots, colors: bColors.some(Boolean) ? bColors : null };
+    }
+    var len = (typeof a.len === 'number' && isFinite(a.len) && a.len > 0) ? a.len : 0;
+    var slots = srcSlots.slice(); while (slots.length < len) slots.push('');
+    var colors = srcColors.slice();
+    if (colors.some(function (x) { return x === 'yellow'; })) {
+      slots = slots.map(function (c, i) { return colors[i] === 'green' ? c : ''; });
+      colors = colors.map(function (x) { return x === 'green' ? x : null; });
+    }
+    var idx = slots.findIndex(function (x) { return !x; }); // first empty slot (greens filled -> skipped)
+    if (idx < 0) return null;
+    slots[idx] = a.ch; colors[idx] = null;
+    return { slots: slots, colors: colors.some(Boolean) ? colors : null };
+  }
+
+  var API = { parseEntry: parseEntry, isClue: isClue, clueFor: clueFor, checkGuess: checkGuess, guessReward: guessReward, scoreGuess: scoreGuess, bankClue: bankClue, applySworbGuess: applySworbGuess, nextSlots: nextSlots, BACKSPACE: BACKSPACE, REWARD: REWARD };
   root.SworbleDaily = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

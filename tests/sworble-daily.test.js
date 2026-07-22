@@ -177,4 +177,81 @@ console.log('sworble-daily: bankClue passed');
 }
 console.log('sworble-daily: applySworbGuess passed');
 
+// --- nextSlots(args) -> {slots, colors}|null — sworbKey/sworbBackspace's shared slot-fill
+// state machine, extracted pure. Wordle-persistence means slots can have interior gaps
+// after a miss (green/yellow letters stay put) — typing always fills first-empty; a
+// keystroke also clears soft YELLOW hints (locked GREENS never move); backspace clears the
+// LAST non-green filled slot. Both actions return null to mean "no state change" (the
+// original updaters returned `{}` — same intent, explicit here). ---
+{
+  const BK = D.BACKSPACE;
+  assert.strictEqual(typeof D.nextSlots, 'function', 'nextSlots exported');
+  assert.ok(BK !== undefined && BK !== null, 'BACKSPACE sentinel exported');
+
+  // first-empty fill, plain case: empty slots, len 5, type 'O' -> lands at index 0
+  {
+    const r = D.nextSlots({ slots: [], colors: null, ch: 'O', len: 5 });
+    assert.deepStrictEqual(r.slots, ['O', '', '', '', '']);
+    assert.strictEqual(r.colors, null, 'no colors yet -> null (nothing truthy to report)');
+  }
+  // first-empty fill WITH interior gaps: green at index 1, rest empty -> next letter
+  // skips the locked green and lands at the first genuinely empty slot (index 0)
+  {
+    const r = D.nextSlots({ slots: ['', 'C', '', '', ''], colors: [null, 'green', null, null, null], ch: 'X', len: 5 });
+    assert.strictEqual(r.slots[0], 'X', 'fills the first empty slot, not appended after the green');
+    assert.strictEqual(r.slots[1], 'C', 'green slot untouched');
+  }
+  // greens locked against typing: a full board except one green interior slot never gets overwritten by more typing
+  {
+    const r = D.nextSlots({ slots: ['A', 'C', 'E', 'A', ''], colors: [null, 'green', null, null, null], ch: 'N', len: 5 });
+    assert.strictEqual(r.slots[4], 'N', 'only the true empty slot is filled');
+    assert.strictEqual(r.slots[1], 'C', 'green stays put, never overwritten');
+  }
+  // yellow-hint clears on the NEXT keystroke: any yellow present wipes all non-green
+  // slots/colors before the new letter is placed
+  {
+    const slots = ['A', 'C', 'E', 'A', 'N']; // a prior guess result
+    const colors = ['gray', 'green', 'yellow', 'gray', 'gray'];
+    const r = D.nextSlots({ slots, colors, ch: 'Z', len: 5 });
+    assert.strictEqual(r.slots[1], 'C', 'the green survives the yellow-clear');
+    assert.strictEqual(r.colors[1], 'green', 'green color survives too');
+    assert.strictEqual(r.slots[0], 'Z', 'first non-green slot (index 0) takes the fresh keystroke');
+    assert.strictEqual(r.colors[0], null, 'freshly-typed slot has no color yet');
+    assert.strictEqual(r.slots[2], '', 'yellow slot itself got cleared, not refilled by this same keystroke');
+    assert.strictEqual(r.colors[2], null, 'yellow color wiped');
+  }
+  // full-row no-op: no empty slot left to fill -> null (state unchanged)
+  {
+    const r = D.nextSlots({ slots: ['A', 'B', 'C', 'D', 'E'], colors: null, ch: 'Z', len: 5 });
+    assert.strictEqual(r, null, 'full row -> no-op');
+  }
+  // BACKSPACE targets the LAST non-locked (non-green) filled slot, scanning from the end
+  {
+    const slots = ['A', 'C', 'E', 'A', 'N'];
+    const colors = [null, 'green', null, null, null];
+    const r = D.nextSlots({ slots, colors, ch: BK });
+    assert.strictEqual(r.slots[4], '', 'last filled slot cleared');
+    assert.strictEqual(r.slots[1], 'C', 'green never eaten by backspace');
+  }
+  // BACKSPACE skips a trailing green and clears the next-last non-green slot instead
+  {
+    const slots = ['A', 'C', 'E', 'A', 'N'];
+    const colors = [null, null, null, null, 'green']; // trailing slot is locked green
+    const r = D.nextSlots({ slots, colors, ch: BK });
+    assert.strictEqual(r.slots[4], 'N', 'locked trailing green survives backspace');
+    assert.strictEqual(r.slots[3], '', 'backspace clears the last NON-green slot instead');
+  }
+  // BACKSPACE full-row no-op: nothing but greens/empties to clear -> null
+  {
+    const r1 = D.nextSlots({ slots: ['', '', '', '', ''], colors: null, ch: BK });
+    assert.strictEqual(r1, null, 'nothing to backspace on an empty row');
+    const r2 = D.nextSlots({ slots: ['A', 'B'], colors: ['green', 'green'], ch: BK });
+    assert.strictEqual(r2, null, 'an all-green row has nothing left to backspace');
+  }
+  // malformed/missing args never throw
+  assert.strictEqual(D.nextSlots({}), null, 'empty args, letter-fill path with len 0 -> no-op, never throws');
+  assert.strictEqual(D.nextSlots(null), null, 'null args never throws');
+}
+console.log('sworble-daily: nextSlots passed');
+
 console.log('sworble-daily: all passed');
