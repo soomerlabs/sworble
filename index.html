@@ -1361,6 +1361,30 @@ function dealFromQueue(dealer, ctx) {
 // the <helmet> script loads before first render.
 function mulberry32(seed) { return SworbleCore.mulberry32(seed); }
 
+// ============================================================================================
+// COMPONENT — SECTION MAP (grep the ===== N. anchors below to jump). The monolith stays one
+// class; the decision-heavy logic increasingly delegates to the pure sworble-*.js kernels
+// (core/seed/solver/daily/status/run/store/flow) — see each anchor for the pure home.
+//   1. CONFIG + SELECTORS      opt/practice/live* predicates, cols/rows/diag, theme
+//   2. LIFECYCLE + LISTENERS   componentDidMount split → _install* guards, unmount, update
+//   3. TIMERS + COUNT-IN       later/_scheduleStripPour, armCountIn (→ SworbleRun), fair-pause
+//   4. LAYOUT SIZING           applySize / initialSize / gap
+//   5. DAILY + SWORB FINALE    dailyEntry/sworbState, guessSworb/sworbSubmit (→ SworbleDaily),
+//                              hint tokens, flip/keyboard  (routing → SworbleFlow)
+//   6. DICTIONARY + LETTERS    censor/scrub/prefixes, dealLetter, tileColorFor
+//   7. ROUND LIFECYCLE         newGame (deal), run-snapshot persistence (→ SworbleRun),
+//                              endRound + finale gate, bankFinaleBonus (→ SworbleStatus/Flow)
+//   8. GAME ENGINE LOOP        frame() clock/queue, dropRow/placeRow, cellAt/tileAt/byId
+//   9. BOARD INPUT (SWIPE)     boardDown/boardMove (+_backtrackMagnet/_predictiveDefer), submit
+//  10. SCORING + MINES         lenMult/tileVal, syncMines, mergeTiles, clearWord (+_computeMineBlast
+//                              /_detonateBomb/_detonateFizzle)
+//  11. REFILL + RECAP          removeAndSettle/refillBoard, ensureWordExists, checkTargetCatch, recap
+//  12. LEADERBOARD + STATS     lbStub/submitDaily/lbVals, statsData/dailyHistory
+//  13. AUDIO / SFX             audioCtx/tone, sfx*
+//  14. RENDER-VALS BUILDERS    bannerElement (+_banner*), homeLeadersVals (+_home*), overParVals
+//  15. RENDER-VALS ENTRY       renderVals/__renderValsInner — assembles every {{ }} value the
+//                              template markup (above this <script>) binds to
+// ============================================================================================
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -1466,6 +1490,7 @@ class Component extends DCLogic {
     )));
   }
 
+  // ===== 1. CONFIG + SELECTORS =====
   optVal(k, dflt) {
     const o = (this.state && this.state.opts) || this.initOpts || {};
     return o[k] ?? this.props[k] ?? dflt;
@@ -1646,6 +1671,7 @@ class Component extends DCLogic {
   // Mount is a SEQUENCE of independent jobs (split T3): scroll guards, the boot data load,
   // the render loop + home countdown, then the input/audio/visibility/interaction listeners.
   // Each is its own named installer below — order preserved exactly, no behavior change.
+  // ===== 2. LIFECYCLE + LISTENERS =====
   componentDidMount() {
     this._installScrollGuards();
     // claim ownership: if a stale instance survives a hot-reload, its clock and
@@ -1989,6 +2015,7 @@ class Component extends DCLogic {
   // never fire while paused/hidden, never bursts, and shifts with pause gaps
   enqueue(ms, fn) { this.engineQ.push({ at: performance.now() + ms, fn }); }
 
+  // ===== 3. TIMERS + COUNT-IN =====
   later(fn, ms) {
     const id = setTimeout(() => {
       this.timeouts = this.timeouts.filter(x => x !== id);
@@ -2080,6 +2107,7 @@ class Component extends DCLogic {
     this.setState({ paused: true, gamePaused: true, countIn: null });
   }
 
+  // ===== 4. LAYOUT SIZING =====
   applySize() {
     const cols = this.cols();
     const vw = window.innerWidth;
@@ -2171,6 +2199,7 @@ class Component extends DCLogic {
   }
   // the ACTIVE themed entry for today: sworb + the REALIZED theme set (words actually on the
   // board). Falls back to the first-N of the pool before a board is seeded (e.g. on home).
+  // ===== 5. DAILY + SWORB FINALE =====
   dailyEntry() {
     const pool = this.themePool();
     if (!pool) return null;
@@ -2432,6 +2461,7 @@ class Component extends DCLogic {
   }
 
   // never ACCEPT slurs as playable words, even when a source dictionary has them
+  // ===== 6. DICTIONARY + LETTERS =====
   censorDict(set) {
     if (!set) return;
     const stems = ['nigg', 'kike', 'cunt', 'faggot', 'wetback', 'trann'];
@@ -2588,6 +2618,7 @@ class Component extends DCLogic {
     return row;
   }
 
+  // ===== 7. ROUND LIFECYCLE =====
   newGame(playIntro) {
     // cancel everything scheduled by the previous game — stray reload chimes,
     // squash timers, and banner clears must not fire into the new game
@@ -3218,6 +3249,7 @@ class Component extends DCLogic {
   // === game-engine loop: absolute timestamps, zero accumulation ===
   // roundEndAt / cycleStartAt are wall-clock anchors; every frame derives the truth
   // as (now - anchor). Pauses shift the anchors by the exact paused duration.
+  // ===== 8. GAME ENGINE LOOP =====
   frame(now) {
     const st = this.state;
     if (!document.hidden && document.hasFocus() && (!this.lastClaimAt || Date.now() - this.lastClaimAt > 2000)) this.claimAudio();
@@ -3525,6 +3557,7 @@ class Component extends DCLogic {
     this.setState({ idleTip: null });
   }
 
+  // ===== 9. BOARD INPUT (SWIPE) =====
   boardDown(e) {
     if (this.state.paused || this.state.over) return;
     if (this.state.sworbTyping) return; // board is an A-Z keyboard right now — keys own their taps
@@ -3785,6 +3818,7 @@ class Component extends DCLogic {
   // length multiplier — rewards long words much harder (feedback: 5-letter words felt
   // weak): 4=1.5x, 5=2.5x, 6=4x, 7+=6x. (The original, gentler curve — v1 — was retired
   // with the classic mode; sworble-core.js's dead-code sweep removed its code path 2026-07-22.)
+  // ===== 10. SCORING + MINES =====
   lenMult(n) { return SworbleCore.lenMult(n); }
   // streak multiplier: every 3 consecutive words +0.5x, capped at 2x
   streakMult(streak) { return SworbleCore.streakMult(streak); }
@@ -4359,6 +4393,7 @@ class Component extends DCLogic {
     } catch (e) { clipboardCopy(); }
   }
 
+  // ===== 11. REFILL + RECAP =====
   removeAndSettle(ids) {
     const drops = [];
     this.setState(s => {
@@ -4686,6 +4721,7 @@ class Component extends DCLogic {
     try { await api.flushQueue(); } catch (e) {} // deliver queued scores before reading the board
     try { return await api.fetchBoard(date, this.lbMode()); } catch (e) { return null; }
   }
+  // ===== 12. LEADERBOARD + STATS =====
   lbStub(date) {
     const seed = SworbleCore.hashSeed('lb' + this.lbBoardId(date));
     const rnd = mulberry32(seed >>> 0);
@@ -4994,6 +5030,7 @@ class Component extends DCLogic {
     if (window.__sworbleSoomerLive && window.__sworbleSoomerLive !== this) return true;
     return document.hidden || this.state.paused || this.state.over || !!this.state.activeModal;
   }
+  // ===== 13. AUDIO / SFX =====
   audioCtx() {
     if (document.hidden) return null; // never (re)start audio in a hidden tab
     if (this.state.muted) return null;
@@ -5160,6 +5197,7 @@ class Component extends DCLogic {
   // The message-strip element: ONE surface, many states. Split (T3) into a dispatcher +
   // per-state leaf builders — the branch ORDER (live word > miss > resting > notice >
   // celebration) is preserved exactly. Each leaf builds its own React.createElement handle.
+  // ===== 14. RENDER-VALS BUILDERS =====
   bannerElement() {
     const st = this.state;
     const b = st.banner;
@@ -5769,6 +5807,7 @@ class Component extends DCLogic {
     this.setState({ opts, screen: 'home', paused: false, gamePaused: false, countIn: null, over: false, tiles: [], path: [], banner: null, bombArmed: false, boom: null, rattle: 0, score: 0, scoreShown: 0, streak: 0, prog: 0, timeLeft: 120, homeSeq: (this.state.homeSeq || 0) + 1, homeDoneShown: this.dailyConsumed(), ...sworbReset });
     this.loadHomeLb();
   }
+  // ===== 15. RENDER-VALS ENTRY =====
   renderVals() {
     try { return this.__renderValsInner(); }
     catch (e) { if (window.__errTrap) window.__errTrap('renderVals threw', e && e.message, e && e.stack); throw e; }
