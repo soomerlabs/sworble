@@ -1830,7 +1830,7 @@ class Component extends DCLogic {
       // blocks input the whole time) — left in as harmless defense-in-depth against any future
       // path that opens a modal mid-count-in.
       this.setState(s => s.activeModal ? { countIn: null } : { countIn: 'out', paused: false });
-    }, 2400);
+    }, 2750); // GO holds ~650ms (owner: felt short at 300ms) before the release beat
     this.later(() => {
       if (this._countInToken !== token) return;
       // unmount only — never touch `paused`/`activeModal` here, both were already resolved
@@ -1838,7 +1838,7 @@ class Component extends DCLogic {
       // 2850→2950 to give the longer ~550ms veil fade (2400 + 550 = 2950) room to finish before
       // the overlay unmounts — otherwise the fade would visibly snap off early.
       this.setState(s => s.countIn === 'out' ? { countIn: null } : null);
-    }, 2950);
+    }, 3300);
   }
   // interrupt an in-flight count-in (e.g. the tab backgrounds mid-beat) — every pending step
   // becomes a no-op. Caller is responsible for the resulting paused/gamePaused state.
