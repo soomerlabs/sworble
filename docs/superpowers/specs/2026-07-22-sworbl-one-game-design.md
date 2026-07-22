@@ -50,8 +50,8 @@ title — it flows directly) → storm + dock.
   `1,240 pts`, crown + `1,480` + leader name right — NO "TOP·" prefix, NO chase line, NO
   percentage; glowing violet **link-line** drawn proportionally over the dashed path, **dashed
   block riding the head** — fills candy violet with ledge only when you ACTUALLY beat the top
-  (`hit` state)); under the bar, **top-5 best words** as candy word-blocks (word + small pts) in
-  ONE horizontally-scrolling row (pre-play: 5 dashed ghost blocks); YOU ringed violet on the
+  (`hit` state)); **superlatives**: top-5 best words as candy word-blocks (word + small pts) in a left-aligned
+  2-row wrap under a ghosted label (pre-play: 5 dashed ghost blocks, same layout); YOU ringed violet on the
   graph with your mint ✓; storm **dim/desaturated** (it did its job); dock = countdown timer ONLY
   (`14:32:11`, Fredoka violet — no label).
 - **After play (not solved):** identical, except the word reveals in **GRAY blocks** (candy colors

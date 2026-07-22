@@ -167,9 +167,10 @@ skeleton (no layout shift between them).
   score+pts / thin dashed track with glowing fill at `min(100, round(you/top*100))%` + mini
   dashed-block knob (candy `hit` when you ≥ top) / small crown+topScore. NO chase line, NO
   percentage, NO big score. Under the fan:
-  **best-words strip** — top 5 distinct words by pts as candy word-blocks (word + small pts,
-  PALETTE colors + ledge), ONE horizontal-scroll row (`overflow-x`, hidden scrollbar); pre-play =
-  5 dashed ghost blocks. Data: `dailyStatus().seven.words.slice(0,5)` (the words-list machinery —
+  **superlatives** — ghosted lowercase Fredoka label (left-aligned) + top 5 distinct words by pts
+  as candy word-blocks (word + small pts, PALETTE colors + ledge) in a LEFT-aligned 2-row flex
+  wrap (max-width forces the wrap; rows uneven by design); pre-play = 5 dashed ghost blocks. The
+  standings graph gets the same ghosted left label ("standings"). Data: `dailyStatus().seven.words.slice(0,5)` (the words-list machinery —
   this is its NEW home surface). Dormant styling pre-play.
 - [ ] Step 3: standings graph — add the mint ✓ mini-tile on solver nodes; order from Task 4.
 - [ ] Step 4: dock — before: chevron + Fredoka "swipe up to play"; after: countdown ONLY
