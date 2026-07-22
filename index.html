@@ -346,8 +346,13 @@
             <div style="{{ boardPauseTitleStyle }}">paused</div>
             <div style="{{ boardPauseTimeStyle }}">{{ pauseRemainingText }} left</div>
             <button onClick="{{ resumeGame }}" style="{{ pauseResumeBtnStyle }}">RESUME</button>
-            <!-- keep settings reachable mid-round without leaving pause -->
-            <button onClick="{{ openSettings }}" style="{{ boardPauseSettingsBtnStyle }}">SETTINGS</button>
+            <!-- keep settings + a way out reachable mid-round without leaving pause. EXIT
+                 reuses the same _exitGame the app-bar X calls — already paused here, so this
+                 is "pause first, then exit" by construction (no separate pause step needed). -->
+            <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+              <button onClick="{{ openSettings }}" style="{{ boardPauseSettingsBtnStyle }}">SETTINGS</button>
+              <button onClick="{{ goHome }}" aria-label="Exit" title="Exit" style="{{ boardPauseExitBtnStyle }}"><span style="{{ boardPauseExitGlyphStyle }}">close</span></button>
+            </div>
           </div>
         </sc-if>
       </div>
@@ -368,7 +373,12 @@
     <div style="{{ appBarHairlineStyle }}"></div>
     <div style="{{ appBarInnerStyle }}">
       <div style="width:44px; flex:none;">
-        <sc-if value="{{ isGameScr }}" hint-placeholder-val="{{ false }}"><button onClick="{{ goHome }}" aria-label="Close" title="Close" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">close</span></button></sc-if>
+        <!-- LEFT slot on the game screen swaps pause<->exit: a live hunt (mid-round, not
+             over/finale/paused/count-in) gets pause; everything else on the game screen
+             (finale, over, fair-paused, count-in) gets the X — see gameLeftIsPause/
+             gameLeftIsExit in the appBar computed-values block. -->
+        <sc-if value="{{ gameLeftIsPause }}" hint-placeholder-val="{{ false }}"><button onClick="{{ pauseGame }}" aria-label="Pause" title="Pause" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">pause</span></button></sc-if>
+        <sc-if value="{{ gameLeftIsExit }}" hint-placeholder-val="{{ false }}"><button onClick="{{ goHome }}" aria-label="Close" title="Close" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">close</span></button></sc-if>
         <sc-if value="{{ isHomeScr }}" hint-placeholder-val="{{ true }}"><button onClick="{{ openStats }}" aria-label="Profile" title="Profile" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">person</span></button></sc-if>
         <sc-if value="{{ isProfileScr }}" hint-placeholder-val="{{ false }}"><button onClick="{{ profileBack }}" aria-label="Home" title="Home" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">arrow_back</span></button></sc-if>
         <sc-if value="{{ isLbScr }}" hint-placeholder-val="{{ false }}"><button onClick="{{ lbBack }}" aria-label="Home" title="Home" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">arrow_back</span></button></sc-if>
@@ -383,11 +393,10 @@
         <div style="font-family:'Fredoka', 'Manrope', sans-serif; font-size:22px; font-weight:600; letter-spacing:0.3px; color:var(--sheet-ink);">sworbl</div>
       </div>
       <div style="width:44px; flex:none; display:flex; justify-content:flex-end;">
-        <!-- LIVE-PLAYTEST item D: the floating in-game pause button is gone — during a live hunt
-             this SAME top-right slot becomes pause (glyph + action swap), driven by state. Off a
-             live hunt (home, finale, paused, over) it's settings as before. -->
-        <sc-if value="{{ gameNavIsPause }}" hint-placeholder-val="{{ false }}"><button onClick="{{ pauseGame }}" aria-label="Pause" title="Pause" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">pause</span></button></sc-if>
-        <sc-if value="{{ gameNavIsSettings }}" hint-placeholder-val="{{ false }}"><button onClick="{{ openSettings }}" aria-label="Settings" title="Settings" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">settings</span></button></sc-if>
+        <!-- The floating in-game pause button is gone (pause now lives in the LEFT slot, see
+             above). This RIGHT slot is ALWAYS settings on the game screen — no pause/settings
+             swap here anymore. -->
+        <sc-if value="{{ isGameScr }}" hint-placeholder-val="{{ false }}"><button onClick="{{ openSettings }}" aria-label="Settings" title="Settings" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">settings</span></button></sc-if>
         <sc-if value="{{ isHomeScr }}" hint-placeholder-val="{{ true }}"><button onClick="{{ openSettings }}" aria-label="Settings" title="Settings" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">settings</span></button></sc-if>
         <sc-if value="{{ isProfileScr }}" hint-placeholder-val="{{ false }}"><button onClick="{{ openSettings }}" aria-label="Settings" title="Settings" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">settings</span></button></sc-if>
         <sc-if value="{{ isLbScr }}" hint-placeholder-val="{{ false }}"><button onClick="{{ doShare }}" aria-label="Share" title="Share" style="{{ navIconStyle }}"><span style="{{ navGlyphStyle }}">ios_share</span></button></sc-if>
@@ -564,7 +573,7 @@
                     </sc-if>
                     <sc-if value="{{ dailyDone }}" hint-placeholder-val="{{ false }}">
                       <div style="position:relative; z-index:1; width:100%; box-sizing:border-box; padding:8px 0 4px; display:flex; flex-direction:column; align-items:center;">
-                        <span style="font-family:'Fredoka','Manrope',sans-serif; font-size:17px; font-weight:600; letter-spacing:1px; color:#A78BFA; font-variant-numeric:tabular-nums;">{{ homeCountdownText }}</span>
+                        <span style="{{ homeCountdownPillStyle }}">{{ homeCountdownText }}</span>
                       </div>
                     </sc-if>
                   </div>
@@ -1273,18 +1282,10 @@ class Component extends DCLogic {
         LS.setItem(K.OPTS, JSON.stringify(opts));
       }
     } catch (e) {}
-    // first-launch onboarding: show how-to once, then never again
-    let firstRun = false;
-    try {
-      firstRun = !LS.getItem(K.SEEN_HOWTO);
-      if (firstRun) LS.setItem(K.SEEN_HOWTO, '1');
-      // "what's new" replay: mines shipped — players who saw the OLD how-to get the
-      // updated sheet once on their next play; new players are covered by firstRun
-      if (!firstRun && !LS.getItem(K.SEEN_MINES)) firstRun = true;
-      LS.setItem(K.SEEN_MINES, '1');
-    } catch (e) {}
-    this.firstRun = firstRun;
-    this.firstRunPending = firstRun; // intro cascade replays after the how-to closes
+    // Post-pivot: the auto-opening first-run "how to play" sheet is gone (onboarding is a
+    // future tutorial, not this modal). The how-to sheet itself is unchanged and still
+    // reachable manually from settings (see openInfo/settingsToInfo) — only the auto-show on
+    // first deal (and its SEEN_HOWTO/SEEN_MINES trigger flags) is removed.
     this.initOpts = opts;
     this.state = {
       tiles: [], nextRow: [], score: 0, best,
@@ -1395,13 +1396,9 @@ class Component extends DCLogic {
   }
   howtoDone() {
     this.sfxClick();
-    if (this.firstRunPending) {
-      // first launch: the deal-in cascade played hidden behind this sheet — re-deal now
-      this.firstRunPending = false;
-      this.skipAttCount = true;
-      this.fadeClose({ activeModal: null, modalStack: [], paused: false }, () => this.newGame(false));
-      return;
-    }
+    // the auto-open-on-first-launch re-deal branch that used to live here is gone along with
+    // the auto-open trigger itself (see constructor) — the how-to sheet is manual-only now
+    // (settings -> info), so closing it always just pops the modal stack like any other sheet.
     const stack = (this.state.modalStack || []).slice();
     if (stack.length) { const prev = stack.pop(); this.goModal(prev, { stack, silent: true }); }
     else this.closeModal();
@@ -1821,6 +1818,12 @@ class Component extends DCLogic {
       // while the overlay style fades its dim/blur to transparent over ~0.4s and the board
       // plays its one-shot wake (see countInOverlayStyle / boardCardStyle). The final step below
       // unmounts the (by-then invisible) overlay.
+      // The `s.activeModal ?` branch used to matter for the auto-opened first-run how-to sheet,
+      // which could still be open when this 2400ms step fired and would otherwise get its
+      // `paused` yanked out from under it mid-read. That auto-open trigger is gone, so nothing
+      // realistic sets activeModal during the count-in's ~2.4s window anymore (the overlay
+      // blocks input the whole time) — left in as harmless defense-in-depth against any future
+      // path that opens a modal mid-count-in.
       this.setState(s => s.activeModal ? { countIn: null } : { countIn: 'out', paused: false });
     }, 2400);
     this.later(() => {
@@ -5048,7 +5051,9 @@ class Component extends DCLogic {
         key: 'b' + b.key,
         style: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, maxWidth: '100%', boxSizing: 'border-box', padding: '0 10px' }, // NO wrapper fade — it dipped the solid pending chips to 0 (the flash); gray is continuous, color chips own their landing
       },
-        h('div', { key: 'cg', style: { whiteSpace: 'nowrap', fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 9.5, fontWeight: 700, letterSpacing: 1, color: '#F5B84A', background: 'rgba(245,184,74,0.16)', borderRadius: 999, padding: '2px 9px' } }, (b.caught.isClue ? '\u2605 CLUE ' : '\u2605 TOP WORD ') + b.caught.n + '/' + b.caught.total),
+        // celebratory glow/pill kept \u2014 the progress COUNTER (n/N) is gone (the clue-fan pills
+        // under the board already communicate found/total; this badge is just the catch itself).
+        h('div', { key: 'cg', style: { whiteSpace: 'nowrap', fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 9.5, fontWeight: 700, letterSpacing: 1, color: '#F5B84A', background: 'rgba(245,184,74,0.16)', borderRadius: 999, padding: '2px 9px' } }, b.caught.isClue ? '\u2605 CLUE' : '\u2605 TOP WORD'),
         wordRow
       );
     }
@@ -6222,7 +6227,6 @@ class Component extends DCLogic {
         if (this.practiceMode()) this.setState({ opts: this._optsHomeReset() });
         this.setState({ screen: 'game', sworbTyping: false, stepperMode: 'play' }, () => {
           this.newGame(true);
-          if (this.firstRunPending) this.setState({ activeModal: 'howto', modalW: 350, paused: true });
         });
       }),
       startPractice: (this._startPractice = () => {
@@ -6232,7 +6236,6 @@ class Component extends DCLogic {
         // launched from settings now — close the sheet on the way out
         this.setState({ opts, screen: 'game', activeModal: null, modalStack: [], endModal: false }, () => {
           this.newGame(true);
-          if (this.firstRunPending) this.setState({ activeModal: 'howto', modalW: 350, paused: true });
         });
       }),
       goHome: () => this._exitGame(),
@@ -6428,7 +6431,16 @@ class Component extends DCLogic {
       // .aura) is a FULL-COLUMN-WIDTH well: edge-to-edge, sitting flush on the floor. Blob %
       // positions (.stormB1..6, static CSS) were already authored for full width — only this
       // wrap's own box needed to actually SPAN full width for them to read as the bell layout.
-      stormWrapStyle: 'position:absolute; left:0; right:0; bottom:0; height:260px; overflow:hidden; pointer-events:none; z-index:0; opacity:' + (this.dailyConsumed() ? 0.4 : 1) + '; filter:saturate(' + (this.dailyConsumed() ? 0.55 : 1) + '); transition:opacity 0.6s ease, filter 0.6s ease;',
+      // EDGE-BLEED FIX (owner screenshot, done-state, light mode): this wrap's positioned
+      // ancestor is the `homeRiseKey` div (position:relative), NOT homeDockStyle itself — so a
+      // plain bottom:0 only reaches THAT div's own (short, content-sized) bottom edge, which
+      // sits ABOVE homeDockStyle's own bottom padding (22px, or 16px+safe-area on mobile — see
+      // homeDockStyle above). That gap is exactly the visible strip of bare background below
+      // the aurora. Bleeding the wrap down by the negative of that same padding lands its
+      // bottom edge flush on homeDockStyle's true bottom edge == the viewport bottom, with no
+      // gap, in both daily states and both themes (the well's own opacity/filter still carries
+      // the brewing/resting distinction — only the anchor changed).
+      stormWrapStyle: 'position:absolute; left:0; right:0; bottom:' + (mobile ? 'calc(-16px - env(safe-area-inset-bottom))' : '-22px') + '; height:260px; overflow:hidden; pointer-events:none; z-index:0; opacity:' + (this.dailyConsumed() ? 0.4 : 1) + '; filter:saturate(' + (this.dailyConsumed() ? 0.55 : 1) + '); transition:opacity 0.6s ease, filter 0.6s ease;',
       // hides the swipe-up dock once today's daily is fully spent (dailyConsumed) — a played
       // day has nothing left to (re)start; the v18 dock instead shows the countdown below.
       dailyNotDone: !this.dailyConsumed(),
@@ -6446,6 +6458,17 @@ class Component extends DCLogic {
           return h + ':' + String(m).padStart(2, '0') + ':' + String(s2).padStart(2, '0');
         } catch (e) { return '0:00:00'; }
       })(),
+      // COMPACT GHOST TIME-PILL (kills the old big full-width H:MM:SS dock treatment): same
+      // shape/family as the unfound clue-fan ghost pill (dashed border, transparent bg) — just
+      // the ticking time, no label, sitting snug on the storm where the swipe-up cue lives in
+      // the sibling dailyNotDone branch. Tick mechanism unchanged (_tickHomeCountdown).
+      homeCountdownPillStyle: {
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        padding: '6px 14px', borderRadius: 999,
+        fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 13.5, fontWeight: 700, letterSpacing: '0.6px',
+        color: 'var(--ghost)', background: 'transparent', border: '1.5px dashed var(--line)',
+        fontVariantNumeric: 'tabular-nums', WebkitTapHighlightColor: 'transparent',
+      },
       // remounts the whole v18 entrance-stagger stack on every fresh arrival at home (a new
       // homeSeq is stamped whenever a round ends/leaves back to home) so the `homeRise`
       // keyframe replays instead of firing once ever.
@@ -6566,12 +6589,13 @@ class Component extends DCLogic {
       },
       boardCardRef: this.boardCardRef,
       // LIVE-PLAYTEST item D: the floating in-game pause button (pauseBtnShow/pauseBtnStyle/
-      // pauseBtnGlyphStyle) is REMOVED — pause now lives in the app bar's top-right slot, which
-      // swaps settings<->pause based on gameNavIsPause/gameNavIsSettings (see isGameScr block
-      // above and the appBar template). `pauseGame` itself is unchanged and still self-guards
-      // (no-op off a live hunt / mid count-in / behind another modal).
-      gameNavIsPause: st.screen === 'game' && this.liveHunt(st) && !st.paused && !st.activeModal,
-      gameNavIsSettings: st.screen === 'game' && !(this.liveHunt(st) && !st.paused && !st.activeModal),
+      // pauseBtnGlyphStyle) is REMOVED — pause now lives in the app bar's top-LEFT slot, swapped
+      // in for the X during a live hunt (mid-round, not over/finale/paused/count-in). The RIGHT
+      // slot is always settings on the game screen now (see isGameScr in the appBar template).
+      // `pauseGame` itself is unchanged and still self-guards (no-op off a live hunt / mid
+      // count-in / behind another modal).
+      gameLeftIsPause: st.screen === 'game' && this.liveHunt(st) && !st.paused && !st.activeModal,
+      gameLeftIsExit: st.screen === 'game' && !(this.liveHunt(st) && !st.paused && !st.activeModal),
       // COUNT-IN (3·2·1·GO): board stays VISIBLE behind a light scrim — only the fair-pause
       // overlay below blurs/obscures. Input is locked the same way pause locks it: boardDown's
       // existing `if (this.state.paused ...) return;` guard already covers this beat because
@@ -6645,6 +6669,18 @@ class Component extends DCLogic {
         marginTop: 0, background: 'transparent', color: 'rgba(255,255,255,0.72)', border: '2px solid rgba(255,255,255,0.32)', borderRadius: 12,
         padding: '8px 20px', fontFamily: "'Fredoka','Manrope',sans-serif", fontSize: 11.5, fontWeight: 800,
         letterSpacing: 0.6, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+      },
+      // small icon-only ghost twin of the SETTINGS pill above — X back out to home. Reuses
+      // `goHome`/`_exitGame` as-is: the board-local cover only ever shows already-paused
+      // (gamePaused), so tapping this is "pause first, then exit" for free.
+      boardPauseExitBtnStyle: {
+        marginTop: 0, background: 'transparent', border: '2px solid rgba(255,255,255,0.32)', borderRadius: 12,
+        width: 34, height: 34, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 0, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+      },
+      boardPauseExitGlyphStyle: {
+        fontFamily: "'Material Symbols Rounded'", fontWeight: 'normal', fontSize: 18, lineHeight: 1,
+        color: 'rgba(255,255,255,0.72)', fontFeatureSettings: "'liga'", WebkitFontFeatureSettings: "'liga'", WebkitFontSmoothing: 'antialiased',
       },
       sheetRef: this.sheetRef,
       // idle stack-coach ghost: a translucent twin slides from tile A onto tile B
@@ -6973,7 +7009,8 @@ class Component extends DCLogic {
       boardGameLayerStyle: { position: 'absolute', inset: 0, opacity: st.sworbTyping ? 0 : 1, filter: st.sworbTyping ? 'blur(9px)' : 'blur(0px)', pointerEvents: st.sworbTyping ? 'none' : 'auto', transition: 'opacity 0.28s ease, filter 0.28s ease' },
       openInfo: () => this.goModal('howto'),
       settingsToInfo: () => this.goModal('howto', { push: true }),
-      // GOT IT: first-run re-deals; opened-from-settings backs to settings; else closes
+      // GOT IT: manual-only now (no more auto-open-on-first-launch re-deal branch) —
+      // opened-from-settings backs to settings, else just closes like any other sheet.
       closeInfo: () => this.howtoDone(),
       soundLabel: st.muted ? 'OFF' : 'ON',
       soundToggleStyle: this.toggleStyle(!st.muted),
