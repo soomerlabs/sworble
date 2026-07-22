@@ -35,6 +35,18 @@
       String(d.getDate()).padStart(2, '0');
   }
 
+  // Milliseconds remaining until the next local-calendar-day rollover (the SAME boundary
+  // dayKey() uses) — feeds the home dock's H:MM:SS countdown + "next puzzle in" copy.
+  // setHours(24,0,0,0) on a copy of `d` rolls to next-day local midnight; subtracting two
+  // real Date objects (not calendar-field arithmetic) naturally absorbs a DST transition —
+  // a 23-hour spring-forward day or a 25-hour fall-back day both come out correct. Never
+  // negative (clamped at 0) so a caller can't underflow on a boundary tick.
+  function msToNextDay(d) {
+    const mid = new Date(d);
+    mid.setHours(24, 0, 0, 0);
+    return Math.max(0, mid - d);
+  }
+
   // ---- Letter model (feeds the deterministic deal — part of the contract) --------
   // Scrabble-ish letter point values.
   const VALUES = { a:1,b:3,c:3,d:2,e:1,f:4,g:2,h:4,i:1,j:8,k:5,l:1,m:3,n:1,o:1,p:3,q:10,r:1,s:1,t:1,u:1,v:4,w:4,x:8,y:4,z:10 };
@@ -69,7 +81,7 @@
   // Streak multiplier: every 3 consecutive words +0.5x, capped at 2x.
   function streakMult(streak) { return Math.min(2, 1 + Math.floor(streak / 3) * 0.5); }
 
-  const API = { mulberry32, hashSeed, dayKey,
+  const API = { mulberry32, hashSeed, dayKey, msToNextDay,
     VALUES, BAG, VOWELS, FRIENDLY, shuffledBag,
     expandLetter, dispLetter, letterVal, lenMult, streakMult };
   root.SworbleCore = API;

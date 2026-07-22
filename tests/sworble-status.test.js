@@ -174,4 +174,42 @@ console.log('sworble-status: sworb theme-rank passed');
 
 console.log('sworble-status: sworb block passed');
 
+// --- dayState: the day's persisted finale lifecycle (fresh/finale/done), no live/runtime
+// board state involved — the T3 re-entry Critical (endRound/frame re-entering the finale
+// pipeline every animation frame) lived in exactly this state machine. finalePending()/
+// dailyConsumed() in index.html both delegate to this single source of truth now.
+// NOTE: 'live' (a round currently being hunted) is not derivable from {done, solved,
+// guessesUsed} alone — the sworb-guess UI only ever unlocks once `done` is already true (see
+// endRound's finale gate), so done:false always means guessesUsed:0/solved:false regardless
+// of whether a round is mid-hunt or never started. Callers layer the runtime `_dailyLive`
+// signal on top of dayState()==='fresh' when they need to tell "in progress" from "untouched."
+{
+  assert.strictEqual(S.dayState({ done: false, solved: false, guessesUsed: 0 }), 'fresh', 'not done yet -> fresh');
+  assert.strictEqual(S.dayState({ done: false, solved: true, guessesUsed: 6 }), 'fresh', 'done always wins first regardless of stray solved/guessesUsed');
+  assert.strictEqual(S.dayState({ done: true, solved: false, guessesUsed: 0 }), 'finale', 'finale just unlocked, no guesses spent yet');
+  assert.strictEqual(S.dayState({ done: true, solved: false, guessesUsed: 3 }), 'finale', 'mid-finale, guesses remain');
+  assert.strictEqual(S.dayState({ done: true, solved: false, guessesUsed: 5 }), 'finale', 'one guess left -> still finale (matches guessesLeft>0)');
+  assert.strictEqual(S.dayState({ done: true, solved: true, guessesUsed: 1 }), 'done', 'solved (even early) -> done');
+  assert.strictEqual(S.dayState({ done: true, solved: false, guessesUsed: 6 }), 'done', 'all 6 guesses exhausted, unsolved -> done');
+  assert.strictEqual(S.dayState({ done: true, solved: false, guessesUsed: 9 }), 'done', 'over-count is safe -> still done, never negative guessesLeft');
+  assert.strictEqual(S.dayState({ done: true }), 'finale', 'missing solved/guessesUsed default to falsy/0 -> finale (6 fresh guesses)');
+  assert.strictEqual(S.dayState({}), 'fresh', 'empty input -> fresh, never throws');
+  assert.strictEqual(S.dayState(null), 'fresh', 'null input -> fresh, never throws');
+}
+console.log('sworble-status: dayState passed');
+
+// --- progressToTop: the home slim-strip's fill%/knob-hit math (you vs. the field's top
+// score) — pinned: top=0 (nobody's posted yet), you>top (clamped, still a hit), rounding ---
+{
+  assert.deepStrictEqual(S.progressToTop(0, 0), { pct: 0, hit: false }, 'no top score yet -> 0%, never a hit');
+  assert.deepStrictEqual(S.progressToTop(500, 0), { pct: 0, hit: false }, 'top=0 with a nonzero you is still 0% (nothing to chase)');
+  assert.deepStrictEqual(S.progressToTop(0, 1000), { pct: 0, hit: false }, 'dormant (no play yet) -> 0%');
+  assert.deepStrictEqual(S.progressToTop(250, 1000), { pct: 25, hit: false }, 'exact quarter of the way there');
+  assert.deepStrictEqual(S.progressToTop(1000, 1000), { pct: 100, hit: true }, 'exactly matching the top score IS a hit');
+  assert.deepStrictEqual(S.progressToTop(1500, 1000), { pct: 100, hit: true }, 'beating the top score clamps the fill at 100%, still a hit');
+  assert.deepStrictEqual(S.progressToTop(333, 1000), { pct: 33, hit: false }, 'rounds to nearest whole percent (33.3 -> 33)');
+  assert.deepStrictEqual(S.progressToTop(667, 1000), { pct: 67, hit: false }, 'rounds to nearest whole percent (66.7 -> 67)');
+}
+console.log('sworble-status: progressToTop passed');
+
 console.log('sworble-status: all tests passed');

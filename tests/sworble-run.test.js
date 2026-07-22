@@ -92,4 +92,18 @@ assert.strictEqual(SworbleStore.K.RUN_PREFIX, 'sworble_run_', 'K.RUN_PREFIX must
   assert.strictEqual(SworbleRun.validateRun(badTile, DAY), null, 'malformed tile -> reject whole snapshot');
 }
 
+// --- remainingSecs: restoreRun's remaining-round-time arithmetic (pinned — the T1 Critical
+// lived exactly here: a reload must resume with REMAINING time, not a fresh full clock, and
+// must never go negative) ------------------------------------------------------------------
+{
+  assert.strictEqual(SworbleRun.remainingSecs(300, 0), 300, 'no time elapsed -> full round');
+  assert.strictEqual(SworbleRun.remainingSecs(300, 45000), 255, 'partial: 45s elapsed of 300s');
+  assert.strictEqual(SworbleRun.remainingSecs(300, 300000), 0, 'fully expired -> 0, never negative');
+  assert.strictEqual(SworbleRun.remainingSecs(300, 999999), 0, 'over-expired -> still 0, never negative');
+  assert.strictEqual(SworbleRun.remainingSecs(30, 29900), 1, 'elapsed floors to whole seconds (29.9s -> 29s spent, 1s left)');
+  assert.strictEqual(SworbleRun.remainingSecs(300, null), 300, 'null boardElapsedMs -> treated as 0 elapsed');
+  assert.strictEqual(SworbleRun.remainingSecs(300, undefined), 300, 'undefined boardElapsedMs -> treated as 0 elapsed');
+  assert.strictEqual(SworbleRun.remainingSecs(null, 1000), 0, 'null roundSecs -> treated as 0-length round');
+}
+
 console.log('sworble-run: all tests passed');

@@ -91,7 +91,18 @@
     return snap;
   }
 
-  const API = { RUN_VERSION, serializeRun, validateRun };
+  // restoreRun's remaining-round-time arithmetic: resume with REMAINING round time, not a
+  // fresh full clock — boardElapsedMs (actual time spent on the board, saved in the snapshot)
+  // is subtracted so a reload can't be used to farm extra time. Never negative: floors at 0
+  // (the caller decides what a 0-time resume means — restoreRun hands frame() a minimum 1s
+  // clock so its own timeLeft<=0 tick fires endRound naturally rather than calling it here).
+  function remainingSecs(roundSecs, boardElapsedMs) {
+    const elapsed = Math.floor((boardElapsedMs || 0) / 1000);
+    const remaining = (roundSecs || 0) - elapsed;
+    return remaining > 0 ? remaining : 0;
+  }
+
+  const API = { RUN_VERSION, serializeRun, validateRun, remainingSecs };
   root.SworbleRun = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

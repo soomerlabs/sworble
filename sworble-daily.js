@@ -74,7 +74,20 @@
     return res;
   }
 
-  var API = { parseEntry: parseEntry, isClue: isClue, clueFor: clueFor, checkGuess: checkGuess, guessReward: guessReward, scoreGuess: scoreGuess, REWARD: REWARD };
+  // FOUND_PREFIX banking, dedupe-safe: bank `clue` into `found` exactly once. The caller
+  // resolves a spelled word to its clue via clueFor() first (so "trims"/"trimmed"/"trimming"
+  // all arrive here as the SAME clue, "trim") — bankClue's only job is the append-once
+  // arithmetic. Never mutates `found`: returns the SAME reference back when there's nothing
+  // new to bank (already present, or clue is falsy), a NEW array (append) otherwise — the
+  // split-brain glow/bank class of bug has bitten twice, pinning this with the caller able to
+  // tell "banked" from "no-op" via reference equality.
+  function bankClue(found, clue) {
+    var list = Array.isArray(found) ? found : [];
+    if (!clue || list.indexOf(clue) >= 0) return list;
+    return list.concat([clue]);
+  }
+
+  var API = { parseEntry: parseEntry, isClue: isClue, clueFor: clueFor, checkGuess: checkGuess, guessReward: guessReward, scoreGuess: scoreGuess, bankClue: bankClue, REWARD: REWARD };
   root.SworbleDaily = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

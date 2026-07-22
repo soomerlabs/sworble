@@ -86,4 +86,34 @@ assert.deepStrictEqual(D.scoreGuess('erxx', 'reef'), ['yellow','yellow','gray','
   assert.strictEqual(D.isClue('shore', e), false);
 }
 
+// --- bankClue(found, clue) -> found' — the FOUND_PREFIX banking dedup used by
+// checkTargetCatch: append a NEWLY-caught clue exactly once, and treat a clue EXTENSION
+// (trims/trimmed/trimming all resolve to the same clueFor() match) as the same bank, not a
+// second entry. The split-brain glow/bank class of bug has bitten twice — pinning it. ---
+{
+  const empty = [];
+  const first = D.bankClue(empty, 'trim');
+  assert.deepStrictEqual(first, ['trim'], 'a fresh clue gets appended');
+  assert.notStrictEqual(first, empty, 'never mutates the input array (immutable: returns a new array)');
+  assert.deepStrictEqual(empty, [], 'the original found list is untouched');
+
+  const withTrim = ['trim'];
+  const dup = D.bankClue(withTrim, 'trim');
+  assert.strictEqual(dup, withTrim, 'exact repeat -> same reference back, nothing banked (dedup)');
+
+  // extension-banks-clue: "trims"/"trimmed" all resolve to clueFor's match ("trim") BEFORE
+  // reaching bankClue — so a repeat extension is just another bankClue(list, 'trim') call,
+  // which must dedupe identically to a repeat exact spell.
+  const afterExtension = D.bankClue(withTrim, 'trim'); // caller already resolved "trims" -> "trim" via clueFor
+  assert.strictEqual(afterExtension, withTrim, 'extension of an already-banked clue is still a no-op');
+
+  const multi = D.bankClue(['trim', 'seed'], 'oven');
+  assert.deepStrictEqual(multi, ['trim', 'seed', 'oven'], 'appends after existing entries, order preserved');
+
+  assert.deepStrictEqual(D.bankClue(null, 'trim'), ['trim'], 'null found list is treated as empty, never throws');
+  assert.deepStrictEqual(D.bankClue(['trim'], null), ['trim'], 'falsy clue -> no-op, list unchanged');
+  assert.deepStrictEqual(D.bankClue(['trim'], ''), ['trim'], 'empty-string clue -> no-op');
+}
+console.log('sworble-daily: bankClue passed');
+
 console.log('sworble-daily: all passed');

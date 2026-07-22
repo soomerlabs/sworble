@@ -2508,11 +2508,11 @@ class Component extends DCLogic {
     this._pendingWord = null;
     this.mergedOnce = !!run.mergedOnce;
     this.progV = 0;
-    // resume with REMAINING round time, not a fresh full clock — boardElapsedMs (the time
-    // actually spent on the board this run, saved in the snapshot) is subtracted so a reload
-    // can't be used to farm extra time. If the budget is already spent, hand frame() a
-    // 1s clock and let its own timeLeft<=0 tick fire endRound naturally (never call it here).
-    const remaining = this.roundSecs() - Math.floor((run.boardElapsedMs || 0) / 1000);
+    // resume with REMAINING round time, not a fresh full clock (see SworbleRun.remainingSecs
+    // in sworble-run.js — pinned by tests/sworble-run.test.js). If the budget is already
+    // spent, hand frame() a 1s clock and let its own timeLeft<=0 tick fire endRound naturally
+    // (never call it here).
+    const remaining = SworbleRun.remainingSecs(this.roundSecs(), run.boardElapsedMs);
     this.timeLeftV = remaining > 0 ? remaining : 1;
     this.roundEndAt = performance.now() + this.timeLeftV * 1000;
     this.cycleStartAt = performance.now();
@@ -2737,18 +2737,17 @@ class Component extends DCLogic {
   // RELOAD / MANUAL-EXIT MID-FINALE: is there an unresolved finale waiting for today? Checked
   // at boot AND whenever something is about to deal a fresh round (PLAY), so leaving the
   // finale early (back button, swipe-down-to-dismiss, or a reload) never forfeits it and never
-  // re-rolls a new 5:00 hunt on top of it. No separate "finale pending" flag needed: DONE_PREFIX
-  // is written unconditionally at 0:00 (before endRound's finale branch even runs), so it's
-  // already true the instant a finale could exist; combined with the persisted sworb guess
-  // state (SWORB_PREFIX, read via dailyStatus().sworb) that's everything required — solved or
-  // guesses-exhausted both correctly say "nothing pending" and fall through to a fresh round.
+  // re-rolls a new 5:00 hunt on top of it. Both this and dailyConsumed() below delegate to
+  // SworbleStatus.dayState (sworble-status.js) — the pure 'fresh'|'finale'|'done' state
+  // machine the T3 re-entry Critical lived in; see its comment for the full derivation.
   finalePending() {
     if (this.practiceMode()) return false;
     try {
       const day = this.dailyKey || this.dayKey(new Date());
       if (!LS.getItem(K.DONE_PREFIX + day)) return false;
-      const sw = this.dailyStatus().sworb;
-      return !!(sw && sw.active && !sw.solved && sw.guessesLeft > 0);
+      if (!this.dailyEntry()) return false; // no sworb today -> nothing to re-enter
+      const st = this.sworbState();
+      return SworbleStatus.dayState({ done: true, solved: st.solved, guessesUsed: st.guessesUsed }) === 'finale';
     } catch (e) { return false; }
   }
   // Task 4 (one-shot day): today's daily is fully spent — the run ended (DONE_PREFIX) AND
@@ -2759,7 +2758,10 @@ class Component extends DCLogic {
     if (this.practiceMode()) return false;
     try {
       const day = this.dailyKey || this.dayKey(new Date());
-      return !!LS.getItem(K.DONE_PREFIX + day) && !this.finalePending();
+      if (!LS.getItem(K.DONE_PREFIX + day)) return false;
+      if (!this.dailyEntry()) return true; // day ended, no sworb to resolve -> fully consumed
+      const st = this.sworbState();
+      return SworbleStatus.dayState({ done: true, solved: st.solved, guessesUsed: st.guessesUsed }) === 'done';
     } catch (e) { return false; }
   }
   // land directly on the finale's board-morph (no home stop-over first — there's no "resume"
@@ -4214,10 +4216,13 @@ class Component extends DCLogic {
     const fkey = K.FOUND_PREFIX + day;
     let found = [];
     try { found = JSON.parse(LS.getItem(fkey) || '[]') || []; } catch (e) {}
-    if (found.indexOf(bankWord) >= 0) return null; // already collected today (dedup: trim+trims bank once)
-    found.push(bankWord);
-    try { LS.setItem(fkey, JSON.stringify(found)); } catch (e) {}
-    return { n: targets.filter(t => found.indexOf(t) >= 0).length, total: targets.length, isClue: !!entry };
+    // SworbleDaily.bankClue (sworble-daily.js): dedupe-safe append, pinned by tests. Same
+    // reference back == nothing new to bank (already collected today; extension of an
+    // already-banked clue no-ops identically to a repeat exact spell).
+    const banked = SworbleDaily.bankClue(found, bankWord);
+    if (banked === found) return null;
+    try { LS.setItem(fkey, JSON.stringify(banked)); } catch (e) {}
+    return { n: targets.filter(t => banked.indexOf(t) >= 0).length, total: targets.length, isClue: !!entry };
   }
 
   // --- daily streak + 7-day history (local only, derived from sworble_daily_* keys) ---
@@ -5203,8 +5208,10 @@ class Component extends DCLogic {
         // length + knob state carry the meaning (word-light rule).
         const topScoreRaw = field.length ? field[0].score : 0;
         const dormant = !played;
-        const pctNum = topScoreRaw > 0 ? Math.min(100, Math.round((bestT / topScoreRaw) * 100)) : 0;
-        const hit = played && topScoreRaw > 0 && bestT >= topScoreRaw;
+        // SworbleStatus.progressToTop (sworble-status.js): played is folded into `dormant`
+        // above for display, and is otherwise redundant here — a hit (you >= top > 0)
+        // already implies you > 0, i.e. played, so the pure fn doesn't need it as an input.
+        const { pct: pctNum, hit } = SworbleStatus.progressToTop(bestT, topScoreRaw);
         const homeSlim = {
           youText: dormant ? '0' : fmt(bestT),
           youStyle: 'font-family:\'Fredoka\',\'Manrope\',sans-serif; font-weight:600; font-size:18px; color:' + (dormant ? 'var(--ghost)' : 'var(--sheet-ink)') + ';',
@@ -6320,15 +6327,13 @@ class Component extends DCLogic {
       // day has nothing left to (re)start; the v18 dock instead shows the countdown below.
       dailyNotDone: !this.dailyConsumed(),
       dailyDone: this.dailyConsumed(),
-      nextPuzzleIn: (() => { try { const now = new Date(); const mid = new Date(now); mid.setHours(24, 0, 0, 0); const ms = mid - now; const h = Math.floor(ms / 3600000); const m = Math.floor((ms % 3600000) / 60000); return h > 0 ? (h + 'h ' + m + 'm') : (m + 'm'); } catch (e) { return ''; } })(),
+      nextPuzzleIn: (() => { try { const ms = SworbleCore.msToNextDay(new Date()); const h = Math.floor(ms / 3600000); const m = Math.floor((ms % 3600000) / 60000); return h > 0 ? (h + 'h ' + m + 'm') : (m + 'm'); } catch (e) { return ''; } })(),
       // v18 dock countdown: H:MM:SS to the next dailyKey rollover (local midnight), re-read
       // fresh every render — _tickHomeCountdown (componentDidMount) forces a render each
       // second while on home so this string is always live, never a frozen snapshot.
       homeCountdownText: (() => {
         try {
-          const now = new Date();
-          const mid = new Date(now); mid.setHours(24, 0, 0, 0);
-          const ms = Math.max(0, mid - now);
+          const ms = SworbleCore.msToNextDay(new Date());
           const h = Math.floor(ms / 3600000);
           const m = Math.floor((ms % 3600000) / 60000);
           const s2 = Math.floor((ms % 60000) / 1000);

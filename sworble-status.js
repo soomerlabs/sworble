@@ -115,7 +115,42 @@
     };
   }
 
-  const API = { sevenFromWords, cumulativeTotal, rankFor, dailyStatus };
+  // The day's persisted finale lifecycle — 'fresh' | 'finale' | 'done' — derived purely from
+  // storage-backed facts: DONE_PREFIX (`done`) plus the raw sworbState() fields (`solved`,
+  // `guessesUsed`). The T3 re-entry Critical (endRound()/frame() re-entering the finale
+  // pipeline on every animation frame) lived in exactly this state machine; finalePending()/
+  // dailyConsumed() in index.html are now thin wrappers around this single source of truth.
+  //
+  // 'live' (a round currently being hunted) is part of the app's full day-status domain but
+  // is NOT reachable from these three inputs alone: the sworb-guess UI only ever unlocks once
+  // `done` is already true (endRound's finale gate writes DONE_PREFIX before the finale branch
+  // even runs), so done:false always means solved:false/guessesUsed:0 whether a round is
+  // mid-hunt or was never started today. Callers layer their own runtime signal (e.g.
+  // _dailyLive) on top of a 'fresh' result when they need to tell those two apart.
+  function dayState(s) {
+    s = s || {};
+    if (!s.done) return 'fresh';
+    const solved = !!s.solved;
+    const guessesUsed = num(s.guessesUsed); // same sanitizer dailyStatus() uses: non-finite/negative -> 0
+    if (solved || guessesUsed >= 6) return 'done';
+    return 'finale';
+  }
+
+  // Home slim score strip: how far `you` (bestToday) sit against `top` (the field's #1
+  // score) — the fill-bar percent, clamped so beating the leader never overflows the track,
+  // plus whether that pair counts as a "hit" (knob turns candy violet). top<=0 (nobody's
+  // posted yet, or a dormant/pre-play read) always reads 0%/no-hit — there's nothing to
+  // chase. `you` alone never gates the result: the caller's own `played`/`dormant` checks
+  // already keep an un-played 0 from reaching here with a real top score.
+  function progressToTop(you, top) {
+    const t = Number(top) || 0;
+    const y = Number(you) || 0;
+    const pct = t > 0 ? Math.min(100, Math.round((y / t) * 100)) : 0;
+    const hit = t > 0 && y >= t;
+    return { pct, hit };
+  }
+
+  const API = { sevenFromWords, cumulativeTotal, rankFor, dailyStatus, dayState, progressToTop };
   root.SworbleStatus = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

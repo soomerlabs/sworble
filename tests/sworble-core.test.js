@@ -67,4 +67,28 @@ assert.strictEqual(C.streakMult(3), 1.5);
 assert.strictEqual(C.streakMult(6), 2);
 assert.strictEqual(C.streakMult(30), 2, 'streak multiplier caps at 2x');
 
+// --- msToNextDay: countdown-to-next-day math (the home dock's H:MM:SS + "next puzzle in")
+// -- pinned across a plain midnight boundary AND a DST transition day, since setHours(24,...)
+// must roll to the correct WALL-CLOCK next midnight either way -----------------------------
+{
+  assert.strictEqual(C.msToNextDay(new Date(2026, 6, 20, 0, 0, 0, 0)), 24 * 3600000, 'exactly at midnight -> a full day remains');
+  assert.strictEqual(C.msToNextDay(new Date(2026, 6, 20, 23, 59, 59, 0)), 1000, '1 second before midnight -> 1000ms left');
+  assert.strictEqual(C.msToNextDay(new Date(2026, 6, 20, 12, 0, 0, 0)), 12 * 3600000, 'noon -> exactly 12h left');
+  assert.strictEqual(C.msToNextDay(new Date(2026, 6, 20, 0, 0, 0, 0)) >= 0, true, 'never negative');
+
+  // DST transitions — America/New_York, 2026: spring-forward is a 23h day (Mar 8), fall-back
+  // is a 25h day (Nov 1). Real Date arithmetic (not naive calendar-field math) must reflect
+  // the actual wall-clock gap, not a hardcoded 24h.
+  const origTZ = process.env.TZ;
+  process.env.TZ = 'America/New_York';
+  try {
+    assert.strictEqual(C.msToNextDay(new Date(2026, 2, 7, 0, 0, 0, 0)), 24 * 3600000, 'the day before spring-forward (Mar 7) is a normal 24h day');
+    assert.strictEqual(C.msToNextDay(new Date(2026, 2, 8, 0, 0, 0, 0)), 23 * 3600000, 'spring-forward day itself (Mar 8, 2026) is 23h, clocks skip 2am->3am');
+    assert.strictEqual(C.msToNextDay(new Date(2026, 9, 31, 0, 0, 0, 0)), 24 * 3600000, 'the day before fall-back (Oct 31) is still a normal 24h day');
+    assert.strictEqual(C.msToNextDay(new Date(2026, 10, 1, 0, 0, 0, 0)), 25 * 3600000, 'fall-back day itself (Nov 1, 2026) is 25h, clocks repeat 2am->1am');
+  } finally {
+    if (origTZ === undefined) delete process.env.TZ; else process.env.TZ = origTZ;
+  }
+}
+
 console.log('sworble-core: all tests passed');
