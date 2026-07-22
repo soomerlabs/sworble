@@ -1571,11 +1571,17 @@ class Component extends DCLogic {
     // triggers a render while actually on home, so it can't leak ticking into other screens;
     // off-home it just keeps counting quietly in the background so the string is fresh the
     // instant home comes back into view.
+    // own timer handle (this._cdTimer), NOT this.later()/this.timeouts: newGame() and
+    // restoreRun() both purge this.timeouts wholesale ("nothing scheduled by a previous
+    // game may fire into this one") — a tick parked in that array dies at the very first
+    // PLAY or boot-restore and never comes back, freezing the post-completion home
+    // countdown forever. Its own handle survives every purge path; componentWillUnmount
+    // clears it explicitly so it still can't leak on unmount.
     this._tickHomeCountdown = () => {
       if (window.__sworbleSoomerLive === this && this.state.screen === 'home') {
         this.setState(s => ({ homeCountdownSeq: (s.homeCountdownSeq || 0) + 1 }));
       }
-      if (window.__sworbleSoomerLive === this) this.later(this._tickHomeCountdown, 1000);
+      if (window.__sworbleSoomerLive === this) this._cdTimer = setTimeout(this._tickHomeCountdown, 1000);
     };
     this._tickHomeCountdown();
     // mobile browsers fire resize for URL-bar show/hide and pull-to-refresh — pure
@@ -1693,6 +1699,7 @@ class Component extends DCLogic {
     clearInterval(this.interval);
     this.timeouts.forEach(t => clearTimeout(t));
     this.timeouts = [];
+    if (this._cdTimer) clearTimeout(this._cdTimer); // home countdown tick — own handle, see componentDidMount
     window.removeEventListener('resize', this.onResize);
     window.removeEventListener('pointerup', this.onRelease);
     window.removeEventListener('pointercancel', this.onRelease);
