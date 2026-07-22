@@ -80,6 +80,10 @@
        3·2·1 settle back to 1 (still-in-progress). */
     @keyframes countPop { 0% { transform: scale(0.35); opacity: 0; } 55% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
     @keyframes countPopGo { 0% { transform: scale(0.35); opacity: 0; } 45% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1.25); opacity: 0; } }
+    /* count-in RELEASE: one-shot wake on the board card the instant GO hands off to the live
+       board (countIn:'out') — a subtle settle-in-from-dim/shrink so the release reads as the
+       board "waking up" under the fading veil, not a hard cut. */
+    @keyframes boardWake { from { transform: scale(0.985); filter: brightness(0.85); } to { transform: none; filter: none; } }
     @keyframes swipeUpHint { 0%, 100% { transform: translateY(3px); opacity: 0.55; } 50% { transform: translateY(-3px); opacity: 1; } }
     @keyframes homeRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
     @keyframes arrowHue { 0% { color:#5FD6A8; } 16.6% { color:#5BC8F5; } 33.3% { color:#A78BFA; } 50% { color:#F5B84A; } 66.6% { color:#F58FB8; } 83.3% { color:#F58A66; } 100% { color:#5FD6A8; } }
@@ -1373,7 +1377,12 @@ class Component extends DCLogic {
     // never unpause mid count-in (numerals still showing): leave `paused` true and let the
     // in-flight armCountIn chain's own activeModal-aware final step resolve it — clearing
     // activeModal here means that step will see none and unpause normally when the beat ends.
-    const unpause = inGame && this.state.countIn == null;
+    // `countIn:'out'` (the post-GO release beat) counts as RESOLVED, not mid-count-in — input
+    // was already unlocked before this modal opened (goModal pauses over an already-live board
+    // same as any other in-game modal), so treat it like null or the 2850ms tail-step that clears
+    // it to null while this modal was open would otherwise never get a second chance to unpause,
+    // stranding `paused: true` with no overlay to show for it.
+    const unpause = inGame && (this.state.countIn == null || this.state.countIn === 'out');
     this.fadeClose({ activeModal: null, modalStack: [], contentFading: false, heightAnim: false, nameError: '', modalFromHome: false, paused: unpause ? false : this.state.paused }, after);
   }
   backModal() {
@@ -1803,12 +1812,20 @@ class Component extends DCLogic {
     step('GO', 2100);
     this.later(() => {
       if (this._countInToken !== token) return;
-      // a modal (e.g. the first-run how-to sheet, opened right after this round dealt) owns
-      // its OWN pause-behind-sheet and unpauses on close (see fadeClose's `paused: inGame ?
-      // false : ...`) — never race it: clear the numeral but leave `paused` for the modal to
-      // resolve. Otherwise this is the normal case: unpause, frame() picks up the full gap.
-      this.setState(s => s.activeModal ? { countIn: null } : { countIn: null, paused: false });
+      // RELEASE (not a hard cut): the board is unlocked HERE — `paused` clears same as before,
+      // input contract unchanged — but the numeral+veil don't vanish yet. `countIn: 'out'` is a
+      // NOT-ACTIVE state for every input guard (they only lock on `countIn && countIn !== 'out'`)
+      // while the overlay style fades its dim/blur to transparent over ~0.4s and the board
+      // plays its one-shot wake (see countInOverlayStyle / boardCardStyle). The final step below
+      // unmounts the (by-then invisible) overlay.
+      this.setState(s => s.activeModal ? { countIn: null } : { countIn: 'out', paused: false });
     }, 2400);
+    this.later(() => {
+      if (this._countInToken !== token) return;
+      // unmount only — never touch `paused`/`activeModal` here, both were already resolved
+      // by the 2400ms step (or left alone for a modal to resolve on its own close).
+      this.setState(s => s.countIn === 'out' ? { countIn: null } : null);
+    }, 2850);
   }
   // interrupt an in-flight count-in (e.g. the tab backgrounds mid-beat) — every pending step
   // becomes a no-op. Caller is responsible for the resulting paused/gamePaused state.
@@ -6528,8 +6545,13 @@ class Component extends DCLogic {
           const flying = st.tiles.some(t => t.clearing && !t.dead && t.flyDx != null) && !st.tiles.some(t => t.fallDur != null);
           return flying ? { overflow: 'visible', clipPath: 'inset(-160px 0px -8px 0px)' } : { overflow: 'hidden' };
         })(),
-        // juice: shake on 6+ letter words (countdown pulse is engine-driven, see frame())
-        animation: st.rattle
+        // juice: shake on 6+ letter words (countdown pulse is engine-driven, see frame());
+        // count-in RELEASE gets its own one-shot wake (board "wakes up" as the veil fades —
+        // see armCountIn/countInOverlayStyle) — checked first since it fires once at round/
+        // resume start, well clear of any mid-play rattle/punch.
+        animation: st.countIn === 'out'
+          ? 'boardWake 0.45s ease-out'
+          : st.rattle
           ? 'boardRattle' + (st.rattle % 2 ? 'A' : 'B') + ' 0.42s ease'
           : st.punch
           ? 'boardPunch' + (st.punch % 2 ? 'A' : 'B') + ' 0.34s cubic-bezier(0.34,1.5,0.5,1)'
@@ -6547,8 +6569,12 @@ class Component extends DCLogic {
       // overlay below blurs/obscures. Input is locked the same way pause locks it: boardDown's
       // existing `if (this.state.paused ...) return;` guard already covers this beat because
       // `paused` is true for its entire span (see armCountIn) — no separate countIn check needed.
+      // RELEASE: `countIn:'out'` is the post-GO tail (armCountIn's 2400→2850ms beat) — `paused`
+      // is already false by then (input unlocked), so no numeral shows and the veil is fading
+      // out; it still counts as "shown" (mounted) so the fade below has something to animate,
+      // but every OTHER guard in this file (`countIn && countIn !== 'out'`) treats it as inactive.
       countInShow: st.countIn != null && st.screen === 'game', // defense-in-depth: never stranded showing over another screen
-      countInText: st.countIn === 'GO' ? 'GO!' : String(st.countIn || ''),
+      countInText: st.countIn === 'GO' ? 'GO!' : st.countIn === 'out' ? '' : String(st.countIn || ''),
       countInKey: 'ci' + String(st.countIn),
       // LIVE-PLAYTEST item B: moved to ROOT level (see template — now a sibling of the appBar
       // div, not nested inside the game wrap's z10 stacking context) with real root-scoped
@@ -6558,8 +6584,13 @@ class Component extends DCLogic {
         // LIVE-PLAYTEST item E: slightly dim/blur the board behind the count-in so the numeral
         // owns focus — was a nearly-invisible 0.24 scrim + 1px blur.
         background: 'rgba(16,16,20,0.35)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
-        opacity: (st.countIn != null && st.screen === 'game') ? 1 : 0, pointerEvents: (st.countIn != null && st.screen === 'game') ? 'auto' : 'none',
-        transition: 'opacity 0.18s ease',
+        // RELEASE (graceful GO→board handoff, was a hard cut): 'out' fades the dim/blur to fully
+        // transparent over ~0.4s instead of popping the overlay away in one frame. pointerEvents
+        // drops to 'none' the INSTANT 'out' begins (not eased — the board must take input through
+        // the fading veil, and it's already unlocked at this point) while opacity/blur ease out.
+        opacity: (st.countIn != null && st.screen === 'game' && st.countIn !== 'out') ? 1 : 0,
+        pointerEvents: (st.countIn != null && st.screen === 'game' && st.countIn !== 'out') ? 'auto' : 'none',
+        transition: 'opacity 0.4s ease, backdrop-filter 0.4s ease',
       },
       // LIVE-PLAYTEST item E ("nicer animation"): each beat now POPs in with an overshoot
       // (countPop) instead of the old flat bestPop swap; GO gets its own burst variant that
