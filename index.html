@@ -5153,27 +5153,22 @@ class Component extends DCLogic {
     };
   }
 
+  // The message-strip element: ONE surface, many states. Split (T3) into a dispatcher +
+  // per-state leaf builders — the branch ORDER (live word > miss > resting > notice >
+  // celebration) is preserved exactly. Each leaf builds its own React.createElement handle.
   bannerElement() {
     const st = this.state;
     const b = st.banner;
+    if (st.path.length > 0) return this._bannerLiveWord(st);       // live word-in-progress
+    if (b && b.bad) return this._bannerMiss(b);                    // "not a word" — chips flush red
+    if (!b) return this._bannerResting(st);                        // pending word / idle "swipe a word" / worb gag
+    if (b.timeWarn || b.merged || b.reshuffled) return this._bannerNotice(b); // one-line notices
+    return this._bannerCelebration(st, b);                        // committed-word celebration + caught pill
+  }
+
+  _bannerLiveWord(st) {
     const h = React.createElement;
-
-    // shared two-tier geometry: a fixed-height top slot + the receipts row, IDENTICAL in
-    // every state — so the tags never jump between swiping and the submit celebration.
-    const twoTier = (key, anim, topEl, bottomEl, behind) => h('div', {
-      key,
-      style: {
-        position: 'relative', animation: anim || undefined,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        gap: 2, padding: '0 10px', maxWidth: '100%', whiteSpace: 'nowrap',
-        overflow: 'clip visible', boxSizing: 'border-box',
-      },
-    }, ...(behind || []),
-      h('div', { key: 'top', style: { height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', maxWidth: '100%', minWidth: 0, overflow: 'clip visible' } }, topEl),
-      bottomEl
-    );
-
-    if (st.path.length > 0) {
+    {
       // live word-in-progress: chips + running score, right under the board where you're looking
       const chips = st.path.map(id => this.byId(id)).filter(Boolean);
       // show the REAL payout live — multipliers included — so long words visibly pay off
@@ -5209,7 +5204,11 @@ class Component extends DCLogic {
           }, c2.l)))
       );
     }
-    if (b && b.bad) {
+  }
+
+  _bannerMiss(b) {
+    const h = React.createElement;
+    {
       // SAME element key ('path'), SAME chip keys as the live row above — React keeps
       // the DOM nodes, so the chips you were holding flush red in place and shake.
       const cs = 28;
@@ -5235,17 +5234,11 @@ class Component extends DCLogic {
           }, c2.l)))
       );
     }
-    // ONE surface: content sits directly on the message card — no pill-in-card nesting
-    const card = (key, anim, children) => h('div', {
-      key,
-      style: {
-        background: 'transparent', textAlign: 'center', animation: anim,
-        display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center',
-        maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'clip visible', boxSizing: 'border-box',
-        padding: '0 10px',
-      },
-    }, ...children);
-    if (!b) {
+  }
+
+  _bannerResting(st) {
+    const h = React.createElement;
+    {
       // the instant a valid word is released, its gray pending chips render in the SAME
       // commit as the flight — so the strip never blinks the resting line before the banner
       // mounts (that one-frame gap was the "flash over the gray blocks"). The block landing
@@ -5318,7 +5311,34 @@ class Component extends DCLogic {
           h('span', { key: 'd3', style: { opacity: ((this.state.worb ? (this.state.worbDots ?? 3) : (this.state.restDotN ?? 0)) >= 3 ? 1 : 0), transition: 'opacity 0.35s ease' } }, '.')),
       ]);
     }
+  }
 
+  _bannerNotice(b) {
+    const h = React.createElement;
+    // ONE surface: content sits directly on the message card — no pill-in-card nesting
+    const card = (key, anim, children) => h('div', {
+      key,
+      style: {
+        background: 'transparent', textAlign: 'center', animation: anim,
+        display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center',
+        maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'clip visible', boxSizing: 'border-box',
+        padding: '0 10px',
+      },
+    }, ...children);
+    // shared two-tier geometry: a fixed-height top slot + the receipts row, IDENTICAL in
+    // every state — so the tags never jump between swiping and the submit celebration.
+    const twoTier = (key, anim, topEl, bottomEl, behind) => h('div', {
+      key,
+      style: {
+        position: 'relative', animation: anim || undefined,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        gap: 2, padding: '0 10px', maxWidth: '100%', whiteSpace: 'nowrap',
+        overflow: 'clip visible', boxSizing: 'border-box',
+      },
+    }, ...(behind || []),
+      h('div', { key: 'top', style: { height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', maxWidth: '100%', minWidth: 0, overflow: 'clip visible' } }, topEl),
+      bottomEl
+    );
     if (b.timeWarn) {
       // amber, matching the clock's 60-second color — red is reserved for the final 10s
       return card('b' + b.key, 'bannerIn 0.3s ease-out', [h('div', { style: { fontSize: 16, fontWeight: 800, color: '#E0A63C' } }, '1 minute left!')]);
@@ -5339,6 +5359,10 @@ class Component extends DCLogic {
     if (b.reshuffled) {
       return card('b' + b.key, 'bannerIn 0.3s ease-out', [h('div', { style: { fontSize: 14, fontWeight: 800, color: '#8971FF' } }, 'No words left \u2014 reshuffled!')]);
     }
+  }
+
+  _bannerCelebration(st, b) {
+    const h = React.createElement;
     // 5a celebration: the chips' BOXES pop off as confetti and the colored letters
     // remain as type; the payout rides in a beat later. Metadata lives elsewhere now
     // (mult was visible pre-release; details are in the recap) — one small suffix max.
@@ -5550,6 +5574,29 @@ class Component extends DCLogic {
         field.sort((a, b) => (!!b.solved - !!a.solved) || (b.score - a.score));
         const meName = this.playerName || '';
         const rank = SworbleStatus.rankFor(field, { score: bestT, solved: meSolved });
+        // home surfaces split (T3) into three named sub-builders: the leaderboard rows, the
+        // constellation/podium graph, and the slim score strip. The shared context (field,
+        // played, rank, meName, …) is computed once above and passed in.
+        const rows = this._homeLbRows(field, played, meName, rank, bestT, fmt);
+        const inField = meName && field.some(e => e.name === meName);
+        const total = field.length + (played && !inField ? 1 : 0);
+        const con = this._homeConstellation(field, meName, played, rank, bestT, meSolved, day, fmt);
+        const homeSlim = this._homeSlimStrip(st, field, played, bestT, fmt);
+        return {
+          homeLbShow: rows.length > 0, homeLbRows: rows, homePodium: con.homePodium, homePodiumShow: con.homePodium.length > 0, homeYouNode: con.homeYouNode, homePodiumAspect: con.homePodiumAspect, homeTrailSegs: con.homeTrailSegs, homeChampLeft: con.homeChampLeft,
+          homeRankText: played ? ('#' + fmt(rank)) : '\u2014',
+          homeRankOf: played ? ('/' + fmt(total)) : '', // small denominator, no wordy "of N today"
+          homeTopLine: field.length ? ('1st today \u00b7 ' + fmt(field[0].score)) : 'be the first to post', // the score to chase
+          homeRankSub: played ? '' : 'play to join today\u2019s board',
+          homePlayLabel: played ? 'PLAY AGAIN' : 'PLAY',
+          homeLbLabel: 'LEADERBOARD',
+          homeSlim,
+        };
+      }
+
+
+  // Home leaderboard rows: top-3 + your own row folded in right after (T3 split).
+  _homeLbRows(field, played, meName, rank, bestT, fmt) {
         const mk = (rk, name, score, me, gold, top) => ({
           rk, name, score,
           rowStyle: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', marginBottom: 5, borderRadius: 12, background: me ? 'rgba(137,113,255,0.16)' : 'color-mix(in srgb, var(--sheet-ink) 4%, transparent)' },
@@ -5559,12 +5606,15 @@ class Component extends DCLogic {
         });
         const rows = field.slice(0, 3).map((e, i) => mk(String(i + 1), e.name, fmt(e.score), played && meName && e.name === meName, i === 0, i === 0));
         const inTop3 = !!(meName && field.slice(0, 3).some(e => e.name === meName));
-        const inField = meName && field.some(e => e.name === meName);
-        const total = field.length + (played && !inField ? 1 : 0);
         // you sit as your OWN row right after the top 3 (hidden when you're already in them) — a
-        // normal leaderboard row with the "me" purple tint + a small gap above, so it just reads
-        // as "you, on the board" rather than a separate card.
+        // normal leaderboard row with the "me" purple tint + a small gap above.
         if (played && !inTop3) { const yr = mk('#' + fmt(rank), meName || 'you', fmt(bestT), true, false, false); yr.rowStyle = { ...yr.rowStyle, marginTop: 7 }; rows.push(yr); }
+        return rows;
+  }
+
+  // Home constellation/podium graph: 3 candy blocks on an ember trail + the YOU node,
+  // dashed-ghost placeholders when the field is thin (T3 split, verbatim body).
+  _homeConstellation(field, meName, played, rank, bestT, meSolved, day, fmt) {
         const palOf = (nm) => PALETTE[this.tileColorFor((String(nm || 'a')[0] || 'a').toLowerCase(), 0)] || PALETTE[0];
         const dk = this.isDark();
         // light-mode grounding: same barely-there-dark/real-in-light drop shadow as every other
@@ -5650,11 +5700,11 @@ class Component extends DCLogic {
           scoreStyle: "font-family:'Fredoka','Manrope',sans-serif; font-size:12px; font-weight:600; color:var(--sheet-ink); font-variant-numeric:tabular-nums;",
           checkShow: meSolved, checkStyle: checkStyleFor(40),
         } : { show: false };
-        // ---- v18 SLIM SCORE STRIP: [you pts] --dashed track+glow fill-- [crown top score].
-        // Dormant (pre-play): gray 0, fully dashed, faded knob at the start. Played: real
-        // score, fill/knob at min(100, you/top*100)%, knob turns candy violet ("hit") once
-        // you actually meet/beat the field's top score. No chase line, no % text \u2014 the fill
-        // length + knob state carry the meaning (word-light rule).
+        return { homePodium, homeYouNode, homeTrailSegs, homeChampLeft: leftPct[0], homePodiumAspect: (GW / (GH * GCOMPRESS)).toFixed(3) };
+  }
+
+  // Home slim score strip: [you] --track+glow fill-- [top], dormant/poured states (T3 split).
+  _homeSlimStrip(st, field, played, bestT, fmt) {
         const topScoreRaw = field.length ? field[0].score : 0;
         const dormant = !played;
         // SworbleStatus.progressToTop (sworble-status.js): played is folded into `dormant`
@@ -5682,18 +5732,8 @@ class Component extends DCLogic {
               : 'position:absolute; top:50%; left:' + pctNum + '%; transform:translate(-50%,-50%); width:17px; height:17px; border-radius:6px; box-sizing:border-box; background:var(--home-bg); border:2px dashed var(--line); transition:left 0.5s cubic-bezier(0.22,1,0.36,1);'),
           topText: field.length ? fmt(topScoreRaw) : '\u2014',
         };
-        return {
-          homeLbShow: rows.length > 0, homeLbRows: rows, homePodium, homePodiumShow: homePodium.length > 0, homeYouNode, homePodiumAspect: (GW / (GH * GCOMPRESS)).toFixed(3), homeTrailSegs: homeTrailSegs, homeChampLeft: leftPct[0],
-          homeRankText: played ? ('#' + fmt(rank)) : '\u2014',
-          homeRankOf: played ? ('/' + fmt(total)) : '', // small denominator, no wordy "of N today"
-          homeTopLine: field.length ? ('1st today \u00b7 ' + fmt(field[0].score)) : 'be the first to post', // the score to chase
-          homeRankSub: played ? '' : 'play to join today\u2019s board',
-          homePlayLabel: played ? 'PLAY AGAIN' : 'PLAY',
-          homeLbLabel: 'LEADERBOARD',
-          homeSlim,
-        };
-      }
-
+        return homeSlim;
+  }
   // shared "home == daily default" invariant (C1 fix): practiceMode is a session-only opt-in
   // (see startPractice) that must never survive a trip back to home. Every setState that
   // transitions screen -> 'home' applies this same opts patch, not just _exitGame — lbBack/
