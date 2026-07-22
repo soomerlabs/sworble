@@ -2522,7 +2522,7 @@ class Component extends DCLogic {
   // Shared end-of-round: classic reaches it from the frame clock at 0:00, par from
   // clearWord when the last guess is spent (after its cascade settles).
   endRound() {
-    if (this.state.over) return;
+    if (this.state.over || this.state.finale) return;
     this.dragging = false;
     this._dailyLive = false; // the run ends here (no hard lock — endless daily resumes within the day) — no resume after this
     // only CASUAL owns the shared RUN_PREFIX snapshot (stacks is session-only, never saves one) —
@@ -2631,6 +2631,14 @@ class Component extends DCLogic {
       const d = this.dailyKey || this.dayKey(new Date()), k = K.PUZZLE_BEST_PREFIX + d, p = Number(LS.getItem(k) || 0) || 0;
       if ((this.state.score || 0) > p) LS.setItem(k, String(this.state.score || 0));
     } catch (e) {}
+    // RUNS history: endRound already pushed the pre-finale score at 0:00 — replace that same
+    // entry with the bonus-inflated final score rather than pushing a second one (one run per day).
+    try {
+      const d = this.dailyKey || this.dayKey(new Date()), rk = K.RUNS_PREFIX + d;
+      const runs = JSON.parse(LS.getItem(rk) || '[]');
+      if (runs.length) runs[runs.length - 1] = this.state.score || 0;
+      LS.setItem(rk, JSON.stringify(runs.slice(-40)));
+    } catch (e) {}
     this.submitDaily();
   }
   // RELOAD / MANUAL-EXIT MID-FINALE: is there an unresolved finale waiting for today? Checked
@@ -2672,7 +2680,7 @@ class Component extends DCLogic {
       this.roundEndAt = now + st.timeLeft * 1000;
       this.cycleStartAt = now - (st.prog || 0) * this.dropMsV;
     }
-    if (st.paused || st.over || st.screen === 'home') {
+    if (st.paused || st.over || st.finale || st.screen === 'home') {
       if (this.pausedAt == null) this.pausedAt = now;
       this._boardTickAt = null; // time-on-board freezes whenever the board isn't the active view
       return;
