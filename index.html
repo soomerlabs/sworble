@@ -734,6 +734,14 @@
                     <button onClick="{{ themeTargetInc }}" style="background:transparent; border:none; color:var(--sheet-ink); font-size:18px; font-weight:800; cursor:pointer;">+</button>
                   </div>
                 </div>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 0;">
+                  <div style="font-size:13px; font-weight:700; color:var(--sheet-sub);">ROUND TIME</div>
+                  <div style="display:flex; align-items:center; gap:12px;">
+                    <button onClick="{{ roundSecsDec }}" style="background:transparent; border:none; color:var(--sheet-ink); font-size:18px; font-weight:800; cursor:pointer;">&minus;</button>
+                    <div style="font-size:14px; font-weight:800; color:var(--sheet-ink); min-width:20px; text-align:center;">{{ roundSecsLabel }}</div>
+                    <button onClick="{{ roundSecsInc }}" style="background:transparent; border:none; color:var(--sheet-ink); font-size:18px; font-weight:800; cursor:pointer;">+</button>
+                  </div>
+                </div>
               </div>
               </div>
             </div>
@@ -1317,6 +1325,10 @@ class Component extends DCLogic {
   // Stackl (2-minute timed mode): orthogonal to puzzle mode — a session-only run flag set
   // at launch (startStackl). The daily/practice puzzle stays baked on and unaffected.
   stacklOn() { return !!this.state.stacklMode; }
+  // A daily round is "live" while it's actually running — dealt, on the game screen, not
+  // yet ended, and past the throwaway warm-up. Stackl's live countdown is judged separately
+  // (stacklOn()); this is the daily-round counterpart the TIME HUD / low-time warning key off.
+  liveDaily(st) { st = st || this.state; return st.screen === 'game' && this.optVal('dailyMode', true) && !st.over && !st.tut; }
   // The Sworble Seven: 7 words per run (dev-tunable). Fewer picks = each one is high-stakes
   // (grab the safe word or hunt the monster?) — that agony IS the game.
   // Invalid words are free (they only break streak) — the skill is spending your seven well.
@@ -1324,7 +1336,10 @@ class Component extends DCLogic {
   // cumulative running total (best pts per distinct word, uncapped) — decision A: your score
   // IS the sum of every distinct word you've spelled, recomputed live as you spend your tries.
   cumulativeTotal(roundWords) { return SworbleStatus.cumulativeTotal(roundWords); }
-  roundSecs() { return this.stacklOn() ? 120 : 180; }
+  // ONE-GAME pivot: the daily round is now TIMED like everything else — a dev-tunable knob
+  // (default 5:00), clamped to a sane 30s–15min range. stacklOn()/practice inherit the same
+  // clock (their own start paths just re-anchor to it); the old stackl-only 120/180 split is gone.
+  roundSecs() { const n = Math.round(this.optVal('roundSecs', 300)); return Math.max(30, Math.min(900, isFinite(n) ? n : 300)); }
   isV1() { return !this.isV2(); }
   cols() { return Math.max(4, Math.min(9, Math.round(this.optVal('cols', 5)))); }
   rows() { return Math.max(4, Math.min(14, Math.round(this.optVal('rows', 6)))); }
@@ -1372,6 +1387,14 @@ class Component extends DCLogic {
         // new budget = a fresh run if one is live
         if (this.state.screen === 'game' && !this.state.over) this.newGame(true);
         else this.setState({ guessesLeft: v });
+      } else if (k === 'roundSecs') {
+        // dev tuning knob: a live round re-anchors to the new length immediately so the
+        // change is instantly testable; an idle home screen just waits for the next newGame()
+        if (this.state.screen === 'game' && !this.state.over) {
+          this.timeLeftV = v;
+          this.roundEndAt = performance.now() + v * 1000;
+          this.setState({ timeLeft: v });
+        }
       }
     });
   }
@@ -2554,12 +2577,9 @@ class Component extends DCLogic {
         });
       }
     }
-    // --- round clock (classic only; par is guess-bound — endRound fires from clearWord) ---
-    // Stackl gets a LIVE countdown; the daily/practice puzzle stays frozen at 9999 — the
-    // clock is a boundary, not the antagonist, for puzzle mode.
-    const timeLeft = this.stacklOn()
-      ? Math.max(0, (this.roundEndAt - now) / 1000)   // live countdown for Stackl
-      : 9999;
+    // --- round clock: ONE-GAME pivot — every mode (daily, practice, Stackl) now runs a
+    // LIVE countdown off roundEndAt; the old "daily/practice frozen at 9999" split is gone.
+    const timeLeft = Math.max(0, (this.roundEndAt - now) / 1000);
     this.timeLeftV = timeLeft;
     if (timeLeft <= 0) {
       this.endRound();
@@ -2568,7 +2588,7 @@ class Component extends DCLogic {
     const ceilNow = Math.ceil(timeLeft), ceilPrev = Math.ceil(st.timeLeft);
     if (ceilNow !== ceilPrev) {
       if (ceilNow <= 5) this.sfxTick();
-      if (ceilPrev > 60 && ceilNow <= 60 && this.stacklOn()) { this.showBanner({ timeWarn: true }); this.sfxTimeWarn(); } // stacks: low-time cue on the live countdown
+      if (ceilPrev > 60 && ceilNow <= 60 && (this.stacklOn() || this.liveDaily(st))) { this.showBanner({ timeWarn: true }); this.sfxTimeWarn(); } // low-time cue on any live countdown (Stackl or a live daily round)
       this.setState({ timeLeft });
     }
     if (this.isV1()) {
@@ -5879,17 +5899,17 @@ class Component extends DCLogic {
         return Math.max(this._tb || 0, st.score).toLocaleString();
       })(),
       hopperMsgRef: this.hopperMsgRef,
-      timeHudLabel: this.stacklOn() ? 'TIME' : (st.tut ? 'WARMUP' : 'WORDS'),
+      timeHudLabel: (this.stacklOn() || this.liveDaily(st)) ? 'TIME' : (st.tut ? 'WARMUP' : 'WORDS'),
       timeText: (() => {
-        if (this.stacklOn()) { const shown = Math.max(0, Math.ceil(st.timeLeft - (this.timeRoll || 0))); return Math.floor(shown / 60) + ':' + String(shown % 60).padStart(2, '0'); }
+        if (this.stacklOn() || this.liveDaily(st)) { const shown = Math.max(0, Math.ceil(st.timeLeft - (this.timeRoll || 0))); return Math.floor(shown / 60) + ':' + String(shown % 60).padStart(2, '0'); }
         if (st.tut) return '\u2014';
         return String((this.state.roundWords || []).length); // words found so far (no cap)
       })(),
-      timeKey: this.stacklOn() ? 'clock' : (!st.tut ? ('w' + (this.state.roundWords || []).length) : 'clock'), // remount per word — replays the pop
+      timeKey: (this.stacklOn() || this.liveDaily(st)) ? 'clock' : (!st.tut ? ('w' + (this.state.roundWords || []).length) : 'clock'), // remount per word — replays the pop
       timeValStyle: {
         fontSize: valFont, fontWeight: 800, lineHeight: 1,
         color: (() => {
-          if (this.stacklOn()) { return st.timeLeft <= 10 ? '#FF8A8E' : st.timeLeft <= 60 ? '#F5B84A' : 'var(--card-ink)'; }
+          if (this.stacklOn() || this.liveDaily(st)) { return st.timeLeft <= 10 ? '#FF8A8E' : st.timeLeft <= 60 ? '#F5B84A' : 'var(--card-ink)'; }
           const g = st.guessesLeft ?? 15; return g <= 3 ? '#FF8A8E' : g <= 6 ? '#F5B84A' : 'var(--card-ink)';
         })(),
         animation: payCelebrate && st.banner.timeBonus ? 'bestPop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.15s' : 'none',
@@ -6333,6 +6353,9 @@ class Component extends DCLogic {
       themeTargetLabel: String(this.themeTarget()),
       themeTargetDec: () => { this.sfxClick(); const opts = { ...(this.state.opts || {}), themeTarget: Math.max(1, this.themeTarget() - 1) }; this.saveOpts(opts); this.setState({ opts }, () => this.newGame(true)); },
       themeTargetInc: () => { this.sfxClick(); const opts = { ...(this.state.opts || {}), themeTarget: Math.min(20, this.themeTarget() + 1) }; this.saveOpts(opts); this.setState({ opts }, () => this.newGame(true)); },
+      roundSecsLabel: (() => { const s = this.roundSecs(); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); })(),
+      roundSecsDec: () => this.bumpOpt('roundSecs', -30, 30, 900, 300),
+      roundSecsInc: () => this.bumpOpt('roundSecs', 30, 30, 900, 300),
 
       mineDbgLabel: this.optVal('debugMine', false) ? 'ON' : 'OFF',
       mineDbgToggleStyle: this.toggleStyle(this.optVal('debugMine', false)),
