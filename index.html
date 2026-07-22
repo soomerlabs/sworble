@@ -1643,30 +1643,11 @@ class Component extends DCLogic {
   }
   gap(s) { return Math.round((s ?? this.state.tileSize) * 0.16); } // roomier: fewer accidental neighbor grabs
 
+  // Mount is a SEQUENCE of independent jobs (split T3): scroll guards, the boot data load,
+  // the render loop + home countdown, then the input/audio/visibility/interaction listeners.
+  // Each is its own named installer below — order preserved exactly, no behavior change.
   componentDidMount() {
-    // HARD scroll lock: kill pull-to-refresh + rubber-band on older iOS (overscroll-behavior
-    // only lands iOS 16+). Touches inside a genuinely scrollable element (sheet lists) pass.
-    this._tmGuard = (e) => {
-      let el = e.target;
-      while (el && el !== document.body) {
-        if (el.scrollHeight > el.clientHeight + 1) {
-          try { const cs = getComputedStyle(el); if (/(auto|scroll)/.test(cs.overflowY)) return; } catch (err) {}
-        }
-        el = el.parentElement;
-      }
-      if (document.documentElement.scrollHeight <= window.innerHeight + 1) e.preventDefault();
-    };
-    document.addEventListener('touchmove', this._tmGuard, { passive: false });
-    // SCROLL PIN: iOS keyboard/chrome sometimes displaces the locked page and strands it
-    // "too high" — snap back to 0 whenever the document drifts (unless an input is focused)
-    this._scrollPin = () => {
-      const ae = document.activeElement;
-      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
-      if (window.scrollY !== 0 || window.scrollX !== 0) window.scrollTo(0, 0);
-    };
-    window.addEventListener('scroll', this._scrollPin, { passive: true });
-    if (window.visualViewport) window.visualViewport.addEventListener('resize', this._scrollPin);
-    window.addEventListener('focusout', () => setTimeout(this._scrollPin, 60)); // snap back once the keyboard closes
+    this._installScrollGuards();
     // claim ownership: if a stale instance survives a hot-reload, its clock and
     // sounds are killed here so nothing ever runs (or plays audio) doubled
     window.__sworbleSoomerLive = this;
@@ -1690,12 +1671,59 @@ class Component extends DCLogic {
     // homeSeq bump (every fresh home landing), this call covers the very first (boot) one.
     this._scheduleStripPour(this.state.homeSeq || 0);
     this.loadHomeLb(); // home versus/champion card needs today's standings
+    this._startRenderLoop();
+    this._startHomeCountdown();
+    this._installResizeGuards();
+    this._installAudioOwnership();
+    this._installVisibilityGuards();
+    this._installInteractionGuards();
+    this.applyBodyTheme();
+    try { document.title = 'sworbl'; } catch (e) {} // brand the tab (covers preview + export post-boot)
+    // first real render is committed — reveal the app (raw template is CSS-hidden)
+    try { const el = document.querySelector('x-dc'); if (el) { el.style.visibility = 'visible'; el.style.opacity = '1'; } } catch (e) {}
+    // boot flag for the prod error banner (see the error trap in <helmet>) — errors during
+    // the boot sequence itself are either fatal (cluster 2's retry UI covers total load
+    // failure) or too noisy/expected to interrupt with a banner; only post-boot runtime
+    // errors during actual play should ever surface it.
+    try { window.__sworbleBooted = true; } catch (e) {}
+  }
+
+  _installScrollGuards() {
+    // HARD scroll lock: kill pull-to-refresh + rubber-band on older iOS (overscroll-behavior
+    // only lands iOS 16+). Touches inside a genuinely scrollable element (sheet lists) pass.
+    this._tmGuard = (e) => {
+      let el = e.target;
+      while (el && el !== document.body) {
+        if (el.scrollHeight > el.clientHeight + 1) {
+          try { const cs = getComputedStyle(el); if (/(auto|scroll)/.test(cs.overflowY)) return; } catch (err) {}
+        }
+        el = el.parentElement;
+      }
+      if (document.documentElement.scrollHeight <= window.innerHeight + 1) e.preventDefault();
+    };
+    document.addEventListener('touchmove', this._tmGuard, { passive: false });
+    // SCROLL PIN: iOS keyboard/chrome sometimes displaces the locked page and strands it
+    // "too high" — snap back to 0 whenever the document drifts (unless an input is focused)
+    this._scrollPin = () => {
+      const ae = document.activeElement;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+      if (window.scrollY !== 0 || window.scrollX !== 0) window.scrollTo(0, 0);
+    };
+    window.addEventListener('scroll', this._scrollPin, { passive: true });
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', this._scrollPin);
+    window.addEventListener('focusout', () => setTimeout(this._scrollPin, 60)); // snap back once the keyboard closes
+  }
+
+  _startRenderLoop() {
     if (window.__sworbleSoomerRaf) cancelAnimationFrame(window.__sworbleSoomerRaf);
     const loop = (now) => {
       if (window.__sworbleSoomerLive === this) this.frame(now);
       window.__sworbleSoomerRaf = this.raf = requestAnimationFrame(loop);
     };
     window.__sworbleSoomerRaf = this.raf = requestAnimationFrame(loop);
+  }
+
+  _startHomeCountdown() {
     // v18 home dock countdown: ticks H:MM:SS to the next dailyKey rollover (local midnight,
     // same boundary dayKey() uses) once the day is fully consumed. Self-rescheduling via
     // `later` (auto-cleared on unmount, same as every other one-off timer in this file) —
@@ -1716,6 +1744,9 @@ class Component extends DCLogic {
       if (window.__sworbleSoomerLive === this) this._cdTimer = setTimeout(this._tickHomeCountdown, 1000);
     };
     this._tickHomeCountdown();
+  }
+
+  _installResizeGuards() {
     // mobile browsers fire resize for URL-bar show/hide and pull-to-refresh — pure
     // height jitter must NOT resize the board (it visibly shrinks mid-pull).
     // Only a width change or a big height change (rotation, keyboard) recomputes.
@@ -1734,6 +1765,9 @@ class Component extends DCLogic {
     window.addEventListener('resize', this.onResize);
     window.addEventListener('pointerup', this.onRelease);
     window.addEventListener('pointercancel', this.onRelease);
+  }
+
+  _installAudioOwnership() {
     // single-speaker rule: only the page the user touched last may make sound.
     // Every interaction claims audio ownership (shared via LS across
     // all tabs/windows of this app); non-owners are hard-muted in audioCtx.
@@ -1751,6 +1785,9 @@ class Component extends DCLogic {
     if (document.hasFocus && document.hasFocus()) this.claimAudio();
     window.addEventListener('pointerdown', this.claimAudio, true);
     window.addEventListener('focus', this.claimAudio);
+  }
+
+  _installVisibilityGuards() {
     // hidden tabs must go silent AND fair-pause: auto-pause (Task 5c) so a backgrounded round
     // can never keep burning the clock (or be left running for a return-and-peek), plus
     // suspend audio so a background copy of the game can never keep playing sounds
@@ -1793,6 +1830,9 @@ class Component extends DCLogic {
       else this.rotMq.addListener(this.onRot);
       this.onRot();
     } catch (e) {}
+  }
+
+  _installInteractionGuards() {
     // track when hopper slot transitions ACTUALLY finish (device-speed independent):
     // the roulette must never swap while the cascade is still visibly running
     this.onTransEnd = (e) => {
@@ -1818,15 +1858,6 @@ class Component extends DCLogic {
       window.addEventListener('pointerup', up);
     };
     document.addEventListener('pointerdown', this._dragScroll);
-    this.applyBodyTheme();
-    try { document.title = 'sworbl'; } catch (e) {} // brand the tab (covers preview + export post-boot)
-    // first real render is committed — reveal the app (raw template is CSS-hidden)
-    try { const el = document.querySelector('x-dc'); if (el) { el.style.visibility = 'visible'; el.style.opacity = '1'; } } catch (e) {}
-    // boot flag for the prod error banner (see the error trap in <helmet>) — errors during
-    // the boot sequence itself are either fatal (cluster 2's retry UI covers total load
-    // failure) or too noisy/expected to interrupt with a banner; only post-boot runtime
-    // errors during actual play should ever surface it.
-    try { window.__sworbleBooted = true; } catch (e) {}
   }
 
   componentWillUnmount() {
@@ -4003,63 +4034,13 @@ class Component extends DCLogic {
     // ≤3 = fizzle (wasted, −15). The player had the information; the outcome is earned.
     const mineTilesHit = ids.map(id => this.byId(id)).filter(t => t && t.mine);
     if (mineTilesHit.length) this.bombDiscovered = true; // first hit (boom OR fizzle) arms the one-time bomb tip
-    let mineBonus = 0, blastIds = [], mineTripped = false, chainMines = [], fizzleIds = [];
     const FIZZLE_PEN = 15; // a fizzle (≤3-letter word into a mine) bites POINTS, not just time — tune here
     const bombHold = 280; // half-beat reveal: black snap (0.1s) -> red swell (0.18s) -> BOOM at 0.28s
-    if (mineTilesHit.length && ids.length >= 4) {
-      // CHAIN REACTION: if a blast radius reaches another ARMED mine, it detonates too
-      // (radius 1), feeding the same payout — staggered booms scheduled below
-      const r0 = ids.length >= 6 ? 2 : 1;
-      const inWord = new Set(ids), bset = new Set(), processed = new Set(mineTilesHit.map(m => m.id));
-      const queue = mineTilesHit.map(m => ({ m, r: r0 }));
-      while (queue.length) {
-        const { m, r } = queue.shift();
-        for (const t of this.liveTiles()) {
-          if (t.clearing || inWord.has(t.id) || bset.has(t.id)) continue;
-          if (Math.abs(t.row - m.row) <= r && Math.abs(t.col - m.col) <= r) {
-            bset.add(t.id);
-            if (t.mine && !processed.has(t.id)) { processed.add(t.id); chainMines.push(t); queue.push({ m: t, r: 1 }); }
-          }
-        }
-      }
-      blastIds = [...bset];
-      // corner/edge starvation: a long word can eat EVERY free neighbor (LOSER in the corner),
-      // leaving nothing to blow up — the radius read as a dud. widen one–two rings until the
-      // blast catches real board tiles so a mine ALWAYS detonates a visible radius.
-      // (armed mines are skipped here — they belong to the chain pass at the base radius.)
-      if (blastIds.length < 2) {
-        const extra = new Set(blastIds), inWordS = new Set(ids);
-        for (let rr = r0 + 1; rr <= r0 + 2 && extra.size < 2; rr++) {
-          for (const m of mineTilesHit) {
-            for (const t of this.liveTiles()) {
-              if (t.clearing || t.mine || inWordS.has(t.id) || extra.has(t.id)) continue;
-              if (Math.abs(t.row - m.row) <= rr && Math.abs(t.col - m.col) <= rr) extra.add(t.id);
-            }
-          }
-        }
-        blastIds = [...extra];
-      }
-      // BOMB RUN: consecutive caught mines heat the payout — ×1, ×1.5, ×2… (fizzle/miss resets)
-      const chainMult = 1 + 0.5 * (this.bombRun || 0);
-      // include the detonating mine tiles' OWN value: an edge/corner mine whose free neighbors
-      // were all eaten by the word used to dud to 0 — now clearing a mine always pays + pops
-      const mineOwn = mineTilesHit.concat(chainMines).reduce((a, m) => a + this.tileVal(m), 0);
-      mineBonus = Math.round((blastIds.reduce((a, id) => a + this.tileVal(this.byId(id)), 0) + mineOwn) * 2 * lm * sm * chainMult);
-      this.bombRun = (this.bombRun || 0) + 1 + chainMines.length;
-      this.feverUntil = performance.now() + 10000; // FEVER: 10s of +1× on every word (catch heat)
-      this.juiceNext = ids.length + blastIds.length; // the post-blast refill deals friendly
-    } else if (mineTilesHit.length) {
-      mineTripped = true; this.bombRun = 0;
-      // a fizzle STILL detonates radius-1 (real board consequence) — tinted red below
-      const inWord = new Set(ids), bset = new Set();
-      for (const m of mineTilesHit) {
-        for (const t of this.liveTiles()) {
-          if (t.clearing || inWord.has(t.id) || bset.has(t.id)) continue;
-          if (Math.abs(t.row - m.row) <= 1 && Math.abs(t.col - m.col) <= 1) bset.add(t.id);
-        }
-      }
-      fizzleIds = [...bset];
-    }
+    // mine blast radius + payout (defuse) / fizzle set — computed by job (T3 split out of the
+    // scoring body). Also mutates this.bombRun/feverUntil/juiceNext (the catch-heat streak).
+    const { mineBonus, blastIds, chainMines, mineTripped, fizzleIds } = mineTilesHit.length
+      ? this._computeMineBlast(ids, mineTilesHit, lm, sm)
+      : { mineBonus: 0, blastIds: [], chainMines: [], mineTripped: false, fizzleIds: [] };
     let pts = Math.round(base * lm * (sm + fever)) + bestBonus + mineBonus - (mineTripped ? FIZZLE_PEN : 0);
     // capture the tiles' colors in swipe order (for the share) before they clear
     const wordColors = ids.map(id => { const t = this.byId(id); return t ? t.color : 0; });
@@ -4147,72 +4128,10 @@ class Component extends DCLogic {
     // bomb/fizzle words skip this: the mine's own boomSparks IS the confetti. running BOTH
     // systems doubled the animated-node count and made the good bomb feel delayed/janky.
 
-    if (mineTilesHit.length && ids.length >= 4) {
-      // fires even when the radius held ONLY word tiles / board edges (blastIds empty) —
-      // the mine still explodes: boom, punch, thunk. Neighbor dissolves when present:
-      const mines = mineTilesHit.concat(chainMines).map(m => ({ row: m.row, col: m.col }));
-      const cellPx = this.state.tileSize + this.gap();
-      const rr = ids.length >= 6 ? 2 : 1; // blast reach scales the VISUAL throw too
-      // 1c: the word flies to the stepper FIRST (bomb sits armed on the board); the blast
-      // fires the moment the last chip lands
-      this.later(() => {
-        const wordOut = ids.filter(id => !mineTilesHit.some(m => m.id === id));
-        this.setState(s => ({ tiles: s.tiles.map(t => {
-          // the bomb itself detonates NOW (it stayed live through the flight)
-          if (mineTilesHit.some(m => m.id === t.id) || chainMines.some(m => m.id === t.id)) return { ...t, armed: false, clearing: true, detonate: true, noLetter: mineTilesHit.some(m => m.id === t.id) }; // the GHOST carries the letter now — the bursting shell goes letterless (no double-H)
-          if (t.clearing) return t; // word letters already flew to the stepper
-          const isW = wordOut.includes(t.id); // word-mates dissolve with the ring
-          if (!blastIds.includes(t.id) && !isW) return t;
-          let mn = mines[0], bd = 1e9;
-          for (const m of mines) { const d = Math.abs(t.row - m.row) + Math.abs(t.col - m.col); if (d < bd) { bd = d; mn = m; } }
-          const dr = t.row - mn.row, dc = t.col - mn.col;
-          const len = Math.max(1, Math.hypot(dr, dc));
-          const throwPx = cellPx * (rr >= 2 ? (bd <= 1 ? 0.95 : 0.7) : (bd <= 1 ? 0.6 : 0.45)); // r2 blasts THROW — the scatter scales with blast reach
-          return { ...t, clearing: true, blastDelay: 0, // 2b pick: the ring takes the hit in UNISON — one shove, one beat
-            blastDx: Math.round(dc / len * throwPx), blastDy: Math.round(dr / len * throwPx - cellPx * 0.08) };
-        }), punch: (s.punch || 0) + 1,
-          boom: { r: rr, x: mines[0].col * cellPx + this.state.tileSize / 2, y: mines[0].row * cellPx + this.state.tileSize / 2, pts: mines.map(m => ({ x: m.col * cellPx + this.state.tileSize / 2, y: m.row * cellPx + this.state.tileSize / 2 })), key: ((s.boom && s.boom.key) || 0) + 1 } }));
-        this.sfxMerge();
-        // the bomb letter bursts OUT of the explosion and flies to the strip with the word
-        if (gFlights.length) {
-          this.setState(s => ({ tiles: s.tiles.concat(gFlights.map(g => ({ ...g.src, id: g.gid, mine: false, armed: false, armedBad: false, boost: 0, stack: null, clearing: false, dead: false, preLit: true }))) }));
-          this.later(() => this.setState(s => ({ tiles: s.tiles.map(t => { const g = gFlights.find(x => x.gid === t.id); return g ? { ...t, clearing: true, clearSeq: 0, flySync: true, flyHold: 0, flyKick: 0, flyDx: g.dx, flyDy: g.dy } : t; }) })), 40);
-        }
-        // chained mines: no separate boom beats — the boom's pts array gives every mine its own full confetti burst in the SAME frame
-        this.later(() => this.setState({ boom: null }), 790);
-      }, bombHold);
-    }
-    if (mineTripped) {
-      // fizzle: the mine detonates radius-1 in RED — the SAME "blown apart" debris as a
-      // jackpot, but tinted bad (no palette confetti) and it COST points, didn't pay them
-      const mines = mineTilesHit.map(m => ({ row: m.row, col: m.col }));
-      const cellPx2 = this.state.tileSize + this.gap();
-      const wordOut = ids.filter(id => !mineTilesHit.some(m => m.id === id));
-      this.later(() => {
-        this.setState(s => ({ rattle: (s.rattle || 0) + 1, tiles: s.tiles.map(t => {
-          // the armed (red) bomb itself blows NOW
-          if (mineTilesHit.some(m => m.id === t.id)) return { ...t, armed: false, clearing: true, detonate: true, detonateBad: true, noLetter: true }; // ghost carries the letter — no double-H on fizzle either
-          if (t.clearing) return t; // word letters are already mid-flight to the stepper
-          const isW = wordOut.includes(t.id);
-          if (!fizzleIds.includes(t.id) && !isW) return t;
-          let mn = mines[0], bd = 1e9;
-          for (const m of mines) { const d = Math.abs(t.row - m.row) + Math.abs(t.col - m.col); if (d < bd) { bd = d; mn = m; } }
-          const dr = t.row - mn.row, dc = t.col - mn.col;
-          const len = Math.max(1, Math.hypot(dr, dc));
-          const throwPx = cellPx2 * 0.5;
-          return { ...t, clearing: true, blastBad: true, blastDelay: 0, // unison here too — red verdict, same beat
-            blastDx: Math.round(dc / len * throwPx), blastDy: Math.round(dr / len * throwPx - cellPx2 * 0.08) };
-        }), boom: { bad: true, r: 1, x: mines[0].col * cellPx2 + this.state.tileSize / 2, y: mines[0].row * cellPx2 + this.state.tileSize / 2, key: ((s.boom && s.boom.key) || 0) + 1 } }));
-        this.sfxBad();
-        // the bomb letter still gets delivered — it bursts out of the (red) blast too
-        if (gFlights.length) {
-          this.setState(s => ({ tiles: s.tiles.concat(gFlights.map(g => ({ ...g.src, id: g.gid, mine: false, armed: false, armedBad: false, boost: 0, stack: null, clearing: false, dead: false, preLit: true }))) }));
-          this.later(() => this.setState(s => ({ tiles: s.tiles.map(t => { const g = gFlights.find(x => x.gid === t.id); return g ? { ...t, clearing: true, clearSeq: 0, flySync: true, flyHold: 0, flyKick: 0, flyDx: g.dx, flyDy: g.dy } : t; }) })), 40);
-        }
-        this.later(() => this.setState({ rattle: 0 }), 550);
-        this.later(() => this.setState({ boom: null }), 750);
-      }, bombHold); // 1c: the fizzle blows as the word lands too — same rhythm, red verdict
-    }
+    // the two blast-animation blocks (defuse / fizzle) are self-contained scheduling — split
+    // out of clearWord (T3) into named methods so the scoring/commit body reads cleanly.
+    if (mineTilesHit.length && ids.length >= 4) this._detonateBomb(ids, mineTilesHit, chainMines, blastIds, gFlights, bombHold);
+    if (mineTripped) this._detonateFizzle(ids, mineTilesHit, fizzleIds, gFlights, bombHold);
     // mines re-sync AFTER the refill lands (the refill site calls ensureWordExists +
     // syncMines) — anchoring on a mid-flight board would read a stale best word
     this.sfxWord(ids.length);
@@ -4224,6 +4143,139 @@ class Component extends DCLogic {
     // bomb words (defuse OR fizzle): gravity waits for the full 1c sequence — flight,
     // landing-synced detonation, scatter — so the board never refills mid-explosion
     this.later(() => this.removeAndSettle(settleIds), mineTilesHit.length ? 1250 : 340 + ids.length * 45); // bomb words: reveal -> red swell -> boom (0.28s) -> knockback flight lands ~0.66s, then gravity
+  }
+
+  // The mine blast-radius + payout decision (defuse when the word is 4+, fizzle when ≤3),
+  // extracted from clearWord (T3). Returns the blast set + bonus; also mutates the catch-heat
+  // streak state (this.bombRun/feverUntil/juiceNext) exactly as the inline block did.
+  _computeMineBlast(ids, mineTilesHit, lm, sm) {
+    let mineBonus = 0, blastIds = [], mineTripped = false, chainMines = [], fizzleIds = [];
+    if (mineTilesHit.length && ids.length >= 4) {
+      // CHAIN REACTION: if a blast radius reaches another ARMED mine, it detonates too
+      // (radius 1), feeding the same payout — staggered booms scheduled below
+      const r0 = ids.length >= 6 ? 2 : 1;
+      const inWord = new Set(ids), bset = new Set(), processed = new Set(mineTilesHit.map(m => m.id));
+      const queue = mineTilesHit.map(m => ({ m, r: r0 }));
+      while (queue.length) {
+        const { m, r } = queue.shift();
+        for (const t of this.liveTiles()) {
+          if (t.clearing || inWord.has(t.id) || bset.has(t.id)) continue;
+          if (Math.abs(t.row - m.row) <= r && Math.abs(t.col - m.col) <= r) {
+            bset.add(t.id);
+            if (t.mine && !processed.has(t.id)) { processed.add(t.id); chainMines.push(t); queue.push({ m: t, r: 1 }); }
+          }
+        }
+      }
+      blastIds = [...bset];
+      // corner/edge starvation: a long word can eat EVERY free neighbor (LOSER in the corner),
+      // leaving nothing to blow up — the radius read as a dud. widen one–two rings until the
+      // blast catches real board tiles so a mine ALWAYS detonates a visible radius.
+      // (armed mines are skipped here — they belong to the chain pass at the base radius.)
+      if (blastIds.length < 2) {
+        const extra = new Set(blastIds), inWordS = new Set(ids);
+        for (let rr = r0 + 1; rr <= r0 + 2 && extra.size < 2; rr++) {
+          for (const m of mineTilesHit) {
+            for (const t of this.liveTiles()) {
+              if (t.clearing || t.mine || inWordS.has(t.id) || extra.has(t.id)) continue;
+              if (Math.abs(t.row - m.row) <= rr && Math.abs(t.col - m.col) <= rr) extra.add(t.id);
+            }
+          }
+        }
+        blastIds = [...extra];
+      }
+      // BOMB RUN: consecutive caught mines heat the payout — ×1, ×1.5, ×2… (fizzle/miss resets)
+      const chainMult = 1 + 0.5 * (this.bombRun || 0);
+      // include the detonating mine tiles' OWN value: an edge/corner mine whose free neighbors
+      // were all eaten by the word used to dud to 0 — now clearing a mine always pays + pops
+      const mineOwn = mineTilesHit.concat(chainMines).reduce((a, m) => a + this.tileVal(m), 0);
+      mineBonus = Math.round((blastIds.reduce((a, id) => a + this.tileVal(this.byId(id)), 0) + mineOwn) * 2 * lm * sm * chainMult);
+      this.bombRun = (this.bombRun || 0) + 1 + chainMines.length;
+      this.feverUntil = performance.now() + 10000; // FEVER: 10s of +1× on every word (catch heat)
+      this.juiceNext = ids.length + blastIds.length; // the post-blast refill deals friendly
+    } else if (mineTilesHit.length) {
+      mineTripped = true; this.bombRun = 0;
+      // a fizzle STILL detonates radius-1 (real board consequence) — tinted red below
+      const inWord = new Set(ids), bset = new Set();
+      for (const m of mineTilesHit) {
+        for (const t of this.liveTiles()) {
+          if (t.clearing || inWord.has(t.id) || bset.has(t.id)) continue;
+          if (Math.abs(t.row - m.row) <= 1 && Math.abs(t.col - m.col) <= 1) bset.add(t.id);
+        }
+      }
+      fizzleIds = [...bset];
+    }
+    return { mineBonus, blastIds, chainMines, mineTripped, fizzleIds };
+  }
+
+  // DEFUSE blast (4+ word through a mine): the word flies to the stepper first, then the mine
+  // detonates in palette confetti + a radius shove. Scheduled at bombHold; extracted verbatim
+  // from clearWord (T3). All the blast geometry it needs arrives as params.
+  _detonateBomb(ids, mineTilesHit, chainMines, blastIds, gFlights, bombHold) {
+    // fires even when the radius held ONLY word tiles / board edges (blastIds empty) —
+    // the mine still explodes: boom, punch, thunk. Neighbor dissolves when present:
+    const mines = mineTilesHit.concat(chainMines).map(m => ({ row: m.row, col: m.col }));
+    const cellPx = this.state.tileSize + this.gap();
+    const rr = ids.length >= 6 ? 2 : 1; // blast reach scales the VISUAL throw too
+    // 1c: the word flies to the stepper FIRST (bomb sits armed on the board); the blast
+    // fires the moment the last chip lands
+    this.later(() => {
+      const wordOut = ids.filter(id => !mineTilesHit.some(m => m.id === id));
+      this.setState(s => ({ tiles: s.tiles.map(t => {
+        // the bomb itself detonates NOW (it stayed live through the flight)
+        if (mineTilesHit.some(m => m.id === t.id) || chainMines.some(m => m.id === t.id)) return { ...t, armed: false, clearing: true, detonate: true, noLetter: mineTilesHit.some(m => m.id === t.id) }; // the GHOST carries the letter now — the bursting shell goes letterless (no double-H)
+        if (t.clearing) return t; // word letters already flew to the stepper
+        const isW = wordOut.includes(t.id); // word-mates dissolve with the ring
+        if (!blastIds.includes(t.id) && !isW) return t;
+        let mn = mines[0], bd = 1e9;
+        for (const m of mines) { const d = Math.abs(t.row - m.row) + Math.abs(t.col - m.col); if (d < bd) { bd = d; mn = m; } }
+        const dr = t.row - mn.row, dc = t.col - mn.col;
+        const len = Math.max(1, Math.hypot(dr, dc));
+        const throwPx = cellPx * (rr >= 2 ? (bd <= 1 ? 0.95 : 0.7) : (bd <= 1 ? 0.6 : 0.45)); // r2 blasts THROW — the scatter scales with blast reach
+        return { ...t, clearing: true, blastDelay: 0, // 2b pick: the ring takes the hit in UNISON — one shove, one beat
+          blastDx: Math.round(dc / len * throwPx), blastDy: Math.round(dr / len * throwPx - cellPx * 0.08) };
+      }), punch: (s.punch || 0) + 1,
+        boom: { r: rr, x: mines[0].col * cellPx + this.state.tileSize / 2, y: mines[0].row * cellPx + this.state.tileSize / 2, pts: mines.map(m => ({ x: m.col * cellPx + this.state.tileSize / 2, y: m.row * cellPx + this.state.tileSize / 2 })), key: ((s.boom && s.boom.key) || 0) + 1 } }));
+      this.sfxMerge();
+      // the bomb letter bursts OUT of the explosion and flies to the strip with the word
+      if (gFlights.length) {
+        this.setState(s => ({ tiles: s.tiles.concat(gFlights.map(g => ({ ...g.src, id: g.gid, mine: false, armed: false, armedBad: false, boost: 0, stack: null, clearing: false, dead: false, preLit: true }))) }));
+        this.later(() => this.setState(s => ({ tiles: s.tiles.map(t => { const g = gFlights.find(x => x.gid === t.id); return g ? { ...t, clearing: true, clearSeq: 0, flySync: true, flyHold: 0, flyKick: 0, flyDx: g.dx, flyDy: g.dy } : t; }) })), 40);
+      }
+      // chained mines: no separate boom beats — the boom's pts array gives every mine its own full confetti burst in the SAME frame
+      this.later(() => this.setState({ boom: null }), 790);
+    }, bombHold);
+  }
+
+  // FIZZLE blast (≤3 word through a mine): the mine detonates radius-1 in RED debris — same
+  // "blown apart" recipe, tinted bad, and it COST points. Extracted verbatim from clearWord (T3).
+  _detonateFizzle(ids, mineTilesHit, fizzleIds, gFlights, bombHold) {
+    const mines = mineTilesHit.map(m => ({ row: m.row, col: m.col }));
+    const cellPx2 = this.state.tileSize + this.gap();
+    const wordOut = ids.filter(id => !mineTilesHit.some(m => m.id === id));
+    this.later(() => {
+      this.setState(s => ({ rattle: (s.rattle || 0) + 1, tiles: s.tiles.map(t => {
+        // the armed (red) bomb itself blows NOW
+        if (mineTilesHit.some(m => m.id === t.id)) return { ...t, armed: false, clearing: true, detonate: true, detonateBad: true, noLetter: true }; // ghost carries the letter — no double-H on fizzle either
+        if (t.clearing) return t; // word letters are already mid-flight to the stepper
+        const isW = wordOut.includes(t.id);
+        if (!fizzleIds.includes(t.id) && !isW) return t;
+        let mn = mines[0], bd = 1e9;
+        for (const m of mines) { const d = Math.abs(t.row - m.row) + Math.abs(t.col - m.col); if (d < bd) { bd = d; mn = m; } }
+        const dr = t.row - mn.row, dc = t.col - mn.col;
+        const len = Math.max(1, Math.hypot(dr, dc));
+        const throwPx = cellPx2 * 0.5;
+        return { ...t, clearing: true, blastBad: true, blastDelay: 0, // unison here too — red verdict, same beat
+          blastDx: Math.round(dc / len * throwPx), blastDy: Math.round(dr / len * throwPx - cellPx2 * 0.08) };
+      }), boom: { bad: true, r: 1, x: mines[0].col * cellPx2 + this.state.tileSize / 2, y: mines[0].row * cellPx2 + this.state.tileSize / 2, key: ((s.boom && s.boom.key) || 0) + 1 } }));
+      this.sfxBad();
+      // the bomb letter still gets delivered — it bursts out of the (red) blast too
+      if (gFlights.length) {
+        this.setState(s => ({ tiles: s.tiles.concat(gFlights.map(g => ({ ...g.src, id: g.gid, mine: false, armed: false, armedBad: false, boost: 0, stack: null, clearing: false, dead: false, preLit: true }))) }));
+        this.later(() => this.setState(s => ({ tiles: s.tiles.map(t => { const g = gFlights.find(x => x.gid === t.id); return g ? { ...t, clearing: true, clearSeq: 0, flySync: true, flyHold: 0, flyKick: 0, flyDx: g.dx, flyDy: g.dy } : t; }) })), 40);
+      }
+      this.later(() => this.setState({ rattle: 0 }), 550);
+      this.later(() => this.setState({ boom: null }), 750);
+    }, bombHold); // 1c: the fizzle blows as the word lands too — same rhythm, red verdict
   }
 
   shareResult() {
