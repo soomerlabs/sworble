@@ -86,7 +86,9 @@ desaturated, post-play). Future (in-game): may intensify as the round clock runs
 - Clock: 5:00 countdown (reuse the timed-mode engine; words no longer add time — pure countdown —
   UNLESS tuning shows time-adds are needed; default OFF for the daily round).
 - The 4th HUD cell shows TIME (already built for the timed mode).
-- Clue finds: same glow/pill/banking (shared safe), displayed as the fan; exactly 6 exist.
+- Clue finds: same glow/pill/banking, displayed as the fan; exactly 6 exist. **Extensions count
+  (LOCKED 2026-07-22):** a spelled word banks a clue if it starts with it (trims→trim, seedy→seed);
+  clue banks as itself, once; the word scores as spelled; longest matching clue wins.
 - Bombs: OFF for the daily round (they were the old arcade mode's spice; revisit post-launch).
 - At 0:00: no "round over" sheet — the board MORPHS into the finale (the built board→keyboard
   crossfade), guess blocks above, 6 pips. Solve → candy celebration → home (after-state). Fail all

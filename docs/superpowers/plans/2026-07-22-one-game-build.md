@@ -190,6 +190,13 @@ skeleton (no layout shift between them).
   full crown (mock's svg, inline).
 - [ ] Sworb-safe row REMOVED; the superlatives cluster becomes TAPPABLE → opens the word bank
   (rebrands as the "superlatives safe"). Keep reachability; delete the old row + vals.
+- [ ] CLUE EXTENSIONS (LOCKED 2026-07-22, TDD in sworble-daily): a spelled word counts as finding a
+  clue if it STARTS WITH the clue (trims/trimmed/trimming bank "trim"; seedy banks "seed"). The
+  clue banks AS ITSELF (dedup: trim+trims banks once); the word scores as spelled. Change
+  `SworbleDaily.isClue` (or add `clueFor(word, entry) -> clue|null` and migrate callers — cleaner,
+  since banking needs to know WHICH clue matched). Test first in tests/sworble-daily.test.js
+  (extension hits, non-prefix miss, dedup, multiple clues where one is a prefix of another —
+  longest match wins). Then wire the index.html callers (grep isClue).
 - [ ] DEV TOOL — "today's clues" in the debug menu: list the day's 6 realized clue words FILLED IN
   (dev-only reveal, like debugMine); tapping a clue HIGHLIGHTS its path on the live board (glow/
   ring its tiles via the stored cluePaths — first real reader of _cluePaths). Tap again or auto-
