@@ -82,8 +82,10 @@
     @keyframes countPopGo { 0% { transform: scale(0.35); opacity: 0; } 45% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1.25); opacity: 0; } }
     /* count-in RELEASE: one-shot wake on the board card the instant GO hands off to the live
        board (countIn:'out') — a subtle settle-in-from-dim/shrink so the release reads as the
-       board "waking up" under the fading veil, not a hard cut. */
-    @keyframes boardWake { from { transform: scale(0.985); filter: brightness(0.85); } to { transform: none; filter: none; } }
+       board "waking up" under the fading veil, not a hard cut. COMPOSITOR-ONLY (transform +
+       opacity): the old version also animated `filter: brightness()`, which de-composits and
+       was the likely source of the reported jank — dropped entirely, no filter here. */
+    @keyframes boardWake { from { transform: scale(0.99); opacity: 0.92; } to { transform: none; opacity: 1; } }
     @keyframes swipeUpHint { 0%, 100% { transform: translateY(3px); opacity: 0.55; } 50% { transform: translateY(-3px); opacity: 1; } }
     @keyframes homeRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
     @keyframes arrowHue { 0% { color:#5FD6A8; } 16.6% { color:#5BC8F5; } 33.3% { color:#A78BFA; } 50% { color:#F5B84A; } 66.6% { color:#F58FB8; } 83.3% { color:#F58A66; } 100% { color:#5FD6A8; } }
@@ -340,6 +342,17 @@
             </div>
           </sc-if>
         </div>
+        <!-- COUNT-IN (3·2·1·GO), now BOARD-LOCAL (owner: root-level takeover was too heavy —
+             matches the boardPauseShow pattern below): the veil + numeral cover only the tile
+             grid's card, not the whole screen. HUD/stepper/clue fan stay visible and untouched.
+             Lives inside boardCardStyle (position:'relative'), so this is an inset absolute
+             cover rounded to match the card's own 20px corner radius. Show-condition (screen
+             ==='game') and release phase ('out') are unchanged from the old root overlay. -->
+        <sc-if value="{{ countInShow }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ countInOverlayStyle }}">
+            <div key="{{ countInKey }}" style="{{ countInTextStyle }}">{{ countInText }}</div>
+          </div>
+        </sc-if>
         <sc-if value="{{ boardPauseShow }}" hint-placeholder-val="{{ false }}">
           <div style="{{ boardPauseCoverStyle }}">
             <span style="{{ boardPauseGlyphStyle }}">pause_circle</span>
@@ -404,24 +417,6 @@
     </div>
   </div>
 
-  <!-- LIVE-PLAYTEST item B: count-in overlay lives at ROOT level (sibling of the appBar div
-       above), not nested inside the game wrap's z10 stacking context. A stacking context traps
-       ALL descendant z-index values, including position:fixed ones, inside its own slot in the
-       parent's paint order — so the old z55 only ever competed against OTHER game-wrap children,
-       never against the home/profile/lb/wordbank screen layers sitting beside the wrap at root.
-       Moved out here, it gets a real root-level z-index (60) that properly outranks every screen
-       layer. Show-condition is unchanged (still gates on screen==='game' — see countInShow) so it
-       never renders on home.
-       Fair-pause is NO LONGER a full-screen overlay here — owner feedback called the old root-
-       level takeover too heavy. It now lives BOARD-LOCAL (see boardPauseShow/boardPauseCoverStyle
-       in the board card template above): only the tile grid gets covered/blurred, the rest of the
-       game screen (HUD, stepper, clue fan) stays visible and un-dimmed. -->
-  <sc-if value="{{ countInShow }}" hint-placeholder-val="{{ false }}">
-    <div style="{{ countInOverlayStyle }}">
-      <div key="{{ countInKey }}" style="{{ countInTextStyle }}">{{ countInText }}</div>
-    </div>
-  </sc-if>
-
   <!-- Task 6: goo filter for the home storm's aurora-of-blocks (metaball bridge/split of the
        tileblobs) — feGaussianBlur softens edges, the feColorMatrix alpha boost + feBlend turns
        the blur back into hard-edged blobs that visually fuse where they overlap. -->
@@ -446,7 +441,7 @@
                       <div style="{{ homeSlim.fillStyle }}"></div>
                       <div style="{{ homeSlim.knobStyle }}"></div>
                     </div>
-                    <div style="flex:none; display:flex; align-items:center; gap:6px; font-family:'Fredoka','Manrope',sans-serif; font-weight:600; font-size:14.5px; color:var(--ghost);">
+                    <div style="flex:none; display:flex; flex-direction:column; align-items:center; gap:2px; font-family:'Fredoka','Manrope',sans-serif; font-weight:600; font-size:14.5px; color:var(--ghost);">
                       <svg width="14" height="10" viewBox="0 0 34 24" fill="none"><path d="M3 21 L2 7 L10 13 L17 3 L24 13 L32 7 L31 21 Z" fill="#8971FF" stroke="#6A4FE0" stroke-width="1.5" stroke-linejoin="round"></path><circle cx="2" cy="6.5" r="2.4" fill="#8971FF"></circle><circle cx="32" cy="6.5" r="2.4" fill="#8971FF"></circle><circle cx="17" cy="2.6" r="2.4" fill="#8971FF"></circle></svg>
                       <span>{{ homeSlim.topText }}</span>
                     </div>
@@ -1392,7 +1387,7 @@ class Component extends DCLogic {
     // activeModal here means that step will see none and unpause normally when the beat ends.
     // `countIn:'out'` (the post-GO release beat) counts as RESOLVED, not mid-count-in — input
     // was already unlocked before this modal opened (goModal pauses over an already-live board
-    // same as any other in-game modal), so treat it like null or the 2850ms tail-step that clears
+    // same as any other in-game modal), so treat it like null or the 2950ms tail-step that clears
     // it to null while this modal was open would otherwise never get a second chance to unpause,
     // stranding `paused: true` with no overlay to show for it.
     const unpause = inGame && (this.state.countIn == null || this.state.countIn === 'out');
@@ -1822,11 +1817,12 @@ class Component extends DCLogic {
     this.later(() => {
       if (this._countInToken !== token) return;
       // RELEASE (not a hard cut): the board is unlocked HERE — `paused` clears same as before,
-      // input contract unchanged — but the numeral+veil don't vanish yet. `countIn: 'out'` is a
-      // NOT-ACTIVE state for every input guard (they only lock on `countIn && countIn !== 'out'`)
-      // while the overlay style fades its dim/blur to transparent over ~0.4s and the board
-      // plays its one-shot wake (see countInOverlayStyle / boardCardStyle). The final step below
-      // unmounts the (by-then invisible) overlay.
+      // input contract unchanged (still fires at 2400ms) — but the numeral+veil don't vanish
+      // yet. `countIn: 'out'` is a NOT-ACTIVE state for every input guard (they only lock on
+      // `countIn && countIn !== 'out'`) while the overlay style fades to transparent over
+      // ~550ms (compositor-only opacity, no backdrop-filter/filter in the transition — see
+      // countInOverlayStyle/boardCardStyle) and the board plays its one-shot wake. The final
+      // step below unmounts the (by-then invisible) overlay.
       // The `s.activeModal ?` branch used to matter for the auto-opened first-run how-to sheet,
       // which could still be open when this 2400ms step fired and would otherwise get its
       // `paused` yanked out from under it mid-read. That auto-open trigger is gone, so nothing
@@ -1838,9 +1834,11 @@ class Component extends DCLogic {
     this.later(() => {
       if (this._countInToken !== token) return;
       // unmount only — never touch `paused`/`activeModal` here, both were already resolved
-      // by the 2400ms step (or left alone for a modal to resolve on its own close).
+      // by the 2400ms step (or left alone for a modal to resolve on its own close). Pushed from
+      // 2850→2950 to give the longer ~550ms veil fade (2400 + 550 = 2950) room to finish before
+      // the overlay unmounts — otherwise the fade would visibly snap off early.
       this.setState(s => s.countIn === 'out' ? { countIn: null } : null);
-    }, 2850);
+    }, 2950);
   }
   // interrupt an in-flight count-in (e.g. the tab backgrounds mid-beat) — every pending step
   // becomes a no-op. Caller is responsible for the resulting paused/gamePaused state.
@@ -6672,13 +6670,20 @@ class Component extends DCLogic {
         // count-in RELEASE gets its own one-shot wake (board "wakes up" as the veil fades —
         // see armCountIn/countInOverlayStyle) — checked first since it fires once at round/
         // resume start, well clear of any mid-play rattle/punch.
+        // JANK FIX: the old wake animated `filter: brightness()` alongside transform — filter
+        // de-composits (forces the browser off the fast GPU path), which is what read as
+        // stutter next to the veil's own transition. Rebuilt COMPOSITOR-ONLY: transform
+        // (scale) + opacity, nothing else — same ~550ms/bezier as the veil fade so the two
+        // read as one motion, not two races.
         animation: st.countIn === 'out'
-          ? 'boardWake 0.45s ease-out'
+          ? 'boardWake 0.55s cubic-bezier(0.22, 1, 0.36, 1)'
           : st.rattle
           ? 'boardRattle' + (st.rattle % 2 ? 'A' : 'B') + ' 0.42s ease'
           : st.punch
           ? 'boardPunch' + (st.punch % 2 ? 'A' : 'B') + ' 0.34s cubic-bezier(0.34,1.5,0.5,1)'
           : 'none',
+        // one-shot: only worth hinting the compositor for the wake's own brief window.
+        ...(st.countIn === 'out' ? { willChange: 'opacity, transform' } : null),
       },
       boardCardRef: this.boardCardRef,
       // LIVE-PLAYTEST item D: the floating in-game pause button (pauseBtnShow/pauseBtnStyle/
@@ -6689,43 +6694,63 @@ class Component extends DCLogic {
       // count-in / behind another modal).
       gameLeftIsPause: st.screen === 'game' && this.liveHunt(st) && !st.paused && !st.activeModal,
       gameLeftIsExit: st.screen === 'game' && !(this.liveHunt(st) && !st.paused && !st.activeModal),
-      // COUNT-IN (3·2·1·GO): board stays VISIBLE behind a light scrim — only the fair-pause
-      // overlay below blurs/obscures. Input is locked the same way pause locks it: boardDown's
-      // existing `if (this.state.paused ...) return;` guard already covers this beat because
-      // `paused` is true for its entire span (see armCountIn) — no separate countIn check needed.
-      // RELEASE: `countIn:'out'` is the post-GO tail (armCountIn's 2400→2850ms beat) — `paused`
-      // is already false by then (input unlocked), so no numeral shows and the veil is fading
-      // out; it still counts as "shown" (mounted) so the fade below has something to animate,
-      // but every OTHER guard in this file (`countIn && countIn !== 'out'`) treats it as inactive.
+      // COUNT-IN (3·2·1·GO): now BOARD-LOCAL (see template — lives inside boardCardStyle,
+      // sibling of boardPauseShow's cover, not a root-level overlay). Board stays VISIBLE
+      // behind a light scrim — only the fair-pause overlay blurs/obscures. Input is locked
+      // the same way pause locks it: boardDown's existing `if (this.state.paused ...) return;`
+      // guard already covers this beat because `paused` is true for its entire span (see
+      // armCountIn) — no separate countIn check needed.
+      // RELEASE: `countIn:'out'` is the post-GO tail (armCountIn's 2400→2950ms beat) — `paused`
+      // is already false by then (input unlocked); it still counts as "shown" (mounted) so the
+      // fade below has something to animate, but every OTHER guard in this file (`countIn &&
+      // countIn !== 'out'`) treats it as inactive.
       countInShow: st.countIn != null && st.screen === 'game', // defense-in-depth: never stranded showing over another screen
-      countInText: st.countIn === 'GO' ? 'GO!' : st.countIn === 'out' ? '' : String(st.countIn || ''),
-      countInKey: 'ci' + String(st.countIn),
-      // LIVE-PLAYTEST item B: moved to ROOT level (see template — now a sibling of the appBar
-      // div, not nested inside the game wrap's z10 stacking context) with real root-scoped
-      // z-index 60 so it reliably outranks every screen layer, not just other game-wrap children.
+      // NO DEAD FRAME: 'out' keeps showing GO's own text/key (doesn't blank to '') so the
+      // countPopGo burst — mounted at GO, 500ms long — is never cut off mid-fade at the 2400ms
+      // 'out' transition (it was previously interrupted ~300ms in, before its own fade-out even
+      // finished). Same text+key across GO→out means React never remounts the node, so the
+      // burst's fade (which starts ~100ms before 'out' begins, per countPopGo's own keyframe)
+      // simply keeps playing THROUGH the veil fade + board wake — burst and release read as one
+      // continuous motion instead of a hard cut.
+      countInText: (st.countIn === 'GO' || st.countIn === 'out') ? 'GO!' : String(st.countIn || ''),
+      countInKey: (st.countIn === 'GO' || st.countIn === 'out') ? 'ciGO' : 'ci' + String(st.countIn),
+      // BOARD-LOCAL (owner: root-level takeover was too heavy — mirrors boardPauseCoverStyle):
+      // position:absolute inset:0 inside boardCardStyle (position:'relative'), rounded to match
+      // the card's own 20px corner radius. z-index only needs to clear the board's own layers
+      // (tiles/keyboard/pause cover) — count-in and gamePaused never coincide (see armCountIn/
+      // resumeGame), so it doesn't need to fight boardPauseCoverStyle for a slot.
       countInOverlayStyle: {
-        position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        // LIVE-PLAYTEST item E: slightly dim/blur the board behind the count-in so the numeral
-        // owns focus — was a nearly-invisible 0.24 scrim + 1px blur.
-        background: 'rgba(16,16,20,0.35)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
-        // RELEASE (graceful GO→board handoff, was a hard cut): 'out' fades the dim/blur to fully
-        // transparent over ~0.4s instead of popping the overlay away in one frame. pointerEvents
-        // drops to 'none' the INSTANT 'out' begins (not eased — the board must take input through
-        // the fading veil, and it's already unlocked at this point) while opacity/blur ease out.
+        position: 'absolute', inset: 0, zIndex: 46, borderRadius: 20,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        // JANK FIX (owner: "still janky"): backdrop-filter is never part of the transition —
+        // animating it is expensive (forces the browser off the compositor fast path) and was
+        // the likely stutter source. It's applied STATICALLY while actually counting down
+        // (3/2/1) for the blurred look, then swapped OFF the instant GO lands — a plain rgba
+        // veil, pre-rendered with no blur — so the RELEASE below only ever transitions
+        // `opacity` (compositor-only, GPU-cheap).
+        background: (st.countIn === 3 || st.countIn === 2 || st.countIn === 1) ? 'rgba(16,16,20,0.35)' : 'rgba(16,16,20,0.32)',
+        ...((st.countIn === 3 || st.countIn === 2 || st.countIn === 1) ? { backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' } : null),
+        // RELEASE (graceful GO→board handoff, not a hard cut): 'out' fades the veil to fully
+        // transparent over ~550ms on a slow-settle bezier. pointerEvents drops to 'none' the
+        // INSTANT 'out' begins (not eased — the board must take input through the fading veil,
+        // and it's already unlocked at this point; unchanged from before — still 2400ms) while
+        // opacity alone eases out.
         opacity: (st.countIn != null && st.screen === 'game' && st.countIn !== 'out') ? 1 : 0,
         pointerEvents: (st.countIn != null && st.screen === 'game' && st.countIn !== 'out') ? 'auto' : 'none',
-        transition: 'opacity 0.4s ease, backdrop-filter 0.4s ease',
+        transition: 'opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1)',
+        willChange: 'opacity, transform',
       },
-      // LIVE-PLAYTEST item E ("nicer animation"): each beat now POPs in with an overshoot
-      // (countPop) instead of the old flat bestPop swap; GO gets its own burst variant that
-      // scales past 1 and fades on the way out, so the round's start reads as a release, not
-      // just another numeral. countInKey (unchanged) still remounts every beat so the animation
-      // restarts cleanly each time. Total timing (armCountIn's 2400ms chain) is untouched.
+      // LIVE-PLAYTEST item E ("nicer animation"): each beat POPs in with an overshoot (countPop)
+      // instead of a flat swap; GO gets its own burst variant that scales past 1 and fades on
+      // the way out. GO's style (fontSize 68 + countPopGo) now also applies through 'out' (see
+      // countInText/countInKey above) so the burst's own fade-out plays to completion instead of
+      // being cut off — numerals keep the same pop keyframes throughout, only the extent of GO's
+      // style changed. Total timing (armCountIn's chain) is otherwise untouched.
       countInTextStyle: {
         fontFamily: "'Fredoka','Manrope',sans-serif", fontWeight: 700,
-        fontSize: st.countIn === 'GO' ? 68 : 108, color: '#FFFFFF',
+        fontSize: (st.countIn === 'GO' || st.countIn === 'out') ? 68 : 108, color: '#FFFFFF',
         textShadow: '0 4px 0 rgba(0,0,0,0.28)', lineHeight: 1,
-        animation: (st.countIn === 'GO' ? 'countPopGo' : 'countPop') + ' 0.5s cubic-bezier(0.34,1.56,0.64,1)',
+        animation: ((st.countIn === 'GO' || st.countIn === 'out') ? 'countPopGo' : 'countPop') + ' 0.5s cubic-bezier(0.34,1.56,0.64,1)',
       },
       // FAIR PAUSE (owner feedback: "I don't like the full-screen UI"): now BOARD-LOCAL — only
       // the tile grid's card gets covered, the rest of the game screen (HUD, stepper, clue fan)
