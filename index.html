@@ -1430,6 +1430,13 @@ class Component extends DCLogic {
       }
       kill.forEach(k => LS.removeItem(k));
     } catch (e) {}
+    // age-GC: a device that's been played on for months of daily rounds accumulates one
+    // per-day key per prefix per day, forever — prune per-day-keyed entries older than
+    // SworbleStore.AGE_GC_MAX_DAYS (~60d). Pure decision (SworbleStore.agedDayKeys) + the
+    // side effect right here, same split as the malformed-key heal just above.
+    try {
+      SworbleStore.agedDayKeys(SworbleStore.keys(), new Date()).forEach(k => LS.removeItem(k));
+    } catch (e) {}
     this.engineQ = []; // cycle events (sounds + cascades) processed by the rAF engine loop
     this.prefersDark = (() => { try { return window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) { return false; } })();
     this.dict = null;

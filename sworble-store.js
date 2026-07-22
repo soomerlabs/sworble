@@ -108,7 +108,59 @@
     } catch (e) { return 0; }
   }
 
-  const API = { LS, K, getInt, getJSON, set, setJSON, remove, keys, migrateLegacy };
+  // ---- age-based GC for per-day-keyed entries ------------------------------------
+  // Every PREFIX in K whose suffix names a calendar day (`PREFIX + 'YYYY-MM-DD'`, one —
+  // LB_ME_PREFIX — with an optional trailing `|mode`). Sourced from resetDayTap's own
+  // defensive per-day wipe list in index.html (the one place that already enumerates
+  // "every key this day could have written"), plus LB_ME_PREFIX. Anything NOT in this list
+  // (BEST, OPTS, NAME, PLAYER_ID, the one-off flags, MUTED, …) is never day-keyed and the
+  // GC below must never touch it.
+  const DATED_PREFIXES = [
+    K.DAILY_PREFIX, K.ATT_PREFIX, K.SEVEN_PREFIX, K.RUNS_PREFIX, K.PUZZLE_BEST_PREFIX,
+    K.TARGETS_PREFIX, K.FOUND_PREFIX, K.DONE_PREFIX, K.RUN_PREFIX, K.SWORB_PREFIX,
+    K.HINT_TOKENS_PREFIX, K.THEME_PREFIX, K.TIME_PREFIX, K.LB_ME_PREFIX,
+  ];
+  const AGE_GC_MAX_DAYS = 60; // Road-to-9 Sprint 1 #3: prune per-day entries older than ~60 days
+
+  // Age (in whole days) of a "YYYY-MM-DD" day key relative to `now` — the SAME local-calendar
+  // definition SworbleCore.dayKey() uses to mint these keys in the first place, so a key's
+  // age here always matches the calendar day it names, no timezone drift between minting and
+  // pruning. Malformed input (bad shape, or a shape-valid-but-impossible date like
+  // "2026-02-30") returns null, NEVER a number — callers must treat null as "leave it alone",
+  // not as "very old".
+  function dayKeyAgeDays(dayStr, now) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dayStr || '');
+    if (!m) return null;
+    const y = +m[1], mo = +m[2], d = +m[3];
+    const then = new Date(y, mo - 1, d);
+    if (then.getFullYear() !== y || then.getMonth() !== mo - 1 || then.getDate() !== d) return null; // rejects e.g. 2026-02-30
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.round((today - then) / 86400000);
+  }
+
+  // Pure: given every current key name + `now` (+ optional maxDays override), returns the
+  // subset that (a) matches one of DATED_PREFIXES and (b) names a day older than maxDays.
+  // Never mutates, never touches storage — the caller (boot, near the existing malformed-key
+  // cleanup) removes exactly this list. A key that doesn't parse as a dated-prefix key at all
+  // (malformed date, garbled suffix) is simply excluded from the result — "can't tell how old
+  // this is" must never be treated as "delete it".
+  function agedDayKeys(allKeys, now, maxDays) {
+    const cutoff = maxDays == null ? AGE_GC_MAX_DAYS : maxDays;
+    const out = [];
+    for (const k of (allKeys || [])) {
+      for (const prefix of DATED_PREFIXES) {
+        if (k.indexOf(prefix) !== 0) continue;
+        const dayStr = k.slice(prefix.length).split('|')[0]; // strips LB_ME_PREFIX's optional '|puzzle'
+        const age = dayKeyAgeDays(dayStr, now);
+        if (age != null && age > cutoff) out.push(k);
+        break; // prefixes are disjoint by construction — a key matches at most one
+      }
+    }
+    return out;
+  }
+
+  const API = { LS, K, getInt, getJSON, set, setJSON, remove, keys, migrateLegacy,
+    dayKeyAgeDays, agedDayKeys, AGE_GC_MAX_DAYS };
   root.SworbleStore = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);
