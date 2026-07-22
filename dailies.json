@@ -20,11 +20,11 @@
     ]
   },
   "2026-07-21": {
-    "sworb": "kitchen",
+    "sworb": "galley",
     "themeWords": [
       "oven",
       "fork",
-      "pan",
+      "tray",
       "dish",
       "spoon",
       "plate",
@@ -32,8 +32,8 @@
       "bowl",
       "whisk",
       "ladle",
-      "pot",
-      "cup",
+      "kettle",
+      "mixer",
       "stove",
       "grill",
       "sink"
