@@ -36,9 +36,8 @@ states) · `../mocks/2026-07-22-storm-aurora-blocks-v11.html` (storm feel, blur 
 
 ONE page (no pager, no mode picker), two states sharing an IDENTICAL skeleton so nothing shifts:
 
-**Skeleton (top → bottom):** iOS-normal nav (profile · logo-tile+wordmark · settings) → ONE
-subtitle line (`TUESDAY JULY 21 · Nº 214`, eyebrow style — NO big date, NO "daily puzzle" copy) →
-divider → **word-of-the-day blocks** → **clue fan** (4 pills top row / 2 bottom row) →
+**Skeleton (top → bottom):** iOS-normal nav (profile · logo-tile+wordmark · settings) →
+**word-of-the-day blocks straight at the top** (NO date line, NO "daily puzzle" copy, NO divider) → **clue fan** (4 pills top row / 2 bottom row) →
 **progress-to-top link-bar** → **top-5 best-words strip** → **standings x/y graph** (NO section
 title — it flows directly) → storm + dock.
 

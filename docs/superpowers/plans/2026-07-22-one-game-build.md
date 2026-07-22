@@ -143,9 +143,9 @@ finale) / `done` (after-state). No `armedMode`, no picker, one leaderboard parti
 
 ### Task 5: Home v18 rebuild
 
-**Files:** Modify `index.html` home template (360-480 region: keep nav; header becomes ONE subtitle
-line `TUESDAY JULY 21 · Nº 214` (big date + "daily puzzle" copy REMOVED) + divider; REBUILD the
-body to v18: word blocks + fan(4/2) → link-bar → best-words strip → standings graph (no title) → dock) + its render-vals
+**Files:** Modify `index.html` home template (360-480 region: keep nav; date/eyebrow/divider header REMOVED
+entirely — word blocks sit straight under the nav; REBUILD the body to v18: word blocks + fan(4/2)
+→ link-bar → best-words strip → standings graph (no title) → dock) + its render-vals
 (`homeSworb` → word-light blocks/pills; NEW `progBar` vals {scoreBig, topScore, topName, pct,
 chaseLine, hit, dormant}; standings vals gain per-node `check` + YOU ring (exists); dock vals
 {chevron+"swipe up to play"} vs {countdown to next dailyKey}); floaters table (grep `FLOATERS`
