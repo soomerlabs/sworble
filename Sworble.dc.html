@@ -2001,24 +2001,26 @@ class Component extends DCLogic {
   guessSworb(input) {
     const e = this.dailyEntry(); if (!e) return { ok: false };
     const st = this.sworbState();
-    if (st.solved || st.guessesUsed >= 6) return { ok: false, done: true };
-    const correct = SworbleDaily.checkGuess(input, e);
-    st.guessesUsed += 1;
-    if (correct) {
-      let found = []; try { found = JSON.parse(LS.getItem(K.FOUND_PREFIX + this.dailyKey) || '[]'); } catch (x) {}
-      const bonus = SworbleDaily.guessReward(found.length, e.themeWords.length);
-      st.solved = true; st.correct = true; st.bonus = bonus; st.solveTier = bonus; // tier == reward value (higher = earlier/bolder)
+    let found = []; try { found = JSON.parse(LS.getItem(K.FOUND_PREFIX + this.dailyKey) || '[]'); } catch (x) {}
+    // SworbleDaily.applySworbGuess (sworble-daily.js): the guess decision (6-guess cap,
+    // no-op once solved/exhausted, reward tiers by clues found, case-insensitive match) —
+    // pure, pinned by tests. This method keeps the persistence (saveSworb) + setState.
+    const res = SworbleDaily.applySworbGuess({ input, entry: e, guessesUsed: st.guessesUsed, solved: st.solved, foundCount: found.length, total: e.themeWords.length });
+    if (!res.ok) return { ok: false, done: true };
+    st.guessesUsed = res.newGuessesUsed;
+    if (res.correct) {
+      st.solved = true; st.correct = true; st.bonus = res.bonus; st.solveTier = res.bonus; // tier == reward value (higher = earlier/bolder)
       // DECIDED mid-execution: the guess bonus rides today's competitive score (there is no
       // par target to distort — ranking is player-vs-player, so solving the sworb helps you
       // climb, which is the point). It flows into the Seven total like any other points.
-      this.setState(s => ({ score: (s.score || 0) + bonus })); // sworb bonus rides today's score
+      this.setState(s => ({ score: (s.score || 0) + res.bonus })); // sworb bonus rides today's score
       this.sfxWin && this.sfxWin();
     } else {
       this.sfxBad && this.sfxBad();
     }
     this.saveSworb(st);
     this.forceUpdate();
-    return { ok: true, correct, guessesLeft: Math.max(0, 6 - st.guessesUsed), bonus: st.bonus };
+    return { ok: true, correct: res.correct, guessesLeft: Math.max(0, 6 - st.guessesUsed), bonus: st.bonus };
   }
   // ---- STEPPER FLIP + BOARD-MORPH KEYBOARD (final guess input) ----
   // The stepper (word strip) is a tap-to-flip card: PLAY face (gameplay) <-> SWORB face

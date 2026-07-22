@@ -116,4 +116,65 @@ assert.deepStrictEqual(D.scoreGuess('erxx', 'reef'), ['yellow','yellow','gray','
 }
 console.log('sworble-daily: bankClue passed');
 
+// --- applySworbGuess(args) -> {ok, correct, newGuessesUsed, nowSolved, lockedOut, bonus} --
+// The finale guess decision, extracted pure from guessSworb: 6-guess cap, no-op once
+// solved/exhausted, reward tiers scaled by clues found, case-insensitive match (via
+// checkGuess's own normalize()). index.html keeps persistence/setState, this decides. ---
+{
+  const entry = { sworb: 'ocean', themeWords: ['tide', 'coral', 'wave', 'reef', 'salt'] };
+
+  // correct guess, cold read (0 clues found) -> jackpot reward, solved, one guess spent
+  {
+    const r = D.applySworbGuess({ input: 'ocean', entry, guessesUsed: 0, solved: false, foundCount: 0, total: 5 });
+    assert.deepStrictEqual(r, { ok: true, correct: true, newGuessesUsed: 1, nowSolved: true, lockedOut: false, bonus: 500 });
+  }
+  // case-insensitivity (checkGuess's normalize()) — matches regardless of case/whitespace
+  {
+    const r = D.applySworbGuess({ input: '  OCEAN! ', entry, guessesUsed: 0, solved: false, foundCount: 0, total: 5 });
+    assert.strictEqual(r.correct, true, 'case/whitespace-insensitive match');
+  }
+  // wrong guess -> not solved, no bonus, guess count advances by one, not locked (guesses remain)
+  {
+    const r = D.applySworbGuess({ input: 'sea', entry, guessesUsed: 2, solved: false, foundCount: 2, total: 5 });
+    assert.deepStrictEqual(r, { ok: true, correct: false, newGuessesUsed: 3, nowSolved: false, lockedOut: false, bonus: 0 });
+  }
+  // bonus tiers scale INVERSELY with clues found at guess time
+  assert.strictEqual(D.applySworbGuess({ input: 'ocean', entry, guessesUsed: 0, solved: false, foundCount: 0, total: 5 }).bonus, 500, 'none found -> jackpot');
+  assert.strictEqual(D.applySworbGuess({ input: 'ocean', entry, guessesUsed: 0, solved: false, foundCount: 2, total: 5 }).bonus, 350, 'few found -> mid tier');
+  assert.strictEqual(D.applySworbGuess({ input: 'ocean', entry, guessesUsed: 0, solved: false, foundCount: 4, total: 5 }).bonus, 200, 'most found -> low tier');
+  assert.strictEqual(D.applySworbGuess({ input: 'ocean', entry, guessesUsed: 0, solved: false, foundCount: 5, total: 5 }).bonus, 75, 'all found -> gimme');
+
+  // the 6TH wrong guess exhausts the budget -> lockedOut true (finale's "6th miss" exit)
+  {
+    const r = D.applySworbGuess({ input: 'sea', entry, guessesUsed: 5, solved: false, foundCount: 0, total: 5 });
+    assert.deepStrictEqual(r, { ok: true, correct: false, newGuessesUsed: 6, nowSolved: false, lockedOut: true, bonus: 0 });
+  }
+  // cap at 6: newGuessesUsed never exceeds 6 even from a defensively-overrun input
+  {
+    const r = D.applySworbGuess({ input: 'sea', entry, guessesUsed: 9, solved: false, foundCount: 0, total: 5 });
+    assert.strictEqual(r.ok, false, 'already at/over budget -> no-op, not a real guess');
+    assert.strictEqual(r.lockedOut, true);
+  }
+  // no-op once already solved — a stray resubmit never re-scores or re-banks
+  {
+    const r = D.applySworbGuess({ input: 'ocean', entry, guessesUsed: 1, solved: true, foundCount: 0, total: 5 });
+    assert.strictEqual(r.ok, false, 'already solved -> no-op');
+    assert.strictEqual(r.lockedOut, true);
+  }
+  // no-op once the 6-guess budget is already exhausted (locked before this call)
+  {
+    const r = D.applySworbGuess({ input: 'ocean', entry, guessesUsed: 6, solved: false, foundCount: 0, total: 5 });
+    assert.strictEqual(r.ok, false, 'guessesUsed >= 6 already -> no-op, no fresh guess processed');
+  }
+  // no entry (no sworb today) -> safe no-op, never throws
+  {
+    const r = D.applySworbGuess({ input: 'ocean', entry: null, guessesUsed: 0, solved: false, foundCount: 0, total: 5 });
+    assert.strictEqual(r.ok, false);
+  }
+  // malformed/missing args never throw
+  assert.strictEqual(D.applySworbGuess({}).ok, false);
+  assert.strictEqual(D.applySworbGuess(null).ok, false);
+}
+console.log('sworble-daily: applySworbGuess passed');
+
 console.log('sworble-daily: all passed');

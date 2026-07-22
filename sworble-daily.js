@@ -87,7 +87,38 @@
     return list.concat([clue]);
   }
 
-  var API = { parseEntry: parseEntry, isClue: isClue, clueFor: clueFor, checkGuess: checkGuess, guessReward: guessReward, scoreGuess: scoreGuess, bankClue: bankClue, REWARD: REWARD };
+  // The finale guess decision, extracted pure from guessSworb (index.html): 6-guess cap,
+  // no-op once already solved or budget exhausted, reward tiers scaled by clues found at
+  // guess time, case-insensitive match (checkGuess's own normalize()). The caller
+  // (index.html) still owns persistence (saveSworb) and setState — this just decides.
+  //
+  // args = { input, entry, guessesUsed, solved, foundCount, total }
+  // -> { ok, correct, newGuessesUsed, nowSolved, lockedOut, bonus }
+  //   ok=false means no fresh guess was processed (no entry today, or already
+  //   solved/exhausted — a no-op resubmit never re-scores or re-banks). lockedOut is true
+  //   whenever the 6-guess budget is spent after this call (already-spent no-ops, and the
+  //   6th miss itself) — the caller uses it to trigger the finale's exhausted exit.
+  function applySworbGuess(args) {
+    var a = args || {};
+    var guessesUsed = (typeof a.guessesUsed === 'number' && isFinite(a.guessesUsed) && a.guessesUsed > 0) ? a.guessesUsed : 0;
+    var solved = !!a.solved;
+    if (!a.entry) return { ok: false };
+    if (solved || guessesUsed >= 6) return { ok: false, lockedOut: true };
+    var correct = checkGuess(a.input, a.entry);
+    var newGuessesUsed = Math.min(6, guessesUsed + 1); // cap at 6, defensive against overrun input
+    var bonus = 0;
+    if (correct) {
+      var foundCount = (typeof a.foundCount === 'number' && isFinite(a.foundCount) && a.foundCount > 0) ? a.foundCount : 0;
+      var total = (typeof a.total === 'number' && isFinite(a.total) && a.total > 0) ? a.total : 0;
+      bonus = guessReward(foundCount, total);
+    }
+    return {
+      ok: true, correct: correct, newGuessesUsed: newGuessesUsed, nowSolved: correct,
+      lockedOut: !correct && newGuessesUsed >= 6, bonus: bonus,
+    };
+  }
+
+  var API = { parseEntry: parseEntry, isClue: isClue, clueFor: clueFor, checkGuess: checkGuess, guessReward: guessReward, scoreGuess: scoreGuess, bankClue: bankClue, applySworbGuess: applySworbGuess, REWARD: REWARD };
   root.SworbleDaily = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);
