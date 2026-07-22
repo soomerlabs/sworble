@@ -1,4 +1,60 @@
 {
-  "2026-07-20": { "sworb": "ocean", "themeWords": ["tide","coral","wave","reef","salt","shore","kelp","surf","foam","brine","pearl","shell","swell","spray","abyss"] },
-  "2026-07-21": { "sworb": "kitchen", "themeWords": ["oven","fork","pan","dish","spoon","plate","knife","bowl","whisk","ladle","pot","cup","stove","grill","sink"] }
+  "2026-07-20": {
+    "sworb": "ocean",
+    "themeWords": [
+      "tide",
+      "coral",
+      "wave",
+      "reef",
+      "salt",
+      "shore",
+      "kelp",
+      "surf",
+      "foam",
+      "brine",
+      "pearl",
+      "shell",
+      "swell",
+      "spray",
+      "abyss"
+    ]
+  },
+  "2026-07-21": {
+    "sworb": "kitchen",
+    "themeWords": [
+      "oven",
+      "fork",
+      "pan",
+      "dish",
+      "spoon",
+      "plate",
+      "knife",
+      "bowl",
+      "whisk",
+      "ladle",
+      "pot",
+      "cup",
+      "stove",
+      "grill",
+      "sink"
+    ]
+  },
+  "2026-07-22": {
+    "sworb": "bloom",
+    "themeWords": [
+      "rose",
+      "seed",
+      "stem",
+      "leaf",
+      "soil",
+      "vine",
+      "petal",
+      "root",
+      "thorn",
+      "fern",
+      "moss",
+      "weed",
+      "sprout"
+    ]
+  }
 }
