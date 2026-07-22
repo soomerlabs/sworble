@@ -1075,6 +1075,11 @@
   }
 
   // src/cdn.ts
+  // prod-shell hardening: self-hosted copies ship in vendor/ so first boot never depends on
+  // unpkg being reachable; the unpkg URLs below become a fallback if the local copy 404s or
+  // the file was stripped from a deploy. Vendored bytes are SRI-pinned to the same hashes.
+  var VENDOR_REACT_URL = "./vendor/react.production.min.js";
+  var VENDOR_REACT_DOM_URL = "./vendor/react-dom.production.min.js";
   var REACT_URL = "https://unpkg.com/react@18.3.1/umd/react.production.min.js";
   var REACT_SRI = "sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z";
   var REACT_DOM_URL = "https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js";
@@ -1788,15 +1793,51 @@
       document.head.appendChild(s);
     });
   }
-  function loadReactUmd() {
-    const w = window;
-    if (w.React && w.ReactDOM) return Promise.resolve();
+  function loadVendorReactUmd() {
+    return Promise.all([
+      loadScript(VENDOR_REACT_URL),
+      loadScript(VENDOR_REACT_DOM_URL)
+    ]).then(() => void 0);
+  }
+  function loadCdnReactUmd() {
     const react = cdnScriptFor(REACT_URL, REACT_SRI);
     const reactDom = cdnScriptFor(REACT_DOM_URL, REACT_DOM_SRI);
     return Promise.all([
       loadScript(react.src, react.integrity),
       loadScript(reactDom.src, reactDom.integrity)
     ]).then(() => void 0);
+  }
+  function loadReactUmd() {
+    const w = window;
+    if (w.React && w.ReactDOM) return Promise.resolve();
+    // self-hosted copy first (no network dependency on a third party for the app to boot at
+    // all); unpkg is a fallback only, for the rare deploy that's missing vendor/.
+    return loadVendorReactUmd().catch((vendorErr) => {
+      console.error("[dc] vendor React load failed, falling back to CDN:", vendorErr);
+      return loadCdnReactUmd();
+    });
+  }
+  function showBootFailureUi(err) {
+    try {
+      console.error("[dc] failed to load React or boot:", err);
+      const id = "__dc_boot_fail";
+      if (document.getElementById(id)) return;
+      const wrap = document.createElement("div");
+      wrap.id = id;
+      wrap.style.cssText = "position:fixed;inset:0;z-index:2147483647;background:#101014;color:#EDEFF7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font:600 15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-align:center;padding:24px;box-sizing:border-box;";
+      const msg = document.createElement("div");
+      msg.textContent = "couldn’t load · check connection";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "tap to retry";
+      btn.style.cssText = "background:#8971FF;color:#FFFFFF;border:none;border-radius:12px;padding:12px 22px;font:700 14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;cursor:pointer;";
+      btn.addEventListener("click", () => window.location.reload());
+      wrap.appendChild(msg);
+      wrap.appendChild(btn);
+      (document.body || document.documentElement).appendChild(wrap);
+    } catch (uiErr) {
+      console.error("[dc] boot-failure UI itself failed:", uiErr);
+    }
   }
   function init() {
     const runtime = createRuntime(document);
@@ -1858,7 +1899,6 @@
   }
   hideRawTemplate();
   loadReactUmd().then(init).catch((err) => {
-    console.error("[dc] failed to load React or boot:", err);
-    throw err;
+    showBootFailureUi(err);
   });
 })();
