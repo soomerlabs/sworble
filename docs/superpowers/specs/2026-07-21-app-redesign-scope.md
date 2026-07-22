@@ -114,6 +114,13 @@ Future paid surfaces: archive days, streak insurance, cosmetics (tile skins/stor
 practice packs. The hint-TOKEN seam is deliberately future-proof: today tokens are earned-only;
 a purchasable top-up would be a business toggle, and even then aimed at practice/archive boards.
 
+## BACKEND (owner-locked 2026-07-22): SUPABASE
+Supabase replaces the legacy Soomer/Django contract (superseded header added). Plan:
+`docs/backend/SUPABASE-PLAN.md`. Client approach: plain fetch + RLS (no supabase-js dep).
+PRE-HOOKUP payload changes (additive, do before backend work): submitScore gains solved +
+solve_tier, guesses_used + clues_found, engine_ver/app_ver + seconds. Scaling watch-item:
+anonymous sign-ins count toward auth MAU (50k free cap).
+
 ## AWAITING OWNER DESIGNS (2026-07-22 — do NOT build ahead)
 Owner has updated designs coming for: PROFILE, LEADERBOARD, SETTINGS (new full screen), and
 DAILY-SCORE SHARING. Hold these surfaces until the mocks arrive; current versions are placeholders.

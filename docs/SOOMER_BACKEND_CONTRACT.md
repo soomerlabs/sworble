@@ -1,3 +1,8 @@
+> ⚠️ **SUPERSEDED (2026-07-22, owner decision): sworbl builds toward SUPABASE.**
+> See `docs/backend/SUPABASE-PLAN.md` — anonymous auth → identity linking, PostgREST + RLS,
+> edge-function replay validation. This Django/device-UUID contract is retained for history
+> only; do not build against it.
+
 # sworble ↔ Soomer backend contract
 
 sworble is a Soomer app: one `Application` row on soomer-api, identified everywhere by its
