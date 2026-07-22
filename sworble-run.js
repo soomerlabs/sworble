@@ -1,7 +1,11 @@
-// sworble-run.js — live-run snapshot layer: serialize/validate the mid-run state of a
-// daily so a reload (or a mobile tab eviction) can restore the run exactly where it was.
-// Pure data-in/data-out — NO DOM, NO storage, NO `this` (the game wires it to LS via
-// SworbleStore.K.RUN_PREFIX + dayKey).
+// sworble-run.js — live-run timing/snapshot layer. Two things live here, both pure
+// data-in/data-out — NO DOM, NO storage, NO `this`:
+//   1. The live-run SNAPSHOT: serialize/validate the mid-run state of a daily so a reload
+//      (or a mobile tab eviction) can restore the run exactly where it was (the game wires
+//      it to LS via SworbleStore.K.RUN_PREFIX + dayKey).
+//   2. The round-start COUNT-IN timing chain (COUNT_IN_MS/countInStepAt) — the 3·2·1·GO
+//      beat every round START and PAUSE RESUME plays; armCountIn (index.html) owns the
+//      actual scheduling/token-guard, this owns only the timing/value data.
 //
 // Loaded via <script src> in <helmet> (sets window.SworbleRun); mirrored to
 // module.exports for tests (tests/sworble-run.test.js).
@@ -102,7 +106,34 @@
     return remaining > 0 ? remaining : 0;
   }
 
-  const API = { RUN_VERSION, serializeRun, validateRun, remainingSecs };
+  // The shared 3·2·1·GO count-in beat's timing chain, extracted pure from armCountIn
+  // (index.html). This module owns only the WHAT — which countIn value/branch fires at
+  // which millisecond; armCountIn keeps its own token-guard mechanism (orphaning a stale
+  // in-flight chain when a newer deal/resume/auto-pause pre-empts it) and the actual
+  // this.later()/setTimeout wiring exactly as before — only the timing/value data moved.
+  const COUNT_IN_MS = { STEP2: 700, STEP1: 1400, GO: 2100, RELEASE: 2750, UNMOUNT: 3300 };
+
+  // countInStepAt(ms, ctx) -> the setState patch for the step at `ms`, or null (no-op /
+  // unknown ms). `ctx` carries only what each step's branch needs at fire-time:
+  //   RELEASE (2750ms): ctx.activeModal — a modal open at release time is left for its own
+  //     close path to resolve (`paused` untouched); otherwise the board unlocks
+  //     (`paused: false`) and the overlay starts fading out (`countIn: 'out'`).
+  //   UNMOUNT (3300ms): ctx.countIn — only unmounts the overlay while it's still in the
+  //     'out' fade tail; any other value (already resolved by RELEASE, or reset by a
+  //     modal, or a stale step overtaken by a fresh re-arm) is left alone.
+  function countInStepAt(ms, ctx) {
+    const c = ctx || {};
+    switch (ms) {
+      case COUNT_IN_MS.STEP2: return { countIn: 2 };
+      case COUNT_IN_MS.STEP1: return { countIn: 1 };
+      case COUNT_IN_MS.GO: return { countIn: 'GO' };
+      case COUNT_IN_MS.RELEASE: return c.activeModal ? { countIn: null } : { countIn: 'out', paused: false };
+      case COUNT_IN_MS.UNMOUNT: return c.countIn === 'out' ? { countIn: null } : null;
+      default: return null;
+    }
+  }
+
+  const API = { RUN_VERSION, serializeRun, validateRun, remainingSecs, COUNT_IN_MS, countInStepAt };
   root.SworbleRun = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

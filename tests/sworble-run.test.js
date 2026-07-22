@@ -106,4 +106,41 @@ assert.strictEqual(SworbleStore.K.RUN_PREFIX, 'sworble_run_', 'K.RUN_PREFIX must
   assert.strictEqual(SworbleRun.remainingSecs(null, 1000), 0, 'null roundSecs -> treated as 0-length round');
 }
 
+// --- countInStepAt: armCountIn's shared 3·2·1·GO count-in beat, extracted as a pure
+// transition table. armCountIn (index.html) keeps its own token-guard mechanism and the
+// actual this.later()/setTimeout wiring exactly as before — only the WHAT (which countIn
+// value/branch fires at which millisecond) moved here. Pins the exact timings (700, 1400,
+// 2100, 2750, 3300ms), the RELEASE step's modal branch, and UNMOUNT's 'out'-only semantics. -
+{
+  assert.strictEqual(typeof SworbleRun.countInStepAt, 'function', 'countInStepAt exported');
+  const MS = SworbleRun.COUNT_IN_MS;
+  assert.deepStrictEqual(MS, { STEP2: 700, STEP1: 1400, GO: 2100, RELEASE: 2750, UNMOUNT: 3300 }, 'exact timing chain pinned');
+
+  // the three plain numeral/GO beats — unconditional, ignore ctx entirely
+  assert.deepStrictEqual(SworbleRun.countInStepAt(700, {}), { countIn: 2 });
+  assert.deepStrictEqual(SworbleRun.countInStepAt(1400, {}), { countIn: 1 });
+  assert.deepStrictEqual(SworbleRun.countInStepAt(2100, {}), { countIn: 'GO' });
+  assert.deepStrictEqual(SworbleRun.countInStepAt(MS.STEP2, { activeModal: true }), { countIn: 2 }, 'STEP2/STEP1/GO are unaffected by ctx');
+
+  // RELEASE (2750ms): the board unlocks + the overlay begins its fade-out UNLESS a modal
+  // is open, in which case it's left for the modal's own close path to resolve
+  assert.deepStrictEqual(SworbleRun.countInStepAt(2750, { activeModal: false }), { countIn: 'out', paused: false }, 'no modal -> release + unpause');
+  assert.deepStrictEqual(SworbleRun.countInStepAt(2750, {}), { countIn: 'out', paused: false }, 'no ctx.activeModal -> same as false');
+  assert.deepStrictEqual(SworbleRun.countInStepAt(2750, { activeModal: true }), { countIn: null }, 'a modal open at release time gets its own path — paused untouched');
+
+  // UNMOUNT (3300ms): only unmounts the overlay if it's still mid fade-out ('out'); any
+  // other value (already resolved by RELEASE, or reset by a modal) -> no-op (null)
+  assert.deepStrictEqual(SworbleRun.countInStepAt(3300, { countIn: 'out' }), { countIn: null }, 'still fading out -> unmount');
+  assert.strictEqual(SworbleRun.countInStepAt(3300, { countIn: null }), null, 'already resolved -> no-op');
+  assert.strictEqual(SworbleRun.countInStepAt(3300, { countIn: 3 }), null, 'a fresh re-arm already moved past this stale step -> no-op');
+  assert.strictEqual(SworbleRun.countInStepAt(3300, {}), null, 'no countIn in ctx -> no-op');
+
+  // unknown ms -> null, never throws
+  assert.strictEqual(SworbleRun.countInStepAt(9999, {}), null);
+  // null ctx never throws — treated the same as an empty ctx
+  assert.deepStrictEqual(SworbleRun.countInStepAt(2750, null), { countIn: 'out', paused: false }, 'null ctx -> same as {} (no activeModal)');
+  assert.strictEqual(SworbleRun.countInStepAt(3300, null), null, 'null ctx -> same as {} (no countIn)');
+}
+console.log('sworble-run: countInStepAt passed');
+
 console.log('sworble-run: all tests passed');

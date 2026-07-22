@@ -1833,37 +1833,40 @@ class Component extends DCLogic {
   // never touches roundEndAt/pausedAt directly. A monotonic token guards every step so a
   // newer deal/resume/auto-pause can silently orphan a stale in-flight chain — no crossed
   // timers if the player re-triggers (or the tab backgrounds) before an old chain finishes.
+  // SworbleRun.COUNT_IN_MS/countInStepAt (sworble-run.js): the pure timing/value table for
+  // the beat (700/1400/2100ms numerals, 2750ms RELEASE, 3300ms UNMOUNT — the RELEASE modal
+  // branch and UNMOUNT's 'out'-only semantics are pinned by tests there). This method keeps
+  // the token-guard mechanism and the actual this.later() scheduling exactly as before —
+  // only the timing/value data moved out.
   armCountIn() {
     const token = (this._countInToken = (this._countInToken || 0) + 1);
-    const step = (val, ms) => this.later(() => { if (this._countInToken !== token) return; this.setState({ countIn: val }); }, ms);
-    step(2, 700);
-    step(1, 1400);
-    step('GO', 2100);
-    this.later(() => {
+    const MS = SworbleRun.COUNT_IN_MS;
+    const step = (ms) => this.later(() => {
       if (this._countInToken !== token) return;
-      // RELEASE (not a hard cut): the board is unlocked HERE — `paused` clears same as before,
-      // input contract unchanged (still fires at 2750ms) — but the numeral+veil don't vanish
-      // yet. `countIn: 'out'` is a NOT-ACTIVE state for every input guard (they only lock on
-      // `countIn && countIn !== 'out'`) while the overlay style fades to transparent over
-      // ~550ms (compositor-only opacity, no backdrop-filter/filter in the transition — see
-      // countInOverlayStyle/boardCardStyle) and the board plays its one-shot wake. The final
-      // step below unmounts the (by-then invisible) overlay.
-      // The `s.activeModal ?` branch used to matter for the auto-opened first-run how-to sheet,
-      // which could still be open when this 2750ms step fired and would otherwise get its
-      // `paused` yanked out from under it mid-read. That auto-open trigger is gone, so nothing
-      // realistic sets activeModal during the count-in's ~2.4s window anymore (the overlay
-      // blocks input the whole time) — left in as harmless defense-in-depth against any future
-      // path that opens a modal mid-count-in.
-      this.setState(s => s.activeModal ? { countIn: null } : { countIn: 'out', paused: false });
-    }, 2750); // GO holds ~650ms (owner: felt short at 300ms) before the release beat
-    this.later(() => {
-      if (this._countInToken !== token) return;
-      // unmount only — never touch `paused`/`activeModal` here, both were already resolved
-      // by the 2750ms step (or left alone for a modal to resolve on its own close). Pushed from
-      // 2850→3300 to give the longer ~550ms veil fade (2750 + 550 = 3300) room to finish before
-      // the overlay unmounts — otherwise the fade would visibly snap off early.
-      this.setState(s => s.countIn === 'out' ? { countIn: null } : null);
-    }, 3300);
+      this.setState(s => SworbleRun.countInStepAt(ms, { activeModal: s.activeModal, countIn: s.countIn }));
+    }, ms);
+    step(MS.STEP2);
+    step(MS.STEP1);
+    step(MS.GO);
+    // RELEASE (not a hard cut): the board is unlocked HERE — `paused` clears same as before,
+    // input contract unchanged (still fires at 2750ms) — but the numeral+veil don't vanish
+    // yet. `countIn: 'out'` is a NOT-ACTIVE state for every input guard (they only lock on
+    // `countIn && countIn !== 'out'`) while the overlay style fades to transparent over
+    // ~550ms (compositor-only opacity, no backdrop-filter/filter in the transition — see
+    // countInOverlayStyle/boardCardStyle) and the board plays its one-shot wake. The final
+    // step below unmounts the (by-then invisible) overlay.
+    // The `activeModal ?` branch used to matter for the auto-opened first-run how-to sheet,
+    // which could still be open when this 2750ms step fired and would otherwise get its
+    // `paused` yanked out from under it mid-read. That auto-open trigger is gone, so nothing
+    // realistic sets activeModal during the count-in's ~2.4s window anymore (the overlay
+    // blocks input the whole time) — left in as harmless defense-in-depth against any future
+    // path that opens a modal mid-count-in.
+    step(MS.RELEASE); // GO holds ~650ms (owner: felt short at 300ms) before the release beat
+    // unmount only — never touch `paused`/`activeModal` here, both were already resolved
+    // by the 2750ms step (or left alone for a modal to resolve on its own close). Pushed from
+    // 2850→3300 to give the longer ~550ms veil fade (2750 + 550 = 3300) room to finish before
+    // the overlay unmounts — otherwise the fade would visibly snap off early.
+    step(MS.UNMOUNT);
   }
   // interrupt an in-flight count-in (e.g. the tab backgrounds mid-beat) — every pending step
   // becomes a no-op. Caller is responsible for the resulting paused/gamePaused state.
