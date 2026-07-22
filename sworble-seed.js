@@ -107,39 +107,65 @@
     return { letters: letters, cluePaths: cluePaths };
   }
 
+  // Default attempt budget for seedClueLettersTwoPass's subset retry (below). 12 covers every
+  // rotation of a 10-15-word pool; the stress harness (tests/seed-stress.js) shows realistic
+  // content clears 100% within ~3 and even all-6-letter pools reach 100% by 12.
+  var DEFAULT_TWOPASS_ATTEMPTS = 12;
+
+  // Rotate a word list left by k (k mod length) — attempt a's pool order for the retry below.
+  // Pure: returns a new array, never mutates. k=0 is the identity (attempt 0 == canonical).
+  function rotateWords(words, k) {
+    if (!words.length) return words.slice();
+    var n = ((k % words.length) + words.length) % words.length;
+    return words.slice(n).concat(words.slice(0, n));
+  }
+
   // Two-pass variant that locks the realized theme set to EXACTLY `target` words (default 6 —
   // "6 to find, 6 to crack it"). Pass 1 runs seedClueLettersBestEffort against the full `clues`
   // candidate pool; the first `target` realized words (cluePaths insertion order) become the
-  // target set. Pass 2 re-runs seedClueLettersBestEffort with ONLY those words, on a FRESH rng
-  // (via `rngFactory()`, called twice — once per pass — so pass 2 starts from the same seed
-  // state as pass 1, not a continuation of it): the final board stamps ONLY the target words,
-  // no leftover bonus words from the wider pass-1 pool.
+  // candidate target set. Pass 2 re-runs seedClueLettersBestEffort with ONLY those words, on a
+  // FRESH rng (via `rngFactory()`, called once per pass — each call yields an identical stream
+  // from the same seed): the final board stamps ONLY the target words, no leftover bonus words.
   //
-  // DETERMINISM: same seed (same rngFactory) + same `clues` → same target set, always.
+  // SUBSET RETRY: the first `target` realized words sometimes fit in pass 1 ONLY because the
+  // wider pool's bonus words gave them crossings — a `target`-only re-pack on an empty board
+  // then can't reproduce that and falls short. Reordering the SAME doomed subset does not help
+  // (measured); a DIFFERENT `target`-subset does. So attempt 0 packs the pool as-is (byte-
+  // identical to the old single-attempt algorithm — already-passing days are unchanged), and
+  // each further attempt ROTATES the pool into pass 1, surfacing a different first-`target`
+  // subset to re-pack. The first attempt whose pass 2 lands exactly `target` wins. `opts.attempts`
+  // (default DEFAULT_TWOPASS_ATTEMPTS) bounds the search; attempts:1 restores the old behavior.
   //
-  // FALLBACK (should never trigger on real content — flag it, don't silently eat it): if pass 1
-  // can't even realize `target` words from the candidate pool, or pass 2's tighter re-pack (fewer
-  // crossing opportunities without the wider pool) realizes fewer than `target`, this returns
-  // `usedFallback: true` and falls back to pass 1's board/letters/cluePaths as-is (any extra
-  // pass-1 words beyond the first `target` remain stamped as unmarked bonus words) while still
-  // reporting `realized` as the (possibly short) target slice — callers should treat
-  // `usedFallback: true` as a content problem (thin/misconfigured day), not a runtime error.
+  // DETERMINISM: same seed (same rngFactory) + same `clues` + same `attempts` → same board,
+  // always — the rotation schedule is a pure function of the attempt index.
+  //
+  // FALLBACK (should be rare on real content — flag it, don't silently eat it): if NO attempt
+  // (canonical + all rotations tried) yields a clean `target`-word board — the pool is too thin
+  // or too dense to pack `target` — this returns `usedFallback: true` on attempt 0's pass-1
+  // board (extra pass-1 words remain as unmarked bonus words) with `realized` reporting attempt
+  // 0's (possibly short) target slice. Callers treat `usedFallback: true` as a content problem
+  // (thin/misconfigured day), not a runtime error.
   function seedClueLettersTwoPass(opts) {
     var clues = opts.clues || [], cols = opts.cols, rows = opts.rows, rngFactory = opts.rngFactory;
     var target = opts.target || 6;
-    var pass1 = seedClueLettersBestEffort({ clues: clues, cols: cols, rows: rows, rng: rngFactory() });
-    var first = Object.keys(pass1.cluePaths).slice(0, target);
-    if (first.length < target) {
-      return { letters: pass1.letters, cluePaths: pass1.cluePaths, realized: first, usedFallback: true };
+    var attempts = (typeof opts.attempts === 'number' && opts.attempts > 0) ? Math.floor(opts.attempts) : DEFAULT_TWOPASS_ATTEMPTS;
+    // attempt 0's pass 1 is the canonical packing; it also seeds the fallback board.
+    var basePass1 = seedClueLettersBestEffort({ clues: clues, cols: cols, rows: rows, rng: rngFactory() });
+    var baseFirst = Object.keys(basePass1.cluePaths).slice(0, target);
+    for (var a = 0; a < attempts; a++) {
+      var pass1 = a === 0 ? basePass1
+        : seedClueLettersBestEffort({ clues: rotateWords(clues, a), cols: cols, rows: rows, rng: rngFactory() });
+      var first = Object.keys(pass1.cluePaths).slice(0, target);
+      if (first.length < target) continue; // this rotation couldn't even realize `target` — try next
+      var pass2 = seedClueLettersBestEffort({ clues: first, cols: cols, rows: rows, rng: rngFactory() });
+      var realized2 = Object.keys(pass2.cluePaths);
+      if (realized2.length === target) {
+        return { letters: pass2.letters, cluePaths: pass2.cluePaths, realized: realized2, usedFallback: false };
+      }
     }
-    var pass2 = seedClueLettersBestEffort({ clues: first, cols: cols, rows: rows, rng: rngFactory() });
-    var realized2 = Object.keys(pass2.cluePaths);
-    if (realized2.length === target) {
-      return { letters: pass2.letters, cluePaths: pass2.cluePaths, realized: realized2, usedFallback: false };
-    }
-    // pass 2 (tighter set, fresh rng) placed fewer than `target` — fall back to pass 1's board,
-    // which DID place all of `first` (that's how `first` was derived), just alongside extras.
-    return { letters: pass1.letters, cluePaths: pass1.cluePaths, realized: first, usedFallback: true };
+    // no attempt produced a clean `target`-word board — fall back to attempt 0's pass-1 board,
+    // which DID place all of `baseFirst` (that's how it was derived), just alongside extras.
+    return { letters: basePass1.letters, cluePaths: basePass1.cluePaths, realized: baseFirst, usedFallback: true };
   }
 
   // Re-stamp unfindable clues broken by play. For each unfound clue where isFindable(word)

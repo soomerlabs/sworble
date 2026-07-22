@@ -153,6 +153,39 @@ console.log('sworble-seed: seedClueLettersBestEffort passed');
   assert.strictEqual(out.usedFallback, true, 'a 2-word pool cannot realize a 6-word target');
   assert.strictEqual(out.realized.length, 2, 'realized reports what pass 1 actually placed (2)');
 }
+// two-pass SUBSET RETRY: when the canonical first-6 target set can't re-pack cleanly (pass 2
+// falls short), the seeder deterministically tries alternative 6-subsets of the pool (by
+// rotating the pool order into pass 1) until one packs — instead of surrendering to fallback.
+// This pool + seed realized only 5 under the single-attempt algorithm; retry lands a clean 6.
+// (Case mined from tests/seed-stress.js worst-case output — a genuinely hard all-6-letter pool.)
+{
+  const pool = ['cheesy','batboy','zocalo','fiends','venges','singer','mouldy','spline','fluffs','reward','rustic','blends'];
+  const rngFactory = () => Core.mulberry32(Core.hashSeed('board|9'));
+  const out = Seed.seedClueLettersTwoPass({ clues: pool, cols: 5, rows: 6, rngFactory, target: 6 });
+  assert.strictEqual(out.usedFallback, false, 'subset-retry rescues a pool the single attempt could not pack');
+  assert.strictEqual(out.realized.length, 6, 'retry lands exactly 6');
+  // the realized 6 are real pool words, spelled on their paths, and findable on the final board
+  const tiles = tilesFromLetters(out.letters, 5, 6);
+  for (const w of out.realized) {
+    assert.ok(pool.indexOf(w) >= 0, w + ' is one of the pool words');
+    assert.strictEqual(out.cluePaths[w].map(p => out.letters[p.r + ',' + p.c]).join(''), w, w + ' spelled on its path');
+    assert.ok(Solver.findWord(tiles, { word: w, expand, diag: true }), w + ' findable on the retried board');
+  }
+  // determinism: same seed -> identical retried board + realized set
+  const out2 = Seed.seedClueLettersTwoPass({ clues: pool, cols: 5, rows: 6, rngFactory, target: 6 });
+  assert.deepStrictEqual(out.realized, out2.realized, 'same seed -> same retried realized set');
+  assert.deepStrictEqual(out.cluePaths, out2.cluePaths, 'same seed -> same retried board');
+}
+// retry is opt-outable / bounded: attempts:1 restores the single-attempt behavior (no retry),
+// so the same hard pool falls back — proving attempt 0 is byte-identical to the old algorithm
+// and existing (already-passing) content days keep their exact boards.
+{
+  const pool = ['cheesy','batboy','zocalo','fiends','venges','singer','mouldy','spline','fluffs','reward','rustic','blends'];
+  const rngFactory = () => Core.mulberry32(Core.hashSeed('board|9'));
+  const out = Seed.seedClueLettersTwoPass({ clues: pool, cols: 5, rows: 6, rngFactory, target: 6, attempts: 1 });
+  assert.strictEqual(out.usedFallback, true, 'attempts:1 == old single-attempt behavior (this pool falls back)');
+  assert.strictEqual(out.realized.length, 5, 'single attempt realized only 5 here');
+}
 console.log('sworble-seed: seedClueLettersTwoPass passed');
 
 // reseedBroken: re-stamp unfindable clues
