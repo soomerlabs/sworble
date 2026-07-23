@@ -533,7 +533,9 @@ export default function HomeScreen() {
   // the collapsed FACE (frost + swipe-to-play) and the GAME crossfade as the
   // sheet travels — single-layer opacities, compositing-cheap
   const faceStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(sheetY.value, [closedY - 170, closedY - 50], [0, 1], Extrapolation.CLAMP),
+    // SHORT window (owner: "swipe up to start" was still hanging over the
+    // board's sworbl header mid-pull) — the face is gone within ~70px
+    opacity: interpolate(sheetY.value, [closedY - 90, closedY - 20], [0, 1], Extrapolation.CLAMP),
   }));
   // the band pair (aurora + PLAY tiles) fades in as ONE at boot
   const bandInStyle = useAnimatedStyle(() => ({

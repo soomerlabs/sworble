@@ -26,6 +26,7 @@ import { applyGuess } from '@/game/finale-logic';
 import { getClueAudit } from '@/game/dev-flags';
 import { loadSwaps, saveSwaps, applySwaps, STARVE_REFILLS, type SwapMap } from '@/game/clue-swaps';
 import { FlightGhosts, type FlightGhostT } from './flight-ghosts';
+import { BoardAura, type AuraState } from './board-aura';
 import { DevClueAudit, DevFlash } from './dev-clue-audit';
 import type { FinaleRestore } from './finale';
 
@@ -702,6 +703,16 @@ export function GameBoard({
     );
   }
 
+  // aura state, first match wins (handoff table): danger is clock-bound,
+  // charged is the finale's heat, calm is the default; aurora reserved for
+  // the finished board (the board unmounts to the result view today)
+  const auraState: AuraState =
+    !finale && typeof secsLeft === 'number' && secsLeft > 0 && secsLeft <= 12
+      ? 'danger'
+      : finale
+        ? 'charged'
+        : 'calm';
+
   return (
     <View style={{ alignItems: 'center' }}>
       {/* THE STEPPER (web hopperCard) — ABOVE the board; hosts the GUESS in the finale */}
@@ -728,6 +739,15 @@ export function GameBoard({
               boxShadow: `0 6px 0 ${gs.cardEdge}`,
             },
           ]}>
+        {/* BOARD AURA (owner handoff, Storm Riff 1d): state-hued glow behind
+            the grid — danger red at ≤12s, the finale's charged pink-gold,
+            calm blue-violet otherwise. First child = under everything. */}
+        <BoardAura
+          w={boardW + 24}
+          h={boardH + 24}
+          state={auraState}
+          boardBg={gs.card}
+        />
         {/* clip window: masks refills falling from above, PADDED 12px on ALL
             sides so nothing legitimate ever gets sliced — top: press-lift,
             bottom: the ledges (they extend below the grid), sides: the
