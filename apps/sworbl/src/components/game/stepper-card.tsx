@@ -239,7 +239,7 @@ export function StepperCard({ width, traceWord, verdict, sworb, countIn, gs = GA
                     ? { backgroundColor: pal.bg, boxShadow: `0 3px 0 ${pal.edge}` }
                     : isHint
                       ? styles.slotHint
-                      : styles.slotEmpty,
+                      : [styles.slotEmpty, { borderColor: gs.line }],
                 ]}>
                 <Text
                   style={[
