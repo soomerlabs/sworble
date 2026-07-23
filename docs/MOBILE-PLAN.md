@@ -54,6 +54,12 @@ PHASE-2 REQUIREMENTS extracted from the spike (binding):
 10. Judge boot speed only on Release builds (Debug+Metro is worst-case by construction).
 
 ## Phase 1 — monorepo + engine extraction (~week)
+> STARTED 2026-07-22. DEPLOY-SAFETY AMENDMENT: the frozen web app stays at the REPO ROOT
+> (GitHub Pages serves root; moving index.html would break the live URL) — "apps/web" is
+> the root, conceptually. packages/engine SEEDED (living copy + tests + index.d.ts;
+> root modules are the frozen fossil). apps/sworbl SCAFFOLDED (Expo SDK 57, TS, Router;
+> engine imported via workspace, tsc clean, web export verified; PHASE2-REQUIREMENTS.md
+> carries the 10 spike rules). Root `npm test` now also runs the engine package suite.
 packages/engine (sworble-core/seed/daily/status/flow/run/solver/store/net + tests, moved) ·
 apps/web (current game, FROZEN — stays deployed as the public validator during the rebuild) ·
 apps/sworbl (Expo, TypeScript, Expo Router). PORT NOTE: sworble-store gains an injectable
