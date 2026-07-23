@@ -34,7 +34,7 @@ import { PlaySheet, type PlaySheetHandle } from '@/components/play-sheet';
 import { PALETTE, INK, tileColorFor } from '@/game/palette';
 import { useTheme } from '@/game/theme';
 import { dealDaily } from '@/game/daily';
-import { loadDay, type DayState } from '@/game/persist';
+import { loadDay, saveSheetOpen, wasSheetOpen, type DayState } from '@/game/persist';
 import { standingsStub, rankFor } from '@/game/standings';
 import { haptic } from '@/game/haptics';
 
@@ -66,9 +66,22 @@ export default function HomeScreen() {
     ? { score: myScore, rank: rankFor(entries, myScore) }
     : null;
 
+  // ---- UI RESTORATION (owner): killed-in-background with the board open →
+  // relaunch OPENS the sheet again, paused (tap-to-resume cover). Decided
+  // SYNCHRONOUSLY before first render so the sheet never animates in and the
+  // arm effect never sees a fake dock edge. Next-day relaunch: wasSheetOpen
+  // discards the stale flag, and the day-keyed run snapshot can't load for
+  // the new day anyway — fresh home, new board.
+  const bootOpen = useMemo(() => {
+    if (!deal) return false;
+    if (!wasSheetOpen(deal.dayKey)) return false;
+    const d = loadDay(deal.dayKey);
+    return d.route === 'resume' || d.route === 'finale';
+  }, [deal]);
+
   // ---- THE SHEET: position rides the finger ----
-  const sheetY = useSharedValue(height); // height = closed, 0 = open
-  const [sheetOpen, setSheetOpen] = useState(false); // fully open → home drag off, round armed
+  const sheetY = useSharedValue(bootOpen ? 0 : height); // height = closed, 0 = open
+  const [sheetOpen, setSheetOpen] = useState(bootOpen); // fully open → home drag off, round armed
   const sheetRef = useRef<PlaySheetHandle>(null);
 
   // SELF-HEAL (hot-reload stranding): Reanimated PRESERVES shared values
@@ -80,7 +93,10 @@ export default function HomeScreen() {
     if (!sheetOpen) sheetY.value = height;
   }, [sheetOpen, height]);
 
-  const finishClose = useCallback(() => setSheetOpen(false), []);
+  const finishClose = useCallback(() => {
+    setSheetOpen(false);
+    saveSheetOpen(null); // a closed sheet must never restore
+  }, []);
   const closeSheet = useCallback(() => {
     sheetRef.current?.pauseForClose();
     // AUDIT BLOCKER #1: sheetOpen must flip false SYNCHRONOUSLY at close-start —
@@ -99,8 +115,9 @@ export default function HomeScreen() {
   // pure transform on the UI thread, nothing mounts mid-gesture.
   const markOpen = useCallback(() => {
     setSheetOpen(true);
+    if (deal) saveSheetOpen(deal.dayKey); // reclaim-proof: the sheet remembers
     haptic.soft(); // the dock beat — launching the game from the bottom
-  }, []);
+  }, [deal]);
   // a CONSUMED day is closed for business (owner): the dock is just the
   // countdown — the swipe doesn't react, the sheet never opens again
   const openDrag = useMemo(

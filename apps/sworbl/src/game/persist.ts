@@ -127,6 +127,27 @@ export function clearRun(dayKey: string): void {
   engine.store.remove(K.RUN_PREFIX + dayKey);
 }
 
+// ---- UI restoration: "the sheet was open when the OS reclaimed us" ----
+// Day-keyed on purpose: a flag from yesterday must never reopen a board —
+// the new day boots fresh and the stale flag is discarded at read time.
+const SHEET_OPEN_KEY = 'sworbl_rn_sheet_open';
+
+export function saveSheetOpen(dayKey: string | null): void {
+  if (dayKey) engine.store.setJSON(SHEET_OPEN_KEY, dayKey);
+  else engine.store.remove(SHEET_OPEN_KEY);
+}
+
+// returns true only if the flag belongs to TODAY; stale flags self-clean
+export function wasSheetOpen(dayKey: string): boolean {
+  const stored = engine.store.getJSON(SHEET_OPEN_KEY, null) as string | null;
+  if (!stored) return false;
+  if (stored !== dayKey) {
+    engine.store.remove(SHEET_OPEN_KEY); // yesterday's flag — dead on arrival
+    return false;
+  }
+  return true;
+}
+
 // DEV: wipe every per-day key for a day — "restart today's contest" without
 // reinstalling. The K registry is the single source of per-day prefixes.
 export function resetDay(dayKey: string): void {

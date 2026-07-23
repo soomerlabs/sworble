@@ -85,7 +85,10 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     setCountInMounted(true);
     setPhase('countin');
   }, []);
-  const prevActive = useRef(false);
+  // seeded from the INITIAL prop: mounting already-active (state restoration
+  // after an OS reclaim) is NOT a dock edge — the round stays paused behind
+  // the tap-to-resume cover instead of auto-counting-in on relaunch
+  const prevActive = useRef(active);
   const prevAwake = useRef(true);
   useEffect(() => {
     const docked = active && !prevActive.current;

@@ -4,7 +4,8 @@
 import assert from 'assert';
 import engine from '@sworbl/engine';
 import {
-  loadDay, saveProgress, finishDay, saveRun, loadRun, clearRun, type RunSnap,
+  loadDay, saveProgress, finishDay, saveRun, loadRun, clearRun, saveSheetOpen,
+  wasSheetOpen, type RunSnap,
 } from '../src/game/persist';
 
 const day = '2099-01-01';
@@ -58,5 +59,14 @@ engine.store.setJSON(engine.store.K.RUN_PREFIX + day, { client: 'web', v: 1, day
 assert.strictEqual(loadRun(day), null, 'foreign-client snapshot rejected');
 engine.store.setJSON(engine.store.K.RUN_PREFIX + day, snap({ tiles: [] }));
 assert.strictEqual(loadRun(day), null, 'tile-less snapshot rejected');
+
+// ---- sheet-open restoration flag: day-keyed, stale flags self-clean ----
+saveSheetOpen(day);
+assert.strictEqual(wasSheetOpen(day), true, 'same-day flag restores the sheet');
+assert.strictEqual(wasSheetOpen('2099-01-02'), false, 'next-day flag NEVER restores');
+assert.strictEqual(wasSheetOpen(day), false, 'stale flag was discarded at read (self-clean)');
+saveSheetOpen(day);
+saveSheetOpen(null);
+assert.strictEqual(wasSheetOpen(day), false, 'cleared flag stays cleared');
 
 console.log('persist: all round-trip + routing tests passed');
