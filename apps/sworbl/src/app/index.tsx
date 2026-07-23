@@ -34,7 +34,7 @@ import { Floaters } from '@/components/home/floaters';
 import { CountdownDock } from '@/components/home/countdown-dock';
 import { HeroWord, twistLabel } from '@/components/home/hero-word';
 import { StandingsSection } from '@/components/home/standings-section';
-import { SheetWash, StormCrest } from '@/components/home/sheet-weather';
+import { StormCrest } from '@/components/home/sheet-weather';
 import {
   OPEN_SPRING, PARK_SPRING, DOCK_H, ASSIST_RISE, BOOT_MS, bootWindow,
 } from '@/components/home/home-motion';
@@ -672,10 +672,8 @@ export default function HomeScreen() {
                 closeGesture={closeDrag}
               />
             </Animated.View>
-            <SheetWash
-              sheetY={sheetY} sGlow={sGlow} sBoot={sBoot} sReveal={sReveal}
-              closedY={closedY} width={width} peekH={peekH}
-            />
+            {/* (the flat color wash was owner-removed — the aurora crest now
+                STRETCHES over the board itself: one weather, one system) */}
             {/* the COLLAPSED FACE: swipe-to-play/countdown */}
             <Animated.View
               pointerEvents="none"

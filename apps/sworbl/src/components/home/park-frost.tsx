@@ -12,6 +12,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
 
 export function ParkFrost({ mode }: { mode: 'light' | 'dark' }) {
+  // ULTRA-THIN material, not the plain dark tint (owner: "hard black line"
+  // at the screen's bottom) — plain 'dark' paints a near-black wash that
+  // buried the aurora exactly where the frost mask peaks; the thin material
+  // BLURS without painting, so the glow stays lit under the dissolve
+  const tint = mode === 'dark' ? 'systemUltraThinMaterialDark' : 'systemUltraThinMaterialLight';
   return (
     <>
       <MaskedView
@@ -23,7 +28,7 @@ export function ParkFrost({ mode }: { mode: 'light' | 'dark' }) {
             style={StyleSheet.absoluteFill}
           />
         }>
-        <BlurView intensity={15} tint={mode} style={StyleSheet.absoluteFill} />
+        <BlurView intensity={15} tint={tint} style={StyleSheet.absoluteFill} />
       </MaskedView>
       <MaskedView
         style={StyleSheet.absoluteFill}
@@ -34,7 +39,7 @@ export function ParkFrost({ mode }: { mode: 'light' | 'dark' }) {
             style={StyleSheet.absoluteFill}
           />
         }>
-        <BlurView intensity={34} tint={mode} style={StyleSheet.absoluteFill} />
+        <BlurView intensity={28} tint={tint} style={StyleSheet.absoluteFill} />
       </MaskedView>
     </>
   );
