@@ -6,7 +6,7 @@
 //   • Structure: OUTER view carries the layout `exiting` (the morph); INNER
 //     carries animated transforms — Reanimated forbids both on one node.
 import React, { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -239,11 +239,14 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
           ]}
         />
         <Animated.View
-          style={[
-            styles.face,
-            faceStyle,
-            { width: size, height: size, borderRadius: rad, boxShadow: gs.tileBevel },
-          ]}>
+          style={[styles.face, faceStyle, { width: size, height: size, borderRadius: rad }]}>
+          {/* bevel on its OWN static layer — inset shadows on the color-
+              animated face forced per-frame shadow recompute (the wave-no
+              hesitation, owner: "jenk!") */}
+          <View
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, { borderRadius: rad, boxShadow: gs.tileBevel }]}
+          />
           <Animated.Text
             style={[
               styles.letter,
