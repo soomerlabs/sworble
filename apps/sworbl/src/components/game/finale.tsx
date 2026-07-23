@@ -6,13 +6,15 @@
 //     top, committed rows reveal their colors block-by-block, keys rise
 //     bottom-up on the morph
 // The ENGINE still decides everything (applyGuess/nextSlots/scoreGuess).
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform, useWindowDimensions } from 'react-native';
-import Animated, { ZoomIn, FadeIn, SlideInUp, SlideInDown } from 'react-native-reanimated';
+import Animated, { ZoomIn, FadeIn, SlideInUp, SlideInDown, runOnJS } from 'react-native-reanimated';
+import { Gesture, GestureDetector, type PanGesture } from 'react-native-gesture-handler';
 import engine from '@sworbl/engine';
 import { INK, MONO_DARK, MONO_INK } from '@/game/palette';
 import { haptic } from '@/game/haptics';
-import { applyGuess } from '@/game/finale-logic';
+import { applyGuess, decodeSwipe } from '@/game/finale-logic';
+import { dict, starterWords } from '@/game/dict';
 import { ClueFan } from './clue-fan';
 
 const C = {
@@ -44,6 +46,7 @@ interface Props {
   restore?: FinaleRestore;
   onProgress?: (s: FinaleRestore) => void;
   onDone: (r: FinaleResult) => void;
+  gestureRef?: React.MutableRefObject<PanGesture | undefined>; // close-drag yields to the glide
 }
 
 // keyboard KEYS (owner-tuned): LETTERS are flat, quiet keys; ENTER and DELETE
@@ -107,7 +110,7 @@ function Key({
   );
 }
 
-export function Finale({ entry, clues, found, size, restore, onProgress, onDone }: Props) {
+export function Finale({ entry, clues, found, size, restore, onProgress, onDone, gestureRef }: Props) {
   const { width } = useWindowDimensions();
   const foundCount = found.length;
   const clueTotal = clues.length;
@@ -210,6 +213,77 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone 
   const keyH = Math.round(keyW * 1.75); // taller still — the keyboard OWNS the bottom
   const wideW = Math.floor(keyW * 1.5);
 
+  // ---- THE GLIDE (swipe-to-guess): trace a word across the keys; the pure
+  // decoder (finale-logic.decodeSwipe, test-pinned) turns the glide into a
+  // candidate that honors length + locked greens; commons win ties ----
+  const seqRef = useRef<string[]>([]);
+  const rowStride = keyH + 4 + 10; // key height + ledge + row gap
+  const keyAt = useCallback(
+    (x: number, y: number): string | null => {
+      const row = Math.floor(y / rowStride);
+      if (row < 0 || row > 2) return null;
+      const rows = ['qwertyuiop', 'asdfghjkl', '\u232bzxcvbnm\u23ce'];
+      const chars = rows[row];
+      const widths = [...chars].map((c) => (c === '\u232b' || c === '\u23ce' ? wideW : keyW));
+      const totalW = widths.reduce((a, b) => a + b, 0) + (chars.length - 1) * keyGap;
+      let cx = (width - totalW) / 2;
+      for (let i = 0; i < chars.length; i++) {
+        if (x >= cx && x < cx + widths[i]) {
+          const c = chars[i];
+          return c === '\u232b' || c === '\u23ce' ? null : c;
+        }
+        cx += widths[i] + keyGap;
+      }
+      return null;
+    },
+    [width, keyW, wideW, keyGap, rowStride]
+  );
+  const glideCollect = useCallback(
+    (x: number, y: number, fresh: boolean) => {
+      if (fresh) seqRef.current = [];
+      const k = keyAt(x, y);
+      if (!k) return;
+      const seq = seqRef.current;
+      if (seq[seq.length - 1] !== k) {
+        seq.push(k);
+        haptic.soft();
+      }
+    },
+    [keyAt]
+  );
+  const glideEnd = useCallback(() => {
+    const seq = seqRef.current;
+    seqRef.current = [];
+    if (locked || seq.length < 3) return;
+    const greens = colors.map((c, i) => (c === 'green' ? slots[i] : null));
+    const w = decodeSwipe({ seq, len, greens, words: dict(), commons: starterWords() });
+    if (w) {
+      setSlots([...w]);
+      setColors(colors.map((c) => (c === 'green' ? 'green' : null)));
+      haptic.good();
+    } else {
+      haptic.bad();
+    }
+  }, [locked, colors, slots, len]);
+  const glide = useMemo(() => {
+    const g = Gesture.Pan()
+      .minDistance(16) // taps stay taps
+      .onStart((e) => {
+        'worklet';
+        runOnJS(glideCollect)(e.x, e.y, true);
+      })
+      .onUpdate((e) => {
+        'worklet';
+        runOnJS(glideCollect)(e.x, e.y, false);
+      })
+      .onEnd(() => {
+        'worklet';
+        runOnJS(glideEnd)();
+      });
+    if (gestureRef) g.withRef(gestureRef);
+    return g;
+  }, [glideCollect, glideEnd, gestureRef]);
+
   return (
     <Animated.View entering={E(FadeIn.duration(220).delay(D(120)))} style={styles.wrap}>
       {/* GUESSES — the top of the screen, attempts stacking downward */}
@@ -235,13 +309,15 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone 
         </Animated.View>
       </View>
 
-      {/* your intel, mid-screen */}
-      <Animated.View entering={E(FadeIn.delay(D(600)))}>
-        <ClueFan clues={clues} found={found} />
-      </Animated.View>
+      {/* bottom group: the fan docks ON TOP of the keyboard (owner) */}
+      <View>
+        <Animated.View entering={E(FadeIn.delay(D(600)))} style={styles.fanDock}>
+          <ClueFan clues={clues} found={found} />
+        </Animated.View>
 
-      {/* THE KEYBOARD — branded mono blocks, big, bottom, rising on the morph */}
-      <View style={[styles.kb, { paddingHorizontal: kbPad }]}>
+        {/* THE KEYBOARD — glide-enabled: trace a word across the keys */}
+        <GestureDetector gesture={glide}>
+        <View style={[styles.kb, { paddingHorizontal: kbPad }]}>
         {KEY_ROWS.map((krow, ki) => (
           <Animated.View
             key={ki}
@@ -263,6 +339,8 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone 
             })}
           </Animated.View>
         ))}
+        </View>
+        </GestureDetector>
       </View>
     </Animated.View>
   );
@@ -279,6 +357,7 @@ const styles = StyleSheet.create({
   rowsArea: {
     alignItems: 'center',
     gap: 7,
+    paddingTop: 34, // owner: the guess blocks sat too high
   },
   row: {
     flexDirection: 'row',
@@ -294,6 +373,9 @@ const styles = StyleSheet.create({
   pips: { flexDirection: 'row', gap: 5, marginTop: 4 },
   pip: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#2a2446' },
   pipUsed: { backgroundColor: '#ff6b5a' },
+  fanDock: {
+    marginBottom: 4,
+  },
   kb: {
     gap: 10,
     alignItems: 'center',

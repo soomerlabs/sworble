@@ -59,3 +59,54 @@ export function applyGuess(args: {
     colors: rowColors.map((c) => (c === 'gray' ? null : c)),
   };
 }
+
+// ---- SWIPE-TO-GUESS (the finale's glide keyboard) ----
+// Decode a glide over the keys into a guess candidate. The finale stacks the
+// deck: we KNOW the word length and the locked greens, so the candidate space
+// is tiny compared to real swipe-typing. Rules:
+//   • candidate length = answer length, first/last letters = first/last keys
+//   • the word (doubles collapsed — a glide can't dwell twice) must appear as
+//     a SUBSEQUENCE of the glided key sequence
+//   • locked greens must match their positions
+//   • rank: shortest detour (seq length − word length), commons win ties
+export function decodeSwipe(args: {
+  seq: string[]; // keys crossed, in order, deduped consecutively (lowercase)
+  len: number;
+  greens: (string | null)[]; // locked letters by position (null = free)
+  words: Iterable<string>; // the dictionary
+  commons?: Set<string>; // starter list — tie-break toward human words
+}): string | null {
+  const { seq, len, greens, words, commons } = args;
+  if (seq.length < 2) return null;
+  const first = seq[0];
+  const last = seq[seq.length - 1];
+
+  const collapse = (w: string) => w.replace(/(.)\1+/g, '$1');
+  const isSubseq = (needle: string, hay: string[]) => {
+    let i = 0;
+    for (const ch of hay) {
+      if (ch === needle[i]) i++;
+      if (i === needle.length) return true;
+    }
+    return i === needle.length;
+  };
+
+  let best: string | null = null;
+  let bestScore = Infinity;
+  for (const w of words) {
+    if (w.length !== len) continue;
+    if (w[0] !== first || w[len - 1] !== last) continue;
+    let ok = true;
+    for (let i = 0; i < len; i++) {
+      if (greens[i] && w[i] !== greens[i]) { ok = false; break; }
+    }
+    if (!ok) continue;
+    if (!isSubseq(collapse(w), seq)) continue;
+    const score = (seq.length - len) - (commons?.has(w) ? 100 : 0);
+    if (score < bestScore) {
+      bestScore = score;
+      best = w;
+    }
+  }
+  return best;
+}

@@ -21,6 +21,18 @@ export function isFullDictionary(): boolean {
   return fullLoaded;
 }
 
+// the starter list as its own set (independent of the full-dict swap) — the
+// glide decoder tie-breaks toward these human words
+let starterCache: Set<string> | null = null;
+export function starterWords(): Set<string> {
+  if (!starterCache) {
+    starterCache = new Set(
+      engine.words.FALLBACK_WORDS.split(/\s+/).filter((w: string) => w.length >= 3)
+    );
+  }
+  return starterCache;
+}
+
 // pure upgrade: feed the raw dictionary text, the validation set swaps to the
 // full list (starter words are a subset — nothing ever becomes invalid).
 // Exposed pure so tests can feed the real file without asset machinery.

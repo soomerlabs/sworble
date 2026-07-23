@@ -62,3 +62,40 @@ for (let i = 0; i < 6; i++) {
 assert.strictEqual(used, 5, 'five misses recorded before the lockout guess');
 
 console.log('finale-logic: caller contract pinned (miss carry, nextSlots chain, solve, lockout)');
+
+// ---- swipe decoder ----
+import { decodeSwipe } from '../src/game/finale-logic';
+{
+  const words = ['bloom', 'blooms', 'broom', 'begum', 'blame', 'gloom'];
+  // glide b→l→o→m crossing neighbors: doubles collapse, subsequence holds
+  const seq = ['b', 'g', 'h', 'j', 'k', 'l', 'o', 'i', 'o', 'k', 'm'];
+  assert.strictEqual(
+    decodeSwipe({ seq, len: 5, greens: [null, null, null, null, null], words }),
+    'bloom',
+    'glide decodes bloom (double-o collapsed)'
+  );
+  // greens constrain: locked g at 0 rejects bloom-shaped candidates
+  assert.strictEqual(
+    decodeSwipe({ seq: ['g', 'h', 'j', 'k', 'l', 'o', 'i', 'o', 'k', 'm'], len: 5, greens: ['g', null, null, null, null], words }),
+    'gloom',
+    'greens steer the decode'
+  );
+  // commons tie-break: same-shaped rivals resolve toward the starter list
+  const rivals = ['blast', 'blest'];
+  assert.strictEqual(
+    decodeSwipe({
+      seq: ['b', 'l', 'a', 'e', 's', 't'], len: 5,
+      greens: [null, null, null, null, null],
+      words: rivals, commons: new Set(['blast']),
+    }),
+    'blast',
+    'commons win ties'
+  );
+  // nothing plausible → null (no false fills)
+  assert.strictEqual(
+    decodeSwipe({ seq: ['q', 'x'], len: 5, greens: [null, null, null, null, null], words }),
+    null,
+    'garbage glide decodes to nothing'
+  );
+}
+console.log('finale-logic: swipe decoder pinned');

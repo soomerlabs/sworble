@@ -59,6 +59,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   // downward trace on tiles can never slide the sheet (owner: close from the
   // whole screen, not just the top bar)
   const boardPanRef = useRef<PanGesture | undefined>(undefined);
+  const glideRef = useRef<PanGesture | undefined>(undefined); // finale keyboard glide
 
   const deal = useMemo(() => dealDaily(), []);
   const boot = useMemo(() => (deal ? loadDay(deal.dayKey) : null), [deal]);
@@ -260,9 +261,12 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
 
   const fullClose = useMemo(() => {
     const g = closeGesture as PanGesture;
-    return boardPanRef.current || phase === 'live'
-      ? g.requireExternalGestureToFail(boardPanRef as React.MutableRefObject<PanGesture>)
-      : g;
+    // yield to the board's trace AND the finale keyboard's glide — a downward
+    // stroke on tiles or keys must never slide the sheet away
+    return g.requireExternalGestureToFail(
+      boardPanRef as React.MutableRefObject<PanGesture>,
+      glideRef as React.MutableRefObject<PanGesture>
+    );
   }, [closeGesture, phase]);
 
   return (
@@ -350,6 +354,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
               restore={finaleRestore.current}
               onProgress={onFinaleProgress}
               onDone={onFinaleDone}
+              gestureRef={glideRef}
             />
           )}
           {phase === 'done' && deal && result && (
