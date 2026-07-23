@@ -50,31 +50,36 @@ function useOrbit(dur: number) {
   return t;
 }
 
-function DriftBlob({ b, width, height }: { b: Blob; width: number; height: number }) {
+function DriftBlob({ b, i, width, height, zoom }: {
+  b: Blob; i: number; width: number; height: number; zoom: number;
+}) {
   const t = useOrbit(b.dur);
-  const bx = (b.xPct / 100) * width;
-  const by = height - b.s - b.bot; // negative bot pushes past the bottom edge
+  const s = b.s * zoom; // band duty (owner): BIGGER blocks
+  const bx = (b.xPct / 100) * width - s / 2 + b.s / 2;
+  // CENTERED in the band, gently varied per blob — not floor-stacked
+  const by = height / 2 - s / 2 + ((i % 3) - 1) * 10;
+  const drift = Math.max(1, zoom * 0.9); // motion reads at band scale
   const transform = useDerivedValue(() => {
     const k = t.value;
     const lerp = (a: number, z: number) => a + (z - a) * k;
     return [
-      { translateX: bx + lerp(b.f[0], b.t[0]) },
-      { translateY: by + lerp(b.f[1], b.t[1]) },
+      { translateX: bx + lerp(b.f[0], b.t[0]) * drift },
+      { translateY: by + lerp(b.f[1], b.t[1]) * drift },
       { scale: lerp(b.f[2], b.t[2]) },
     ];
   });
   return (
-    <Group transform={transform} origin={vec(b.s / 2, b.s / 2)}>
-      <RoundedRect x={0} y={0} width={b.s} height={b.s} r={22} color={b.c} />
+    <Group transform={transform} origin={vec(s / 2, s / 2)}>
+      <RoundedRect x={0} y={0} width={s} height={s} r={22 * Math.max(1, zoom * 0.8)} color={b.c} />
     </Group>
   );
 }
 
-function BlobField({ width, height }: { width: number; height: number }) {
+function BlobField({ width, height, zoom }: { width: number; height: number; zoom: number }) {
   return (
     <>
       {BLOBS.map((b, i) => (
-        <DriftBlob key={i} b={b} width={width} height={height} />
+        <DriftBlob key={i} b={b} i={i} width={width} height={height} zoom={zoom} />
       ))}
     </>
   );
@@ -89,14 +94,14 @@ export default function Storm({ width, height = 260, zoom = 1 }: { width: number
     <View pointerEvents="none" style={[styles.wrap, { width, height }]}>
       <Canvas style={{ width, height }}>
         <Group layer={<Paint />}>
-          {/* stormHaze: purple radial glow, center-bottom, pulsing 0.4↔0.62 */}
+          {/* stormHaze: purple radial glow, mid-band, pulsing 0.4↔0.62 */}
           <Group opacity={hazeOpacity}>
-            <Circle cx={cx} cy={height - 25} r={110}>
+            <Circle cx={cx} cy={height / 2} r={width * 0.42}>
               <RadialGradient
-                c={vec(cx, height - 25)}
-                r={110}
-                colors={['rgba(167,139,250,0.22)', 'rgba(167,139,250,0)']}
-                positions={[0, 0.74]}
+                c={vec(cx, height / 2)}
+                r={width * 0.42}
+                colors={['rgba(167,139,250,0.2)', 'rgba(167,139,250,0)']}
+                positions={[0, 0.8]}
               />
             </Circle>
           </Group>
@@ -104,19 +109,25 @@ export default function Storm({ width, height = 260, zoom = 1 }: { width: number
           {/* .stormBlockwrap: the whole goo composite inside blur(12) */}
           <Group layer={<Paint><Blur blur={12} /></Paint>}>
             {/* feBlend: sharp source blobs UNDER the goo'd copy */}
-            <BlobField width={width} height={height} />
+            <BlobField width={width} height={height} zoom={zoom} />
             <Group layer={<Paint><Blur blur={11} /><ColorMatrix matrix={GOO} /></Paint>}>
-              <BlobField width={width} height={height} />
+              <BlobField width={width} height={height} zoom={zoom} />
             </Group>
           </Group>
 
-          {/* .stormAura radial mask: solid 34%, half 66%, gone 88% from 50%/110% */}
+          {/* SOFT VERTICAL FEATHER (owner: the old bottom-anchored mask cut a
+              hard line at the canvas edge) — both edges melt to nothing */}
           <Rect x={0} y={0} width={width} height={height} blendMode="dstIn">
-            <RadialGradient
-              c={vec(cx, height * 1.1)}
-              r={Math.max(width * 0.675, height * 0.96)}
-              colors={['rgba(0,0,0,1)', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0)']}
-              positions={[0.34, 0.66, 0.88]}
+            <LinearGradient
+              start={vec(0, 0)}
+              end={vec(0, height)}
+              colors={[
+                'rgba(0,0,0,0)',
+                'rgba(0,0,0,1)',
+                'rgba(0,0,0,1)',
+                'rgba(0,0,0,0)',
+              ]}
+              positions={[0, 0.22, 0.78, 1]}
             />
           </Rect>
         </Group>
