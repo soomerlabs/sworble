@@ -35,7 +35,7 @@ export function StormCrest({ sheetY, sGlow, sBoot, sReveal, closedY, width, peek
   const stretchTo = (closedY + peekH * 1.4) / stormH;
   const stormRideStyle = useAnimatedStyle(() => {
     const travel = interpolate(sheetY.value, [0, closedY], [1, 0], Extrapolation.CLAMP);
-    const calm = 0.45 + sGlow.value * 0.55; // parked: muted → armed: ignited
+    const calm = 0.68 + sGlow.value * 0.32; // parked: PRESENT → armed: ignited (0.45 read washed out, owner)
     const burn = interpolate(travel, [0, 0.3], [calm, 1], Extrapolation.CLAMP);
     return {
       opacity: bootWindow(sBoot.value, 0.45, 0.55) * burn * (1 - sReveal.value),

@@ -31,15 +31,16 @@ const CURTAINS = [
 // THE GOO BLOBS — fossil .stormB1-B6 geometry ×1.4, y as canvas fraction
 // (the band's visible zone on the tall crest canvas); f/t = the 0%/50%
 // orbit keyframes (dx, dy, scale), periods 15-22s
-// risen into the PLAY tiles' zone — the color washes BEHIND the door,
-// not below it (owner) — and a touch bigger
+// risen into the PLAY tiles' zone (owner) — and each blob is a REAL
+// SWORBL TILE now: candy face on its darker ledge (the board's own
+// construction), edges from the brand palette
 const BLOBS = [
-  { x: 0.04, y: 0.58, s: 68, c: '#A78BFA', dur: 17000, f: [-6, 7, 0.9], t: [14, -13, 1.02] },
-  { x: 0.21, y: 0.54, s: 84, c: '#5BC8F5', dur: 19000, f: [7, 6, 1.02], t: [-20, -27, 0.93] },
-  { x: 0.4, y: 0.5, s: 104, c: '#5FD6A8', dur: 15000, f: [-11, 8, 0.94], t: [14, -45, 1.12] },
-  { x: 0.57, y: 0.51, s: 99, c: '#F58FB8', dur: 21000, f: [11, 7, 1.05], t: [-14, -41, 0.9] },
-  { x: 0.75, y: 0.54, s: 84, c: '#F5B84A', dur: 18000, f: [-7, 6, 0.96], t: [21, -25, 1.06] },
-  { x: 0.9, y: 0.58, s: 68, c: '#F58A66', dur: 22000, f: [6, 7, 0.9], t: [-14, -13, 1.02] },
+  { x: 0.04, y: 0.58, s: 68, c: '#A78BFA', e: '#7C5CE0', dur: 17000, f: [-6, 7, 0.9], t: [14, -13, 1.02] },
+  { x: 0.21, y: 0.54, s: 84, c: '#5BC8F5', e: '#2E9FD0', dur: 19000, f: [7, 6, 1.02], t: [-20, -27, 0.93] },
+  { x: 0.4, y: 0.5, s: 104, c: '#5FD6A8', e: '#38AD7F', dur: 15000, f: [-11, 8, 0.94], t: [14, -45, 1.12] },
+  { x: 0.57, y: 0.51, s: 99, c: '#F58FB8', e: '#D06090', dur: 21000, f: [11, 7, 1.05], t: [-14, -41, 0.9] },
+  { x: 0.75, y: 0.54, s: 84, c: '#F5B84A', e: '#CE9022', dur: 18000, f: [-7, 6, 0.96], t: [21, -25, 1.06] },
+  { x: 0.9, y: 0.58, s: 68, c: '#F58A66', e: '#C65F3E', dur: 22000, f: [6, 7, 0.9], t: [-14, -13, 1.02] },
 ] as const;
 
 // the fossil #stormGoo alpha snap: blur first, then alpha ×30 −14 — soft
@@ -115,9 +116,13 @@ function GooBlob({ b, width, height }: { b: (typeof BLOBS)[number]; width: numbe
       { scale: lerp(b.f[2], b.t[2]) },
     ];
   });
+  const r = Math.round(b.s * 0.26);
+  const lift = Math.max(4, Math.round(b.s * 0.09));
   return (
     <Group transform={transform} origin={vec(b.s / 2, b.s / 2)}>
-      <RoundedRect x={0} y={0} width={b.s} height={b.s} r={Math.round(b.s * 0.26)} color={b.c} />
+      {/* the LEDGE beneath, then the face — the board's own construction */}
+      <RoundedRect x={0} y={lift} width={b.s} height={b.s} r={r} color={b.e} />
+      <RoundedRect x={0} y={0} width={b.s} height={b.s} r={r} color={b.c} />
     </Group>
   );
 }
@@ -148,7 +153,7 @@ export default function Storm({ width, height = 260 }: {
         <Group layer={<Paint />} opacity={glowOpacity}>
           {/* the BED, dimmed — prism sweep + two faint veils + warm core;
               at full strength it washed the blobs out (owner, v3) */}
-          <Group layer={<Paint><Blur blur={24} /></Paint>} opacity={0.62}>
+          <Group layer={<Paint><Blur blur={24} /></Paint>} opacity={0.3}>
             <Group transform={sweepX}>
               <Rect x={0} y={height * 0.46} width={W} height={height * 0.66}>
                 <LinearGradient
@@ -165,7 +170,7 @@ export default function Storm({ width, height = 260 }: {
               <RadialGradient
                 c={vec(width / 2, height * 0.9)}
                 r={width * 0.5}
-                colors={['rgba(167,139,250,0.35)', 'rgba(167,139,250,0)']}
+                colors={['rgba(167,139,250,0.55)', 'rgba(167,139,250,0)']}
                 positions={[0, 0.85]}
               />
             </Circle>
