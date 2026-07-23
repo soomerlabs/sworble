@@ -28,7 +28,7 @@ import { TUNING } from '@/game/tuning';
 import { haptic } from '@/game/haptics';
 import { toast } from '@/components/toast';
 
-const LB_MODES: LbFieldMode[] = ['full', '2', '1', '0'];
+const LB_MODES: LbFieldMode[] = ['live', 'full', '2', '1', '0'];
 
 // module-state reads during render are INVISIBLE to the React Compiler —
 // it caches the JSX and the row never updates (owner: toggles stuck on

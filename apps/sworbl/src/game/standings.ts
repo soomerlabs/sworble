@@ -18,21 +18,23 @@ const POOL = [
   'OTTO', 'MAVE', 'CLEO', 'IGGY', 'ROON', 'VESP', 'BODE', 'NELL',
 ];
 
-// DEV: "LB FIELD" knob (web settings > DEVELOPER port) — truncates the stub
-// field to eyeball empty/partial standings states. Session-persistent in dev
-// storage; release builds always get the full field.
+// DEV: "LB FIELD" knob — the FAKE seeded field is a test fixture now, not a
+// default (owner: cold launch flashed stub names before the real data). Mode
+// 'live' (the default, and ALWAYS in release) returns an empty field so the
+// UI shows its honest skeleton until the backend answers; the other modes
+// summon the fake field at full/2/1/0 size for eyeballing states.
 // __DEV__ is a bundler global — absent under the Node test runner
 const IS_DEV = typeof __DEV__ !== 'undefined' && __DEV__;
 const DEV_LB_KEY = 'sworbl_rn_dev_lb';
-export type LbFieldMode = 'full' | '2' | '1' | '0';
+export type LbFieldMode = 'live' | 'full' | '2' | '1' | '0';
 
 let lbModeMem: LbFieldMode | null = null; // memory-first (see dev-flags.ts)
 
 export function getLbFieldMode(): LbFieldMode {
-  if (!IS_DEV) return 'full';
+  if (!IS_DEV) return 'live';
   if (lbModeMem === null) {
-    const v = engine.store.getJSON(DEV_LB_KEY, 'full');
-    lbModeMem = v === '0' || v === '1' || v === '2' ? v : 'full';
+    const v = engine.store.getJSON(DEV_LB_KEY, 'live');
+    lbModeMem = v === '0' || v === '1' || v === '2' || v === 'full' ? v : 'live';
   }
   return lbModeMem;
 }
@@ -45,10 +47,12 @@ export function setLbFieldMode(m: LbFieldMode): void {
 
 function capField(entries: LbEntry[]): LbEntry[] {
   const m = getLbFieldMode();
+  if (m === 'live') return [];
   return m === 'full' ? entries : entries.slice(0, parseInt(m, 10));
 }
 
 export function standingsStub(dayKey: string): LbEntry[] {
+  if (getLbFieldMode() === 'live') return []; // honest skeleton until data
   const seed = engine.core.hashSeed('lb' + dayKey);
   const rnd = engine.core.mulberry32(seed >>> 0);
   const pool = [...POOL];
@@ -73,6 +77,7 @@ export function standingsStub(dayKey: string): LbEntry[] {
 // ALL-TIME stub board — one stable seeded field (not day-keyed) with
 // season-scale scores; replaced by the real aggregate when Supabase lands
 export function standingsAllTime(): LbEntry[] {
+  if (getLbFieldMode() === 'live') return []; // honest skeleton until data
   const rnd = engine.core.mulberry32(engine.core.hashSeed('lbAllTime') >>> 0);
   const pool = [...POOL];
   for (let i = pool.length - 1; i > 0; i--) {

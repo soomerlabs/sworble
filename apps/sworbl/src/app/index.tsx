@@ -31,6 +31,7 @@ import Animated, {
 
 import Storm from '@/components/game/storm';
 import { Floaters } from '@/components/home/floaters';
+import { Arrive } from '@/components/arrive';
 import { CountdownDock } from '@/components/home/countdown-dock';
 import { playMetrics } from '@/components/home/trace-play';
 import { AppBar } from '@/components/home/app-bar';
@@ -45,7 +46,7 @@ import { dealDaily, getDevDay } from '@/game/daily';
 import { getDiagnostics } from '@/game/dev-flags';
 import { loadDay, saveSheetOpen, wasSheetOpen, getResetNonce, loadDayWords, type DayState } from '@/game/persist';
 import { standingsStub, rankFor, type LbEntry } from '@/game/standings';
-import { fetchDaily, type RemoteField } from '@/net/standings-remote';
+import { fetchDaily, readCachedField, type RemoteField } from '@/net/standings-remote';
 import { loadStats, streakDays } from '@/game/stats';
 import { buildShareText } from '@/game/share';
 import { StandingsList, type StandingRow } from '@/components/home/standings-list';
@@ -137,17 +138,6 @@ const ASSIST_RISE = 0; // assist rise retired (owner) — constant kept for the 
 // all") — a hand-flipped constant is deterministic.
 const USE_MASKED_FROST = false;
 
-// the storm's six blob hues at their xPct anchors (storm.native BLOBS) —
-// the pending beacon's spill picks up the SAME color at the SAME spot
-const BEACON_HUES = [
-  { x: 1, c: 'rgba(167,139,250,0.5)' }, // violet
-  { x: 19, c: 'rgba(91,200,245,0.5)' }, // blue
-  { x: 38, c: 'rgba(95,214,168,0.5)' }, // green
-  { x: 55, c: 'rgba(245,143,184,0.5)' }, // pink
-  { x: 74, c: 'rgba(245,184,74,0.5)' }, // gold
-  { x: 91, c: 'rgba(245,138,102,0.5)' }, // orange
-] as const;
-
 // APPLE LIQUID GLASS (owner ask): iOS 26's real UIGlassEffect for the band —
 // checked ONCE at module load (native availability can't change mid-run).
 // Anywhere it's absent (older iOS, Android, web) the BlurView frost stands.
@@ -224,9 +214,13 @@ export default function HomeScreen() {
   const solved = played && !!day?.sworb?.solved;
   const inProgress = day?.route === 'resume' || day?.route === 'finale';
 
-  // standings: stub renders NOW; the real field swaps in when the backend
-  // answers (the fossil's loadHomeLb pattern — never a spinner)
-  const [remote, setRemote] = useState<RemoteField | null>(null);
+  // standings, LIVE-FIRST (owner: cold launch flashed fake names): the
+  // cached real field renders instantly; the fresh answer swaps in silently.
+  // First-ever launch has no cache → the honest ghost skeleton, and the
+  // field FADES IN when data arrives (never a spinner, never a stub).
+  const [remote, setRemote] = useState<RemoteField | null>(() =>
+    deal ? readCachedField(deal.dayKey) : null
+  );
   useEffect(() => {
     let live = true;
     if (deal) {
@@ -616,29 +610,9 @@ export default function HomeScreen() {
       sheetY.value, [closedY - 110, closedY - 20], [1, 0], Extrapolation.CLAMP
     ),
   }));
-  // PENDING BEACON (owner: "peeps need to know something is pending — THE
-  // GAME"): while the round waits, colored light breathes off the band's
-  // lip; arming pushes it to full burn. Static shadow on a thin carrier,
-  // only its opacity animates — compositing-cheap.
-  const sBreath = useSharedValue(0);
-  useEffect(() => {
-    sBreath.value = withRepeat(
-      withTiming(1, { duration: 2400, easing: Easing.inOut(Easing.sin) }),
-      -1,
-      true
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const beaconStyle = useAnimatedStyle(() => {
-    if (played) return { opacity: 0 }; // played day: the beacon rests
-    // beacon dies as the sheet leaves its park (no colored smear mid-pull)
-    const parked = interpolate(
-      sheetY.value, [closedY - 90, closedY], [0, 1], Extrapolation.CLAMP
-    );
-    return {
-      opacity: parked * Math.min(1, 0.4 + sBreath.value * 0.3 + sGlow.value * 0.6),
-    };
-  }, [played, closedY]);
+  // (the pending beacon strips were owner-removed — "weird spaced out
+  // ovals" once the invisible park exposed them; the free-floating aurora
+  // plus the arm ignition IS the pending signal)
   // the game SURFACE must exist from the FIRST pixel of travel — and the
   // fade window is deliberately SHORT: while it runs, the whole game subtree
   // pays for an offscreen alpha group (the pull-fluidity tax the owner felt).
@@ -814,22 +788,24 @@ export default function HomeScreen() {
                 )}
               </Pressable>
             </View>
-            <FloatingPodium
-              theme={theme}
-              entries={standings.podium}
-              you={null}
-              showTitle={false}
-              showFoot={false}
-            />
-            <StandingsList
-              theme={theme}
-              rows={standings.list}
-              youOutside={standings.youOutside}
-              // the dashed seat only when you're truly ABSENT from the field —
-              // a podium #1 doesn't need a placeholder chair (owner)
-              ghost={!you && !entries.some((e) => e.isMe)}
-              emptyRows={entries.length <= 3 ? 3 : 0}
-            />
+            <Arrive ready={entries.length > 0} style={styles.arriveWrap}>
+              <FloatingPodium
+                theme={theme}
+                entries={standings.podium}
+                you={null}
+                showTitle={false}
+                showFoot={false}
+              />
+              <StandingsList
+                theme={theme}
+                rows={standings.list}
+                youOutside={standings.youOutside}
+                // the dashed seat only when you're truly ABSENT from the field —
+                // a podium #1 doesn't need a placeholder chair (owner)
+                ghost={!you && !entries.some((e) => e.isMe)}
+                emptyRows={entries.length <= 3 ? 3 : 0}
+              />
+            </Arrive>
           </View>
         </ScrollView>
 
@@ -865,21 +841,6 @@ export default function HomeScreen() {
                 materializeStyle,
               ]}
             />
-            {/* the beacon rides ABOVE the dark throw: light spilling over the
-                lip while the day is unplayed — one glow segment PER AURORA
-                BLOB, same color at the same x, so the spill matches the
-                weather underneath (owner) */}
-            <Animated.View pointerEvents="none" style={[styles.shadowStrip, beaconStyle]}>
-              {BEACON_HUES.map((h) => (
-                <View
-                  key={h.x}
-                  style={[
-                    styles.beaconSeg,
-                    { left: `${h.x - 8}%`, boxShadow: `0 -10px 46px ${h.c}` },
-                  ]}
-                />
-              ))}
-            </Animated.View>
             <View style={styles.sheetClip}>
             {/* the GAME layer (opaque) — transparent at peek so the frost
                 below can sample home */}
@@ -988,14 +949,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     zIndex: 20,
-  },
-  // one per aurora blob: a thin carrier whose shadow IS the colored spill
-  beaconSeg: {
-    position: 'absolute',
-    top: 0,
-    width: '16%',
-    height: 18,
-    borderRadius: 18,
   },
   lipLight: {
     position: 'absolute',
@@ -1114,6 +1067,10 @@ const styles = StyleSheet.create({
   standingsWrap: {
     alignSelf: 'stretch',
     gap: 12,
+  },
+  arriveWrap: {
+    alignSelf: 'stretch',
+    gap: 12, // same rhythm as standingsWrap — the wrapper is invisible
   },
   standingsHead: {
     flexDirection: 'row',

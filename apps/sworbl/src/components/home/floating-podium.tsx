@@ -268,16 +268,18 @@ interface Props {
 
 // a MISSING podium step: dashed '?' block, FLAT (fossil rule: only real
 // players float — ghosts hold the step and wait)
-function GhostCol({ theme, place }: { theme: Theme; place: 2 | 3 }) {
+function GhostCol({ theme, place }: { theme: Theme; place: 1 | 2 | 3 }) {
+  const first = place === 1;
+  const size = first ? 60 : 50;
   return (
-    <View style={[styles.col, { width: 70, marginTop: place === 2 ? 18 : 34 }]}>
+    <View style={[styles.col, { width: first ? 80 : 70, marginTop: first ? 0 : place === 2 ? 18 : 34 }]}>
       <View
         style={[
           styles.block,
           styles.ghostBlock,
-          { width: 50, height: 50, borderColor: theme.dashed },
+          { width: size, height: size, borderColor: theme.dashed },
         ]}>
-        <Text style={[styles.blockLetter, { fontSize: 23, color: theme.dashed }]}>?</Text>
+        <Text style={[styles.blockLetter, { fontSize: first ? 27 : 23, color: theme.dashed }]}>?</Text>
       </View>
       <Text style={[styles.name, { color: theme.faint }]}>—</Text>
       <Text style={[styles.score, { color: theme.faint, fontSize: 12 }]}>· · ·</Text>
@@ -287,7 +289,21 @@ function GhostCol({ theme, place }: { theme: Theme; place: 2 | 3 }) {
 
 export function FloatingPodium({ theme, entries, you, showTitle = true, showFoot = true }: Props) {
   const [first, second, third] = entries;
-  if (!first) return null;
+  // EMPTY FIELD (live mode, nothing loaded yet): three dashed seats hold the
+  // exact podium geometry — data arrival never shifts layout (owner: NO JENK)
+  if (!first) {
+    return (
+      <View style={styles.wrap}>
+        {showTitle && <Text style={[styles.title, { color: theme.sub }]}>standings</Text>}
+        <View style={styles.row}>
+          <GhostCol key="g3" theme={theme} place={3} />
+          <GhostCol key="g1" theme={theme} place={1} />
+          <GhostCol key="g2" theme={theme} place={2} />
+        </View>
+        {showFoot && <GhostYou theme={theme} />}
+      </View>
+    );
+  }
   return (
     <View style={styles.wrap}>
       {showTitle && <Text style={[styles.title, { color: theme.sub }]}>standings</Text>}

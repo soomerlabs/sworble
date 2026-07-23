@@ -13,10 +13,11 @@ import { ScreenHeader } from '@/components/screen-header';
 import { FloatingPodium } from '@/components/home/floating-podium';
 import { CountdownDock } from '@/components/home/countdown-dock';
 import { Floaters } from '@/components/home/floaters';
+import { Arrive } from '@/components/arrive';
 import { useTheme, ACCENT, ACCENT_EDGE } from '@/game/theme';
 import { PALETTE, tileColorFor } from '@/game/palette';
 import { standingsStub, standingsAllTime, rankFor, type LbEntry } from '@/game/standings';
-import { fetchDaily, fetchAllTime, type RemoteField } from '@/net/standings-remote';
+import { fetchDaily, fetchAllTime, readCachedField, type RemoteField } from '@/net/standings-remote';
 import { loadDay } from '@/game/persist';
 import { loadStats } from '@/game/stats';
 import { getPlayerName } from '@/game/player';
@@ -68,8 +69,10 @@ export default function LeaderboardScreen() {
   const dayKey = engine.core.dayKey(new Date());
   const name = getPlayerName();
 
-  const [remoteDaily, setRemoteDaily] = useState<RemoteField | null>(null);
-  const [remoteAll, setRemoteAll] = useState<RemoteField | null>(null);
+  // cache-first (owner: no stub flash) — last-known real fields render on
+  // the first frame; the fresh fetch swaps in silently
+  const [remoteDaily, setRemoteDaily] = useState<RemoteField | null>(() => readCachedField(dayKey));
+  const [remoteAll, setRemoteAll] = useState<RemoteField | null>(() => readCachedField('alltime'));
   useEffect(() => {
     let live = true;
     fetchDaily(dayKey).then((r) => live && r?.entries.length && setRemoteDaily(r));
@@ -153,7 +156,7 @@ export default function LeaderboardScreen() {
                 </Pressable>
               ))}
             </View>
-            <View key={page} style={styles.pageWrap}>
+            <Arrive key={page} ready={entries.length > 0} style={styles.pageWrap}>
               <FloatingPodium
                 theme={theme}
                 entries={entries}
@@ -179,7 +182,7 @@ export default function LeaderboardScreen() {
                   </Text>
                 )}
               </View>
-            </View>
+            </Arrive>
             <View style={styles.foot}>
               <CountdownDock played />
             </View>

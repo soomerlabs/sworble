@@ -80,6 +80,13 @@ function readCache(key: string): RemoteField | null {
   return engine.store.getJSON(CACHE_KEY + key, null) as RemoteField | null;
 }
 
+// synchronous cache peek (key = dayKey | 'alltime') — cold launch renders
+// the last-known REAL field instantly instead of a skeleton-then-swap flash
+export function readCachedField(key: string): RemoteField | null {
+  const v = readCache(key);
+  return v && Array.isArray(v.entries) && v.entries.length ? v : null;
+}
+
 // ---- the outbox: submissions survive offline days ----
 interface Pending {
   day: string;
