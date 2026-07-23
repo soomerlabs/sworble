@@ -18,7 +18,6 @@ import { GameBoard } from '@/components/game/game-board';
 import { CountIn } from '@/components/game/count-in';
 import { Finale, type FinaleRestore } from '@/components/game/finale';
 import { ResultView } from '@/components/game/result-view';
-import { PauseCover } from '@/components/game/pause-cover';
 import { ScoreHeader } from '@/components/game/score-header';
 import { Brand } from '@/components/brand';
 import Storm from '@/components/game/storm';
@@ -73,13 +72,17 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   );
   const [countInMounted, setCountInMounted] = useState(false);
 
-  // ARM on dock: a fresh round's count-in starts only when the sheet is up
+  // the app's foreground state — arming must never happen while backgrounded
+  const [awake, setAwake] = useState(true);
+
+  // ARM on dock — and RE-ARM from paused (owner: no visible paused state; a
+  // paused round reopens straight into 3·2·1·GO with its remaining time)
   useEffect(() => {
-    if (active && phase === 'idle') {
+    if (awake && active && (phase === 'idle' || phase === 'paused')) {
       setCountInMounted(true);
       setPhase('countin');
     }
-  }, [active, phase]);
+  }, [awake, active, phase]);
 
   // the logo CLICK: at the exact dock moment the sheet's brand snaps
   // magnetically into home's slot — a tiny overshoot-settle (pairs with the
@@ -94,7 +97,6 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     }
   }, [active]);
   const brandClick = useAnimatedStyle(() => ({ transform: [{ scale: brandScale.value }] }));
-  const bootedFromKill = useRef(route === 'resume');
   const [score, setScore] = useState(boot?.run ? boot.run.score : route === 'consumed' ? boot!.score : 0);
   const [found, setFound] = useState<string[]>(boot?.run ? boot.run.found : boot ? boot.found : []);
   const [result, setResult] = useState<{ solved: boolean; guessesUsed: number; bonus: number } | null>(
@@ -218,12 +220,6 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     setPhase('paused');
   }, [phase, snapLive]);
 
-  const resumeTap = useCallback(() => {
-    bootedFromKill.current = false;
-    setCountInMounted(true);
-    setPhase('countin');
-  }, []);
-
   const onRelease = useCallback(() => {
     clockRef.current = clockStart(clockRef.current, Date.now());
     setRemaining(clockRemaining(clockRef.current, Date.now(), CT));
@@ -233,6 +229,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   // auto-pause: backgrounding mid-hunt pauses and snapshots (fairness + safety)
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
+      setAwake(s === 'active');
       if (s !== 'active') pause();
     });
     return () => sub.remove();
@@ -296,7 +293,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
             // (__DEV__ fence — audit weakness #4: a skip in a one-shot daily is
             // a player-facing integrity hole in release builds)
             <Pressable
-              onPress={pause}
+              onPress={onClose}
               onLongPress={__DEV__ ? () => setPhase('finale') : undefined}
               delayLongPress={600}>
               <View style={styles.clockWrap}>
@@ -358,9 +355,6 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
               </View>
               {countInMounted && phase === 'countin' && (
                 <CountIn onRelease={onRelease} onUnmount={() => setCountInMounted(false)} />
-              )}
-              {phase === 'paused' && (
-                <PauseCover clock={clock} fresh={bootedFromKill.current} onResume={resumeTap} />
               )}
             </View>
           )}
