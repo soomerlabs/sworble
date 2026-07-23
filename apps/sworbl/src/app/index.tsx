@@ -616,6 +616,12 @@ export default function HomeScreen() {
               <View style={[styles.dockInner, { paddingBottom: Math.max(insets.bottom, 14) }]}>
                 <CountdownDock played={played} />
               </View>
+              {__DEV__ && (
+                <Text style={styles.devBand}>
+                  {deal?.dayKey ?? 'no-deal'}·{day?.route ?? 'no-day'}·{played ? 'played' : 'open'}
+                  {getDevDay() ? '·OVERRIDE' : ''}
+                </Text>
+              )}
             </Animated.View>
             {/* the matched-geometry pill — rides ABOVE both layers */}
             <Animated.View pointerEvents="none" style={[styles.morphPill, pillStyle]} />
@@ -688,6 +694,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     overflow: 'hidden',
+  },
+  devBand: {
+    position: 'absolute',
+    top: 2,
+    right: 8,
+    fontSize: 8,
+    fontFamily: 'Fredoka_600SemiBold',
+    color: '#F5B84A',
+    opacity: 0.7,
   },
   morphPill: {
     position: 'absolute',
