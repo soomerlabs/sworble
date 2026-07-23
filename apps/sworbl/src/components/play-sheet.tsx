@@ -370,7 +370,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
             </Pressable>
           )}
           <Animated.View style={[styles.brandCenter, brandClick]} pointerEvents="none">
-            <Brand />
+            <Brand ink={gs.ink} />
           </Animated.View>
           {/* score lives in the ScoreHeader rail only (it showed twice) —
               the corner is the PAUSE button, the visible face of swipe-down */}

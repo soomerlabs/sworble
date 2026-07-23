@@ -36,12 +36,13 @@ export function AppBar({ theme, onPerson, onSettings }: Props) {
 
 const styles = StyleSheet.create({
   bar: {
-    height: 48,
+    height: 58,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 12, // sheet parity — logos unite at dock
+    paddingBottom: 10, // iOS bars breathe below their icons (owner)
   },
   side: {
     width: 44,
