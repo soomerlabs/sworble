@@ -46,12 +46,36 @@ interface Props {
   onDone: (r: FinaleResult) => void;
 }
 
-// a keyboard KEY: the board tile's little sibling — candy construction
-// (round shoulders, deep ledge), ALL mono: accent keys read weird (owner)
+// keyboard KEYS (owner-tuned): LETTERS are flat, quiet keys; ENTER and DELETE
+// keep the candy BLOCK construction (ledge + accent) — the two keys that matter
+const KEY_BLOCKS: Record<string, { bg: string; edge: string; ink: string }> = {
+  '⏎': { bg: '#8971FF', edge: '#5A43C9', ink: '#FFFFFF' },
+  '⌫': { bg: MONO_DARK.bg, edge: MONO_DARK.edge, ink: '#F58A66' },
+};
 function Key({
   ch, w, h, onPress,
 }: { ch: string; w: number; h: number; onPress: () => void }) {
-  const rad = Math.round(h * 0.26);
+  const blockKey = KEY_BLOCKS[ch];
+  const rad = Math.round(h * (blockKey ? 0.26 : 0.2));
+  if (!blockKey) {
+    // flat letter key: one quiet rounded face, press = sink
+    return (
+      <Pressable onPress={onPress} style={{ width: w, height: h + 4 }}>
+        {({ pressed }) => (
+          <View
+            style={[
+              styles.flatKey,
+              { width: w, height: h, borderRadius: rad },
+              pressed && { transform: [{ translateY: 2 }], backgroundColor: MONO_DARK.hi },
+            ]}>
+            <Text style={[styles.keyText, { fontSize: Math.min(23, h * 0.44), color: MONO_INK }]}>
+              {ch}
+            </Text>
+          </View>
+        )}
+      </Pressable>
+    );
+  }
   return (
     <Pressable onPress={onPress} style={{ width: w, height: h + 4 }}>
       {({ pressed }) => (
@@ -59,22 +83,19 @@ function Key({
           <View
             style={[
               styles.keyLedge,
-              { width: w, height: h, borderRadius: rad, backgroundColor: MONO_DARK.edge },
+              { width: w, height: h, borderRadius: rad, backgroundColor: blockKey.edge },
             ]}
           />
           <View
             style={[
               styles.keyFace,
-              { width: w, height: h, borderRadius: rad, backgroundColor: MONO_DARK.bg },
-              pressed && {
-                transform: [{ translateY: 3 }, { scale: 0.96 }],
-                backgroundColor: MONO_DARK.hi,
-              },
+              { width: w, height: h, borderRadius: rad, backgroundColor: blockKey.bg },
+              pressed && { transform: [{ translateY: 3 }, { scale: 0.96 }] },
             ]}>
             <Text
               style={[
                 styles.keyText,
-                { fontSize: Math.min(23, h * 0.44), color: MONO_INK },
+                { fontSize: Math.min(23, h * 0.44), color: blockKey.ink },
               ]}>
               {ch}
             </Text>
@@ -279,6 +300,13 @@ const styles = StyleSheet.create({
   kbRow: {
     flexDirection: 'row',
     justifyContent: 'center',
+  },
+  flatKey: {
+    backgroundColor: MONO_DARK.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.10)',
   },
   keyLedge: {
     position: 'absolute',
