@@ -246,9 +246,22 @@ export default function HomeScreen() {
     haptic.soft(); // the dock beat — launching the game from the bottom
   }, [deal]);
   // the DETENT: a tick the instant the pull crosses the commit threshold —
-  // the hand learns "release now and it opens" without reading anything
-  const detentIn = useCallback(() => haptic.tick(3), []);
-  const detentOut = useCallback(() => haptic.tick(1), []);
+  // the hand learns "release now and it opens" without reading anything.
+  // RATE-LIMITED (owner: slow-drag jank synced with haptics): a hover at the
+  // boundary must never machine-gun the feedback generator
+  const lastDetent = useRef(0);
+  const detentIn = useCallback(() => {
+    const now = Date.now();
+    if (now - lastDetent.current < 220) return;
+    lastDetent.current = now;
+    haptic.tick(3);
+  }, []);
+  const detentOut = useCallback(() => {
+    const now = Date.now();
+    if (now - lastDetent.current < 220) return;
+    lastDetent.current = now;
+    haptic.tick(1);
+  }, []);
 
   // a CONSUMED day is closed for business (owner): the dock is just the
   // countdown — the swipe doesn't react, the sheet never opens again
@@ -326,7 +339,17 @@ export default function HomeScreen() {
           if (sMode.value === 3) return;
           // stage 2: the classic pull — top edge rides the finger
           sheetY.value = Math.min(closedY, Math.max(0, e.absoluteY));
-          const past = closedY - sheetY.value > height * 0.22 ? 1 : 0;
+          // HYSTERESIS: enter at 22%, exit only below 19% — hovering at the
+          // line can't chatter the detent (each fire is a JS hop + native
+          // generator spin-up: the slow-drag stutter, owner)
+          const risenNow = closedY - sheetY.value;
+          const past = sDetent.value
+            ? risenNow > height * 0.19
+              ? 1
+              : 0
+            : risenNow > height * 0.22
+              ? 1
+              : 0;
           if (past !== sDetent.value) {
             sDetent.value = past;
             if (past) runOnJS(detentIn)();
