@@ -189,6 +189,8 @@ export default function HomeScreen() {
   // decisive movement axis picks trace (horizontal) or sheet-pull (vertical)
   const sLit = useSharedValue(0);
   const sMode = useSharedValue(0); // 0 tracing · 3 launch fired
+  const sGrab = useSharedValue(0); // finger-to-sheet-top gap at touch (owner:
+  // the assist-raised sheet SNAPPED to the finger on the first pull frame)
   const sArmed = useSharedValue(0); // PLAY traced → swipe unlocked
   const [armed, setArmed] = useState(false);
   const sSquash = useSharedValue(1); // candy squash when the sheet docks at full
@@ -321,6 +323,9 @@ export default function HomeScreen() {
         .minDistance(4)
         .onBegin((e) => {
           'worklet';
+          // anchor the grab: the pull preserves THIS gap instead of snapping
+          // the sheet's top edge to the finger
+          sGrab.value = e.absoluteY - sheetY.value;
           if (sArmed.value) return;
           const idx = Math.floor((e.absoluteX - pm.left) / (pm.tile + pm.gap));
           // a TAP only takes the NEXT tile (owner: 'you MUST hit them all
@@ -350,8 +355,9 @@ export default function HomeScreen() {
             return;
           }
           if (sMode.value === 3) return;
-          // stage 2: the classic pull — top edge rides the finger
-          sheetY.value = Math.min(closedY, Math.max(0, e.absoluteY));
+          // stage 2: the pull preserves the grab offset — continuous from
+          // wherever the sheet was resting (assist rise included)
+          sheetY.value = Math.min(closedY, Math.max(0, e.absoluteY - sGrab.value));
           // HYSTERESIS: enter at 22%, exit only below 19% — hovering at the
           // line can't chatter the detent (each fire is a JS hop + native
           // generator spin-up: the slow-drag stutter, owner)
