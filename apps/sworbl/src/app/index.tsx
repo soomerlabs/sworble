@@ -37,6 +37,7 @@ import { Brand } from '@/components/brand';
 import { BG_DARK, PALETTE, INK, tileColorFor } from '@/game/palette';
 import { dealDaily } from '@/game/daily';
 import { loadDay, type DayState } from '@/game/persist';
+import { haptic } from '@/game/haptics';
 
 const SHEET_SPRING = { mass: 0.7, damping: 20, stiffness: 180 };
 
@@ -61,6 +62,7 @@ export default function HomeScreen() {
 
   const openSheet = useCallback(() => {
     setSheetOpen(true);
+    haptic.soft(); // a light thud as the game arrives
     sheetY.value = withSpring(0, SHEET_SPRING);
   }, []);
   const finishClose = useCallback(() => setSheetOpen(false), []);
@@ -76,7 +78,10 @@ export default function HomeScreen() {
 
   // pull UP from the dock: the sheet (pre-mounted, hidden) rides the finger —
   // pure transform on the UI thread, nothing mounts mid-gesture.
-  const markOpen = useCallback(() => setSheetOpen(true), []);
+  const markOpen = useCallback(() => {
+    setSheetOpen(true);
+    haptic.soft(); // the dock beat — launching the game from the bottom
+  }, []);
   const openDrag = useMemo(
     () =>
       Gesture.Pan()

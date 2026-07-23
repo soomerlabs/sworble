@@ -15,7 +15,7 @@ import Animated, {
   withDelay,
   withSequence,
   Easing,
-  FadeOutDown,
+  FadeOut,
   type SharedValue,
 } from 'react-native-reanimated';
 import { PALETTE, INK, MONO_DARK, MONO_INK } from '@/game/palette';
@@ -151,12 +151,10 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
     color: sRed.value > 0.5 ? '#FFFFFF' : sLit.value ? INK : MONO_INK,
   }));
 
-  // OUTER: layout exiting only — THE MORPH: tiles FALL INTO the rising
-  // keyboard (downward fade, bottom rows first, slight column ripple)
+  // OUTER: layout exiting only — board→finale is a clean CROSS-FADE (owner:
+  // keep the prototype loop simple; the fancy morph was janky)
   return (
-    <Animated.View
-      exiting={FadeOutDown.duration(240).delay((5 - tile.row) * 40 + tile.col * 15)}
-      style={styles.outer}>
+    <Animated.View exiting={FadeOut.duration(220)} style={styles.outer}>
       <Animated.View style={[inner, { width: size, height: size + lift + 2 }]}>
         <Animated.View
           style={[styles.ledge, ledgeStyle, { width: size, height: size, borderRadius: rad }]}

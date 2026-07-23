@@ -8,7 +8,7 @@
 // The ENGINE still decides everything (applyGuess/nextSlots/scoreGuess).
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform, useWindowDimensions } from 'react-native';
-import Animated, { ZoomIn, FadeIn, SlideInUp, SlideInDown } from 'react-native-reanimated';
+import Animated, { ZoomIn, FadeIn, SlideInDown } from 'react-native-reanimated';
 import { type PanGesture } from 'react-native-gesture-handler';
 import engine from '@sworbl/engine';
 import { INK, MONO_DARK, MONO_INK } from '@/game/palette';
@@ -216,7 +216,7 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone,
   // decoder + tests live on in finale-logic.decodeSwipe; rewiring is ~30 lines.)
 
   return (
-    <Animated.View entering={E(FadeIn.duration(220).delay(D(120)))} style={styles.wrap}>
+    <Animated.View entering={E(FadeIn.duration(300))} style={styles.wrap}>
       {/* GUESSES — the top of the screen, attempts stacking downward */}
       <View style={styles.rowsArea}>
         {rows.map((r, ri) => (
@@ -233,7 +233,7 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone,
             {slots.map((l, i) => block(l, colors[i], i, true, false))}
           </Animated.View>
         )}
-        <Animated.View entering={E(FadeIn.delay(D(500)))} style={styles.pips}>
+        <Animated.View style={styles.pips}>
           {Array.from({ length: 6 }, (_, i) => (
             <View key={i} style={[styles.pip, i < guessesUsed && styles.pipUsed]} />
           ))}
@@ -242,17 +242,14 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone,
 
       {/* bottom group: the fan docks ON TOP of the keyboard (owner) */}
       <View>
-        <Animated.View entering={E(FadeIn.delay(D(600)))} style={styles.fanDock}>
+        <Animated.View style={styles.fanDock}>
           <ClueFan clues={clues} found={found} conceal />
         </Animated.View>
 
         {/* THE KEYBOARD */}
         <View style={[styles.kb, { paddingHorizontal: kbPad }]}>
         {KEY_ROWS.map((krow, ki) => (
-          <Animated.View
-            key={ki}
-            entering={E(SlideInUp.springify().mass(0.55).damping(15).delay(D(320 + ki * 80)))}
-            style={[styles.kbRow, { gap: keyGap }]}>
+          <Animated.View key={ki} style={[styles.kbRow, { gap: keyGap }]}>
             {[...krow].map((k) => {
               const wide = k === '⌫' || k === '⏎';
               return (
