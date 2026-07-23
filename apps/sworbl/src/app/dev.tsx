@@ -92,9 +92,18 @@ export default function DevScreen() {
             </View>
             <View style={styles.kvRow}>
               <Text style={[styles.kvKey, { color: theme.sub }]}>sworb</Text>
-              <Text style={[styles.kvVal, { color: ACCENT }]}>
-                {deal?.sworb.toUpperCase() ?? 'none'}
-                {deal?.archetype ? `  ·  ${ARCHETYPE_LABEL[deal.archetype] ?? deal.archetype}` : ''}
+              <Text style={[styles.kvVal, { color: ACCENT }]}>{deal?.sworb.toUpperCase() ?? 'none'}</Text>
+            </View>
+            <View style={styles.kvRow}>
+              <Text style={[styles.kvKey, { color: theme.sub }]}>archetype</Text>
+              <Text
+                style={[
+                  styles.kvVal,
+                  { color: deal?.archetype ? '#F5B84A' : theme.faint },
+                ]}>
+                {deal?.archetype
+                  ? (ARCHETYPE_LABEL[deal.archetype] ?? deal.archetype)
+                  : 'untagged (pre-archetype day)'}
               </Text>
             </View>
             {!!deal?.definition && (
