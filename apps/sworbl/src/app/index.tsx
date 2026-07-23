@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ParkFrost } from '@/components/home/park-frost';
 import { router, useFocusEffect } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -736,8 +737,19 @@ export default function HomeScreen() {
                 closeGesture={closeDrag}
               />
             </Animated.View>
-            {/* (the flat color wash was owner-removed — the aurora crest now
-                STRETCHES over the board itself: one weather, one system) */}
+            {/* TAIL BRIDGE: whisper aurora tint under the crest's glow —
+                the emerging face never shows a dead black zone (owner) */}
+            <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, tailStyle]}>
+              <LinearGradient
+                colors={[
+                  'rgba(124,92,224,0)',
+                  'rgba(124,92,224,0.1)',
+                  'rgba(91,200,245,0.14)',
+                ]}
+                locations={[0.18, 0.62, 1]}
+                style={StyleSheet.absoluteFill}
+              />
+            </Animated.View>
               {/* PARKED FROST, PROGRESSIVE (owner: no visible top edge,
                   "gradually get blurry"): platform-split — native uses
                   gradient-masked BlurViews, web uses CSS backdrop-filter +
