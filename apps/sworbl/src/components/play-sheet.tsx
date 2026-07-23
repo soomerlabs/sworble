@@ -382,7 +382,10 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
       // restores to a locked, finished day (kill-window fix #2).
       const beat = r.solved ? 1600 : 800;
       doneTimer.current = setTimeout(() => {
-        setPhase('done');
+        // straight to the park — the ResultView 'done' flash inside the
+        // closing sheet was the exit jank (owner). Home's flip reveal IS
+        // the answer moment now; the in-sheet result stays only for
+        // consumed-day boots.
         onClose();
       }, beat);
     },

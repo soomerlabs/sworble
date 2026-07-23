@@ -85,6 +85,7 @@ export default function LeaderboardScreen() {
   const myTotal = useMemo(() => loadStats().total, []);
 
   const entries = page === 0 ? daily : allTime;
+  const isRemote = page === 0 ? !!remoteDaily : !!remoteAll;
   const myScore = page === 0 ? myDaily : myTotal;
   const played = myScore > 0;
   const myRank = played ? rankFor(entries, myScore) : null;
@@ -92,8 +93,13 @@ export default function LeaderboardScreen() {
   // pin YOU inline at rank position (handoff: the list keeps you as a row)
   const listed: { rank: number; entry: LbEntry | { name: string; score: number }; you: boolean }[] =
     useMemo(() => {
-      const rows = entries.map((e, i) => ({ rank: i + 1, entry: e as LbEntry | { name: string; score: number }, you: false }));
-      if (played && myRank !== null) {
+      const rows = entries.map((e, i) => ({
+        rank: i + 1,
+        entry: e as LbEntry | { name: string; score: number },
+        you: !!(e as LbEntry).isMe,
+      }));
+      // splice ONLY into stub fields — remote fields already contain you
+      if (played && myRank !== null && !isRemote) {
         rows.splice(myRank - 1, 0, { rank: myRank, entry: { name, score: myScore }, you: true });
         rows.forEach((r, i) => (r.rank = i + 1));
       }
@@ -104,7 +110,7 @@ export default function LeaderboardScreen() {
         return [...head, ...rows.slice(youIdx - 1, youIdx + 2)];
       }
       return rows.slice(3, Math.max(LIST_CAP, youIdx + 2));
-    }, [entries, played, myRank, name, myScore]);
+    }, [entries, played, myRank, name, myScore, isRemote]);
 
   const share = () => {
     const line =

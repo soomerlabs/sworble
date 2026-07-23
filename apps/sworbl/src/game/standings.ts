@@ -8,6 +8,8 @@ export interface LbEntry {
   name: string;
   score: number;
   solved: boolean;
+  isMe?: boolean; // remote fields mark the player's own row — locals must
+  // NOT splice a second you (the owner appeared twice at #1/#2)
 }
 
 const POOL = [

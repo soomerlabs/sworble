@@ -15,15 +15,16 @@ import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  ZoomIn,
   useSharedValue,
   useAnimatedReaction,
   useAnimatedStyle,
   withSpring,
   withTiming,
   withSequence,
+  withDelay,
   interpolate,
   Extrapolation,
+  Easing,
   runOnJS,
 } from 'react-native-reanimated';
 
@@ -176,9 +177,11 @@ export default function HomeScreen() {
   // below an ellipsis. Unplayed → a dashed ghost row instead.
   const standings = useMemo(() => {
     const rows: StandingRow[] = entries.map((e, i) => ({
-      rank: i + 1, name: e.name, score: e.score, you: false,
+      rank: i + 1, name: e.name, score: e.score, you: !!e.isMe,
     }));
-    if (you) {
+    // splice ONLY into stub fields — a remote field already contains you
+    // (the double-you bug: server row + local splice, same score, #1/#2)
+    if (you && !remote) {
       rows.splice(you.rank - 1, 0, { rank: you.rank, name: getPlayerName(), score: you.score, you: true });
       rows.forEach((r, i) => (r.rank = i + 1));
     }
@@ -608,21 +611,18 @@ export default function HomeScreen() {
               ? [...deal.sworb].map((ch, i) => {
                   const pal = PALETTE[tileColorFor(ch, i)];
                   return (
-                    <Animated.View
-                      key={i}
-                      entering={ZoomIn.delay(80 + i * 70)}
-                      style={[
-                        styles.heroBlock,
-                        {
-                          width: tileW, height: tileH, borderRadius: tileR,
-                          backgroundColor: pal.bg,
-                          boxShadow: `inset 0 -5px 0 ${pal.edge}, 0 2px 3px rgba(0,0,0,0.3)`,
-                        },
-                      ]}>
-                      <Text style={[styles.heroText, { fontSize: Math.round(tileW * 0.57) }]}>
-                        {ch.toUpperCase()}
-                      </Text>
-                    </Animated.View>
+                    <FlipTile
+                      key={`${deal.dayKey}-${i}`}
+                      ch={ch}
+                      i={i}
+                      w={tileW}
+                      h={tileH}
+                      r={tileR}
+                      palBg={pal.bg}
+                      palEdge={pal.edge}
+                      monoBg={gameSurface(theme.mode).mono.bg}
+                      monoEdge={gameSurface(theme.mode).mono.edge}
+                    />
                   );
                 })
               : Array.from({ length: wordLen }, (_, i) => (

@@ -33,6 +33,7 @@ export async function fetchDaily(dayKey: string): Promise<RemoteField | null> {
       name: String(r.name),
       score: Number(r.score),
       solved: !!r.solved,
+      isMe: uid != null && r.player_id === uid,
     }));
     const mine = uid ? data.find((r) => r.player_id === uid) : null;
     const out: RemoteField = {
@@ -61,6 +62,7 @@ export async function fetchAllTime(): Promise<RemoteField | null> {
       name: String(r.name),
       score: Number(r.total),
       solved: true,
+      isMe: uid != null && r.player_id === uid,
     }));
     const mine = uid ? data.find((r) => r.player_id === uid) : null;
     const out: RemoteField = {
