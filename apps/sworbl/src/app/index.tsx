@@ -14,12 +14,18 @@ import Animated, {
   ZoomIn,
   useSharedValue,
   useAnimatedStyle,
+  useAnimatedProps,
   withSpring,
   withTiming,
   interpolate,
+  Extrapolation,
   runOnJS,
 } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
+
+// native-feel blur: animate the INTENSITY (what iOS itself does), never the
+// layer's opacity — a fading frosted overlay is the "doesn't look native" tell
+const AnimatedBlur = Animated.createAnimatedComponent(BlurView);
 
 import Storm from '@/components/game/storm';
 import { ClueFan } from '@/components/game/clue-fan';
@@ -131,12 +137,10 @@ export default function HomeScreen() {
     borderTopLeftRadius: interpolate(sheetY.value, [0, height * 0.2], [0, 22]),
     borderTopRightRadius: interpolate(sheetY.value, [0, height * 0.2], [0, 22]),
   }));
-  // the background BLURS as the sheet rises (fixed-intensity blur layer whose
-  // presence fades in with sheet progress — animatable at 60fps)
-  const blurStyle = useAnimatedStyle(() => ({
-    // input range MUST ascend (descending = undefined output — the "hazy home"
-    // bug): sheet docked (0) → full blur, sheet parked below (height) → zero
-    opacity: interpolate(sheetY.value, [0, height * 0.85, height], [1, 0.9, 0]),
+  // the background blur RAMPS GRADUALLY with the pull (owner: it slammed on
+  // early) — intensity rides sheet progress linearly, Apple-style
+  const blurProps = useAnimatedProps(() => ({
+    intensity: interpolate(sheetY.value, [0, height], [45, 0], Extrapolation.CLAMP),
   }));
 
   const dateLine = new Date()
@@ -234,10 +238,13 @@ export default function HomeScreen() {
           </GestureDetector>
         </SafeAreaView>
 
-        {/* progressive blur under the rising sheet (always mounted; opacity 0 idle) */}
-        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, blurStyle]}>
-          <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
-        </Animated.View>
+        {/* progressive blur under the rising sheet — animated INTENSITY */}
+        <AnimatedBlur
+          pointerEvents="none"
+          animatedProps={blurProps}
+          tint="dark"
+          style={StyleSheet.absoluteFill}
+        />
 
         {/* THE SHEET — pre-mounted hidden below the screen; drags are pure transform */}
         {deal && (
