@@ -142,16 +142,18 @@ export default function HomeScreen() {
     [height, prepClose, finishClose]
   );
 
+  // PERF: transform ONLY — animating border radius on a clipped full-screen
+  // view re-clips the whole game subtree every frame (the pull jank). The
+  // radius is a constant 22: invisible at dock (dark-on-dark, notch region).
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: sheetY.value }],
-    // soft top corners while mid-drag, square when fully open
-    borderTopLeftRadius: interpolate(sheetY.value, [0, height * 0.2], [0, 22]),
-    borderTopRightRadius: interpolate(sheetY.value, [0, height * 0.2], [0, 22]),
   }));
   // the background blur RAMPS GRADUALLY with the pull (owner: it slammed on
   // early) — intensity rides sheet progress linearly, Apple-style
   const blurProps = useAnimatedProps(() => ({
-    intensity: interpolate(sheetY.value, [0, height], [45, 0], Extrapolation.CLAMP),
+    // integer steps — every push is a native effect update; float precision
+    // is invisible and expensive
+    intensity: Math.round(interpolate(sheetY.value, [0, height], [45, 0], Extrapolation.CLAMP)),
   }));
 
   const dateLine = new Date()
@@ -163,10 +165,14 @@ export default function HomeScreen() {
   return (
       <View style={styles.root}>
         <StatusBar style="light" />
-        <Floaters width={width} height={height} />
-        <View style={played ? styles.stormRest : undefined}>
-          <Storm width={width} height={Math.min(280, height * 0.32)} />
-        </View>
+        {/* fully occluded at dock — stop paying for goo + floaters under an
+            opaque sheet */}
+        {!sheetOpen && <Floaters width={width} height={height} />}
+        {!sheetOpen && (
+          <View style={played ? styles.stormRest : undefined}>
+            <Storm width={width} height={Math.min(280, height * 0.32)} />
+          </View>
+        )}
 
         <SafeAreaView style={styles.safe}>
           <View style={styles.top}>
@@ -290,6 +296,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: BG_DARK,
     overflow: 'hidden',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
     zIndex: 20,
   },
   top: {
