@@ -87,3 +87,23 @@ for (const day of Object.keys(dailies)) {
   days++;
 }
 console.log('dailies-check: ' + days + ' days valid (sworb 5-7, hints 4-7 (≤2 sevens), pool 10-15, no prefix-pairs, each locking exactly ' + CLUE_COUNT + ' clues)');
+
+// CONTENT RUNWAY GUARD (audit 2026-07-23, weakness #2): CI fails when the feed
+// runs thin — an empty dailies.json renders a no-puzzle screen for every player,
+// which must be a loud pre-emptive build failure, never a quiet launch-day surprise.
+// UTC+14 rule: the world's earliest timezone reaches tomorrow ~10h before UTC does,
+// so runway is measured from TOMORROW's key, and MIN_RUNWAY_DAYS beyond it.
+const MIN_RUNWAY_DAYS = 2;
+{
+  const keys = Object.keys(dailies).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
+  const last = keys[keys.length - 1];
+  const need = new Date();
+  need.setDate(need.getDate() + 1 + MIN_RUNWAY_DAYS);
+  const needKey = Core.dayKey(need);
+  assert.ok(
+    last >= needKey,
+    'CONTENT RUNWAY EMPTY-ING: last authored day is ' + last + ' but coverage through ' + needKey +
+    ' is required (tomorrow + ' + MIN_RUNWAY_DAYS + ' days). Author more days in dailies.json — see docs/content/GENERATION-PROMPT.md'
+  );
+  console.log('dailies-check: runway OK through ' + last + ' (need ≥ ' + needKey + ')');
+}

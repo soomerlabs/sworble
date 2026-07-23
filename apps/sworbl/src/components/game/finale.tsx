@@ -77,22 +77,21 @@ export function Finale({ entry, foundCount, clueTotal, size, restore, onProgress
       total: clueTotal,
     });
     if (!res.ok) return;
+    // narrow the engine's optional result fields once, use everywhere below
+    const usedNow = res.newGuessesUsed ?? guessesUsed + 1;
+    const nowSolved = !!res.nowSolved;
+    const lockedOut = !!res.lockedOut;
+    const bonus = res.bonus ?? 0;
     const rowColors: string[] = engine.daily.scoreGuess(word, entry.sworb);
     const newRows = [...rows, { letters: slots.slice(), colors: rowColors }];
     setRows(newRows);
-    setGuessesUsed(res.newGuessesUsed);
-    if (res.nowSolved || res.lockedOut) {
+    setGuessesUsed(usedNow);
+    if (nowSolved || lockedOut) {
       setLocked(true);
-      haptic[res.nowSolved ? 'good' : 'bad']();
+      haptic[nowSolved ? 'good' : 'bad']();
       setTimeout(
-        () =>
-          onDone({
-            solved: res.nowSolved,
-            guessesUsed: res.newGuessesUsed,
-            bonus: res.bonus,
-            rows: newRows,
-          }),
-        res.nowSolved ? 900 : 1600 // losers get the gray beat before the reveal
+        () => onDone({ solved: nowSolved, guessesUsed: usedNow, bonus, rows: newRows }),
+        nowSolved ? 900 : 1600 // losers get the gray beat before the reveal
       );
       return;
     }
@@ -103,7 +102,7 @@ export function Finale({ entry, foundCount, clueTotal, size, restore, onProgress
     setSlots(nSlots);
     setColors(nColors);
     onProgress &&
-      onProgress({ rows: newRows, slots: nSlots, colors: nColors, guessesUsed: res.newGuessesUsed });
+      onProgress({ rows: newRows, slots: nSlots, colors: nColors, guessesUsed: usedNow });
     haptic.bad();
   }, [slots, colors, rows, guessesUsed, locked, entry, foundCount, clueTotal, len, onDone]);
 

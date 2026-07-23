@@ -5,10 +5,11 @@
   "description": "sworble \u2014 daily word-drop puzzle (GitHub Pages prototype)",
   "scripts": {
     "lint": "eslint sworble-core.js sworble-daily.js sworble-flow.js sworble-net.js sworble-run.js sworble-seed.js sworble-solver.js sworble-status.js sworble-store.js words.js tests/*.js",
-    "test:unit": "node tests/sworble-core.test.js && node tests/sworble-status.test.js && node tests/sworble-store.test.js && node tests/sworble-run.test.js && node tests/sworble-net.test.js && node tests/sworble-solver.test.js && node tests/sworble-seed.test.js && node tests/sworble-daily.test.js && node tests/sworble-flow.test.js && node tests/round-lifecycle.test.js && node tests/boot-smoke.test.js && node tests/dailies-check.js",
-    "test": "npm run lint && npm run test:unit && npm run test:engine",
+    "test:unit": "node tests/sworble-core.test.js && node tests/sworble-status.test.js && node tests/sworble-store.test.js && node tests/sworble-run.test.js && node tests/sworble-net.test.js && node tests/sworble-solver.test.js && node tests/sworble-seed.test.js && node tests/sworble-daily.test.js && node tests/sworble-flow.test.js && node tests/round-lifecycle.test.js && node tests/boot-smoke.test.js && node tests/dailies-check.js && node tests/fossil-freeze.js",
+    "test": "npm run lint && npm run test:unit && npm run test:engine && npm run test:app",
     "coverage": "c8 --reporter=text npm run test:unit",
-    "test:engine": "npm --workspace @sworbl/engine test"
+    "test:engine": "npm --workspace @sworbl/engine test",
+    "test:app": "npm --workspace sworbl run typecheck && npm --workspace sworbl test"
   },
   "devDependencies": {
     "c8": "^12.0.0",

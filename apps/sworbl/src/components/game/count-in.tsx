@@ -19,10 +19,13 @@ export function CountIn({ onRelease, onUnmount }: Props) {
   useEffect(() => {
     const MS = engine.run.COUNT_IN_MS;
     const at = (ms: number, fn: () => void) => setTimeout(fn, ms);
+    // countInStepAt returns null only for unknown ms — these are its own constants
+    const stepAt = (ms: number, fallback: string) =>
+      String(engine.run.countInStepAt(ms, {})?.countIn ?? fallback);
     const timers = [
-      at(MS.STEP2, () => setStep(String(engine.run.countInStepAt(MS.STEP2, {}).countIn))),
-      at(MS.STEP1, () => setStep(String(engine.run.countInStepAt(MS.STEP1, {}).countIn))),
-      at(MS.GO, () => setStep(String(engine.run.countInStepAt(MS.GO, {}).countIn))),
+      at(MS.STEP2, () => setStep(stepAt(MS.STEP2, '2'))),
+      at(MS.STEP1, () => setStep(stepAt(MS.STEP1, '1'))),
+      at(MS.GO, () => setStep(stepAt(MS.GO, 'GO'))),
       at(MS.RELEASE, () => {
         setOut(true);
         onRelease();

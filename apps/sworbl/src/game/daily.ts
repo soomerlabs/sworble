@@ -37,14 +37,8 @@ export function dealDaily(now = new Date()): DailyDeal | null {
     target: CLUE_COUNT,
   });
 
-  const tiles: TileT[] = Object.keys(cand.letters).map((k: string) => {
-    const [row, col] = k.split(',').map(Number);
-    const letter = cand.letters[k];
-    const id = nextId++;
-    return { id, letter, col, row, ci: tileColorFor(letter, id), spawnDrop: 0, bornAt: Date.now() };
-  });
-
-  // deterministic letter queue for refills (FRIENDLY on-ramp + 3 full bags)
+  // deterministic letter queue: fills the non-clue cells at deal time, then
+  // feeds refills for the whole round (FRIENDLY on-ramp + 3 full bags)
   const qr = engine.core.mulberry32(engine.core.hashSeed(dayKey) ^ 0x51ac1e);
   const queue: string[] = engine.core
     .shuffledBag(engine.core.FRIENDLY, qr)
@@ -55,6 +49,18 @@ export function dealDaily(now = new Date()): DailyDeal | null {
     );
   let qi = 0;
   const nextLetter = () => queue[qi++ % queue.length];
+
+  // the FULL 5×6 board: stamped clue letters where the two-pass seed placed
+  // them, queue letters everywhere else (the web newGame's fill step — its
+  // omission shipped an 18-tile board; pinned by tests/daily.test.ts)
+  const tiles: TileT[] = [];
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      const letter: string = cand.letters[row + ',' + col] ?? nextLetter();
+      const id = nextId++;
+      tiles.push({ id, letter, col, row, ci: tileColorFor(letter, id), spawnDrop: 0, bornAt: Date.now() });
+    }
+  }
 
   return {
     dayKey,

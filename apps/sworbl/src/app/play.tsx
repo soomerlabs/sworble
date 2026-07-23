@@ -221,8 +221,13 @@ export default function PlayScreen() {
         <View style={styles.top}>
           <Text style={styles.brand}>sworbl</Text>
           {onBoard && (
-            // tap = pause · dev shortcut: long-press → straight to the finale
-            <Pressable onPress={pause} onLongPress={() => setPhase('finale')} delayLongPress={600}>
+            // tap = pause · DEV-ONLY shortcut: long-press → straight to the finale
+            // (__DEV__ fence — audit weakness #4: a skip in a one-shot daily is
+            // a player-facing integrity hole in release builds)
+            <Pressable
+              onPress={pause}
+              onLongPress={__DEV__ ? () => setPhase('finale') : undefined}
+              delayLongPress={600}>
               <View style={styles.clockWrap}>
                 <Text style={[styles.clock, remaining <= 30 && styles.clockLow]}>{clock}</Text>
                 {timePop && (
@@ -241,6 +246,16 @@ export default function PlayScreen() {
         </View>
 
         <View style={styles.center}>
+          {!deal && (
+            // real empty state (audit weakness #2: this was unreachable before —
+            // the content runway emptying must never render a blank screen)
+            <View style={styles.noDay}>
+              <Text style={styles.noDayTitle}>no sworbl today</Text>
+              <Text style={styles.noDayText}>
+                the puzzle feed is empty — update the app or check back soon
+              </Text>
+            </View>
+          )}
           {onBoard && deal && (
             <View pointerEvents={phase === 'live' ? 'auto' : 'none'}>
               <GameBoard
@@ -350,6 +365,23 @@ const styles = StyleSheet.create({
   doneWrap: {
     alignItems: 'center',
     gap: 18,
+  },
+  noDay: {
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 32,
+  },
+  noDayTitle: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 20,
+    color: '#EDEFF7',
+  },
+  noDayText: {
+    fontFamily: 'Fredoka_500Medium',
+    fontSize: 14,
+    color: '#9DA2B3',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   homeLink: {
     paddingVertical: 6,

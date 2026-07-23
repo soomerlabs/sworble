@@ -215,7 +215,7 @@ export function GameBoard({
       const res = engine.daily.resolveCatch({ found: foundRef.current, word, targets: deal.clues });
       setVerdict(
         res.isNew
-          ? { word: word.toUpperCase(), pts, ok: true, clue: res.clue }
+          ? { word: word.toUpperCase(), pts, ok: true, clue: res.clue ?? undefined }
           : { word: word.toUpperCase(), pts, ok: true }
       );
       if (res.isNew) setFound(res.banked);
@@ -239,9 +239,15 @@ export function GameBoard({
       onScore && onScore(scoreRef.current);
       playedRef.current.add(word);
       const gone = new Set(ids);
-      setClearingIds(gone);
+      // additive/subtractive set ops (audit weakness #4b): two commits inside
+      // the 240ms clearing window must not wipe each other's clearing state
+      setClearingIds((cur) => new Set([...cur, ...gone]));
       setTimeout(() => {
-        setClearingIds(new Set());
+        setClearingIds((cur) => {
+          const next = new Set(cur);
+          gone.forEach((id) => next.delete(id));
+          return next;
+        });
         setTiles((cur) => {
           const { tiles: settled, added } = settle(cur.filter((t) => !gone.has(t.id)), deal.nextLetter);
           // web parity: broken un-found clues ride back in on the refill
