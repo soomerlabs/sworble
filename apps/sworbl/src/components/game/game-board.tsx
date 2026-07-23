@@ -349,7 +349,6 @@ export function GameBoard({
 
       {/* THE BOARD CARD (web boardCardStyle): tiles live ON a card with sunken
           cell wells — not floating on the screen background */}
-      <GestureDetector gesture={pan}>
         <View
           style={[
             styles.card,
@@ -358,9 +357,12 @@ export function GameBoard({
               paddingBottom: 12 + Math.max(3, Math.round(size * 0.08)),
             },
           ]}>
-        {/* overflow hidden: refills fall in from ABOVE the board and must stay
-            masked until they enter (web boardCard clip) */}
-        <View style={{ width: boardW, height: boardH, overflow: 'hidden' }}>
+        {/* clip window: masks refills falling from above, but extends 10px
+            OVER the board so pressed tiles' lift never gets decapitated
+            (owner bug: top-row blocks clipped at the board edge) */}
+        <View style={{ width: boardW, height: boardH + 10, overflow: 'hidden', marginTop: -10 }}>
+        <GestureDetector gesture={pan}>
+        <View style={{ width: boardW, height: boardH, marginTop: 10 }}>
           {Array.from({ length: COLS * ROWS }, (_, i) => (
             <View
               key={`bgc${i}`}
@@ -409,8 +411,9 @@ export function GameBoard({
             />
           )}
         </View>
+        </GestureDetector>
         </View>
-      </GestureDetector>
+        </View>
 
       <ClueFan clues={deal.clues} found={found} nudged={ladder.nudged} />
     </View>

@@ -1,14 +1,52 @@
-// Trace connector — NATIVE, web-parity: the trail is a DOTTED colored line
-// (web trailSegs: strokeDasharray '1 9', round caps, per-seg candy color,
-// slight blur), not a solid stroke. Tier-2 constraint: Skia nodes can't be
-// created from the UI thread, so this renders ONE dotted path whose color
-// rides the chain's LAST tile (the web tip color) via a derived value.
+// Trace connector — NATIVE, web-parity: EACH SEGMENT wears ITS tile's candy
+// (web trailSegs: per-seg color at 45%, the tip at 85%, dotted 1-9, round
+// caps). Tier-2 constraint: Skia nodes can't be created from the UI thread,
+// so a FIXED POOL of segment paths is always mounted; each derives its own
+// geometry/color/opacity from the shared path — unused segments park off-board.
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { Canvas, Path, DashPathEffect, BlurMask } from '@shopify/react-native-skia';
+import { Canvas, Path, DashPathEffect } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import { PALETTE } from '@/game/palette';
 import type { TraceTile } from '@/game/types';
+
+const PAL_BG = PALETTE.map((p) => p.bg);
+const MAX_SEGS = 29; // a full-board chain
+
+interface SegProps {
+  sPath: SharedValue<TraceTile[]>;
+  idx: number;
+  size: number;
+  cell: number;
+}
+
+function Seg({ sPath, idx, size, cell }: SegProps) {
+  const d = useDerivedValue(() => {
+    const p = sPath.value;
+    if (idx >= p.length - 1) return 'M -99 -99';
+    const a = p[idx], b = p[idx + 1];
+    return `M ${a.col * cell + size / 2} ${a.row * cell + size / 2} L ${b.col * cell + size / 2} ${b.row * cell + size / 2}`;
+  });
+  const color = useDerivedValue(() => {
+    const p = sPath.value;
+    const b = p[idx + 1] ?? p[p.length - 1];
+    return PAL_BG[(b ? b.ci : 0) % 6];
+  });
+  const opacity = useDerivedValue(() => {
+    const p = sPath.value;
+    if (idx >= p.length - 1) return 0;
+    return idx === p.length - 2 ? 0.85 : 0.45; // tip glows hardest (web)
+  });
+  const strokeWidth = useDerivedValue(() => {
+    const p = sPath.value;
+    return idx === p.length - 2 ? Math.max(6, size * 0.13) : Math.max(5, size * 0.11);
+  });
+  return (
+    <Path path={d} style="stroke" color={color} opacity={opacity} strokeWidth={strokeWidth} strokeCap="round">
+      <DashPathEffect intervals={[1, 9]} />
+    </Path>
+  );
+}
 
 interface Props {
   sPath: SharedValue<TraceTile[]>;
@@ -18,38 +56,13 @@ interface Props {
   height: number;
 }
 
-const PAL_BG = PALETTE.map((p) => p.bg);
-
 export default function TraceConnector({ sPath, size, gap, width, height }: Props) {
   const cell = size + gap;
-  const d = useDerivedValue(() => {
-    const p = sPath.value;
-    if (p.length < 2) return 'M -99 -99'; // off-board no-op (Skia rejects '')
-    let s = '';
-    for (let i = 0; i < p.length; i++) {
-      const x = p[i].col * cell + size / 2, y = p[i].row * cell + size / 2;
-      s += (i === 0 ? 'M' : 'L') + x + ' ' + y + ' ';
-    }
-    return s;
-  });
-  // tip color, web-style: the chain glows in the LAST tile's candy
-  const color = useDerivedValue(() => {
-    const p = sPath.value;
-    return p.length ? PAL_BG[p[p.length - 1].ci % PAL_BG.length] : PAL_BG[0];
-  });
   return (
     <Canvas pointerEvents="none" style={[StyleSheet.absoluteFill, { width, height }]}>
-      <Path
-        path={d}
-        style="stroke"
-        color={color}
-        opacity={0.55}
-        strokeWidth={Math.max(6, size * 0.13)}
-        strokeCap="round"
-        strokeJoin="round">
-        <DashPathEffect intervals={[1, 9]} />
-        <BlurMask blur={1.5} style="normal" />
-      </Path>
+      {Array.from({ length: MAX_SEGS }, (_, i) => (
+        <Seg key={i} sPath={sPath} idx={i} size={size} cell={cell} />
+      ))}
     </Canvas>
   );
 }

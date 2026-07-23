@@ -153,7 +153,7 @@ export default function HomeScreen() {
   const blurProps = useAnimatedProps(() => ({
     // integer steps — every push is a native effect update; float precision
     // is invisible and expensive
-    intensity: Math.round(interpolate(sheetY.value, [0, height], [45, 0], Extrapolation.CLAMP)),
+    intensity: Math.round(interpolate(sheetY.value, [0, height], [45, 0], Extrapolation.CLAMP) / 5) * 5,
   }));
 
   const dateLine = new Date()
