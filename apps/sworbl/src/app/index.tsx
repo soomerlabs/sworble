@@ -8,10 +8,12 @@
 // swipe dock over the storm. Light + dark via the theme tokens.
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Share, useWindowDimensions,
+  View, Text, StyleSheet, ScrollView, Share, Platform, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import MaskedView from '@react-native-masked-view/masked-view';
 import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -666,16 +668,54 @@ export default function HomeScreen() {
             <Animated.View
               pointerEvents="none"
               style={[styles.peekFace, { height: peekH }, faceStyle]}>
-              {/* PARKED FROST: home content scrolls under and dissolves;
-                  the glow beneath softens with it, the tiles stay crisp
-                  above. Dies within the first 40px of travel. */}
+              {/* PARKED FROST, PROGRESSIVE (owner: no visible top edge,
+                  "gradually get blurry"): two gradient-masked blur layers —
+                  content fades sharp → haze → full frost with no boundary.
+                  RNCMaskedView confirmed in the Podfile.lock (the old
+                  silent-swallow trap is native-verified now). Web keeps the
+                  plain blur — masked-view has no reliable RNW path. */}
               {parkBlurLive && (
                 <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, parkBlurStyle]}>
-                  <BlurView
-                    intensity={32}
-                    tint={theme.mode === 'dark' ? 'dark' : 'light'}
-                    style={StyleSheet.absoluteFill}
-                  />
+                  {Platform.OS === 'web' ? (
+                    <BlurView
+                      intensity={32}
+                      tint={theme.mode === 'dark' ? 'dark' : 'light'}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  ) : (
+                    <>
+                      <MaskedView
+                        style={StyleSheet.absoluteFill}
+                        maskElement={
+                          <LinearGradient
+                            colors={['transparent', 'rgba(0,0,0,0.7)', '#000']}
+                            locations={[0, 0.38, 0.75]}
+                            style={StyleSheet.absoluteFill}
+                          />
+                        }>
+                        <BlurView
+                          intensity={15}
+                          tint={theme.mode === 'dark' ? 'dark' : 'light'}
+                          style={StyleSheet.absoluteFill}
+                        />
+                      </MaskedView>
+                      <MaskedView
+                        style={StyleSheet.absoluteFill}
+                        maskElement={
+                          <LinearGradient
+                            colors={['transparent', 'transparent', '#000']}
+                            locations={[0, 0.42, 0.82]}
+                            style={StyleSheet.absoluteFill}
+                          />
+                        }>
+                        <BlurView
+                          intensity={34}
+                          tint={theme.mode === 'dark' ? 'dark' : 'light'}
+                          style={StyleSheet.absoluteFill}
+                        />
+                      </MaskedView>
+                    </>
+                  )}
                 </Animated.View>
               )}
               <View
