@@ -154,8 +154,12 @@ export default function HomeScreen() {
     return d.route === 'resume' || d.route === 'finale';
   }, [deal]);
 
-  // ---- THE SHEET: position rides the finger ----
-  const sheetY = useSharedValue(bootOpen ? 0 : height); // height = closed, 0 = open
+  // ---- THE SHEET (Maps model, owner): it NEVER fully closes — "closed"
+  // parks it at a PEEK at the bottom edge (the frosted swipe-to-play band IS
+  // the sheet's collapsed face), full-screen = the game. ----
+  const peekH = DOCK_H + insets.bottom;
+  const closedY = height - peekH; // rest position: only the peek visible
+  const sheetY = useSharedValue(bootOpen ? 0 : closedY); // closedY = peek, 0 = open
   const [sheetOpen, setSheetOpen] = useState(bootOpen); // fully open → home drag off, round armed
   const sheetRef = useRef<PlaySheetHandle>(null);
 
@@ -170,8 +174,8 @@ export default function HomeScreen() {
   // screen and eating every touch ("swipe up broken", "stuck on top").
   // Whenever the sheet is logically closed, its position must agree.
   useEffect(() => {
-    if (!sheetOpen) sheetY.value = height;
-  }, [sheetOpen, height]);
+    if (!sheetOpen) sheetY.value = closedY;
+  }, [sheetOpen, closedY]);
 
   const finishClose = useCallback(() => {
     setSheetOpen(false);
@@ -183,13 +187,13 @@ export default function HomeScreen() {
     // if it waits for the animation, the arm effect re-fires and the count-in
     // restarts invisibly behind the closed sheet, burning the round
     setSheetOpen(false);
-    sheetY.value = withTiming(height, { duration: 260 }, (fin) => {
+    sheetY.value = withTiming(closedY, { duration: 260 }, (fin) => {
       'worklet';
       if (fin) runOnJS(finishClose)();
     });
     // day state may have changed inside the round (finish/lock)
     setTimeout(refreshDay, 300);
-  }, [height, refreshDay, finishClose]);
+  }, [closedY, refreshDay, finishClose]);
 
   // pull UP from the dock: the sheet (pre-mounted, hidden) rides the finger —
   // pure transform on the UI thread, nothing mounts mid-gesture.
@@ -209,19 +213,19 @@ export default function HomeScreen() {
           'worklet';
           // the sheet's TOP EDGE rides the finger itself (absoluteY), not the
           // translation — otherwise the sheet trails far below the thumb
-          sheetY.value = Math.min(height, Math.max(0, e.absoluteY));
+          sheetY.value = Math.min(closedY, Math.max(0, e.absoluteY));
         })
         .onEnd((e) => {
           'worklet';
-          const risen = height - sheetY.value;
+          const risen = closedY - sheetY.value;
           if (risen > height * 0.22 || e.velocityY < -900) {
             sheetY.value = withSpring(0, SHEET_SPRING);
             runOnJS(markOpen)();
           } else {
-            sheetY.value = withTiming(height, { duration: 200 });
+            sheetY.value = withTiming(closedY, { duration: 200 });
           }
         }),
-    [height, sheetOpen, played, markOpen]
+    [height, closedY, sheetOpen, played, markOpen]
   );
 
   // close drag (home owns sheetY): the round pauses ONLY when the close
@@ -236,10 +240,13 @@ export default function HomeScreen() {
   const closeDrag = useMemo(
     () =>
       Gesture.Pan()
+        // MUST be gated: at the peek rest this gesture's from-zero translation
+        // math would TELEPORT the sheet on a downward touch
+        .enabled(sheetOpen)
         .activeOffsetY(15)
         .onUpdate((e) => {
           'worklet';
-          sheetY.value = Math.min(height, Math.max(0, e.translationY));
+          sheetY.value = Math.min(closedY, Math.max(0, e.translationY));
         })
         .onEnd((e) => {
           'worklet';
@@ -247,13 +254,13 @@ export default function HomeScreen() {
             // commit: deactivate NOW (blocker #1 — never let the arm effect
             // re-fire while the sheet slides away)
             runOnJS(commitClose)();
-            sheetY.value = withTiming(height, { duration: 220 });
+            sheetY.value = withTiming(closedY, { duration: 220 });
           } else {
             // abort: the round never paused — the sheet just springs back
             sheetY.value = withSpring(0, SHEET_SPRING);
           }
         }),
-    [height, commitClose]
+    [height, closedY, sheetOpen, commitClose]
   );
 
   // PERF: transform ONLY — animating border radius on a clipped full-screen
@@ -265,7 +272,15 @@ export default function HomeScreen() {
   // NO BLUR (owner: drag jank — "just delete it"). A plain dark scrim fades
   // with the pull instead: one opacity on one solid view, compositing-only.
   const scrimStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(sheetY.value, [0, height], [0.55, 0], Extrapolation.CLAMP),
+    opacity: interpolate(sheetY.value, [0, closedY], [0.55, 0], Extrapolation.CLAMP),
+  }));
+  // the collapsed FACE (frost + swipe-to-play) and the GAME crossfade as the
+  // sheet travels — single-layer opacities, compositing-cheap
+  const faceStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(sheetY.value, [closedY - 90, closedY - 10], [0, 1], Extrapolation.CLAMP),
+  }));
+  const gameStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(sheetY.value, [closedY - 150, closedY - 40], [1, 0], Extrapolation.CLAMP),
   }));
 
   const wordLen = deal?.sworb.length ?? 5;
@@ -409,40 +424,40 @@ export default function HomeScreen() {
 
       </SafeAreaView>
 
-      {/* the swipe-to-play DOCK BAND (owner): taller, frosted — the leaders
-          scroll under it to the bottom edge and blur out; the label always
-          rides on top. STATIC blur: intensity never animates (the jank rule) */}
-      {!sheetOpen && (
-        <GestureDetector gesture={openDrag}>
-          <View style={[styles.dockBand, { height: DOCK_H + insets.bottom }]}>
-            <DockFrost tint={theme.mode === 'dark' ? 'dark' : 'light'} />
-            {/* ONE owner of vertical placement: content CENTERED in the zone
-                above the home indicator (inset reserved via paddingBottom) —
-                no stacked magic paddings (owner twice: bottom felt like zero) */}
-            <View style={[styles.dockInner, { paddingBottom: Math.max(insets.bottom, 14) }]}>
-              <CountdownDock played={played} />
-            </View>
-          </View>
-        </GestureDetector>
-      )}
-
       {/* dark scrim under the rising sheet (blur deleted — owner call) */}
       <Animated.View
         pointerEvents="none"
         style={[StyleSheet.absoluteFill, styles.scrim, scrimStyle]}
       />
 
-      {/* THE SHEET — pre-mounted hidden below the screen; drags are pure transform */}
+      {/* THE SHEET — ALWAYS PRESENT (Maps model): parked as the frosted
+          swipe-to-play peek at the bottom, full-screen when pulled up. The
+          peek face and the game crossfade during travel. */}
       {deal && (
-        <Animated.View style={[styles.sheet, sheetStyle]}>
-          <PlaySheet
-            key={deal.dayKey}
-            ref={sheetRef}
-            onClose={closeSheet}
-            active={sheetOpen}
-            closeGesture={closeDrag}
-          />
-        </Animated.View>
+        <GestureDetector gesture={openDrag}>
+          <Animated.View style={[styles.sheet, sheetStyle]}>
+            {/* the GAME layer (opaque) — transparent at peek so the frost
+                below can sample home */}
+            <Animated.View style={[styles.gameLayer, gameStyle]}>
+              <PlaySheet
+                key={deal.dayKey}
+                ref={sheetRef}
+                onClose={closeSheet}
+                active={sheetOpen}
+                closeGesture={closeDrag}
+              />
+            </Animated.View>
+            {/* the COLLAPSED FACE: frost + swipe-to-play/countdown */}
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.peekFace, { height: peekH }, faceStyle]}>
+              <DockFrost tint={theme.mode === 'dark' ? 'dark' : 'light'} />
+              <View style={[styles.dockInner, { paddingBottom: Math.max(insets.bottom, 14) }]}>
+                <CountdownDock played={played} />
+              </View>
+            </Animated.View>
+          </Animated.View>
+        </GestureDetector>
       )}
     </View>
   );
@@ -474,14 +489,6 @@ const styles = StyleSheet.create({
     gap: 22,
     alignItems: 'center',
   },
-  dockBand: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 10,
-    overflow: 'hidden',
-  },
   dockInner: {
     flex: 1,
     justifyContent: 'center',
@@ -492,11 +499,21 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#101014',
     overflow: 'hidden',
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     zIndex: 20,
+  },
+  gameLayer: {
+    ...{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+    backgroundColor: '#101014',
+  },
+  peekFace: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    overflow: 'hidden',
   },
   heroRow: {
     flexDirection: 'row',
