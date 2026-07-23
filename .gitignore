@@ -6,3 +6,8 @@ coverage/
 # that documents "this whole tree is never tracked" (Road-to-9 Sprint 1 #6d verified none of
 # it — nor .git/sdd, which can't be tracked at all — was ever committed).
 .superpowers/
+
+# tooling artifacts (root-dir expo launch + supabase CLI link)
+.expo/
+supabase/.temp/
+/tsconfig.json
