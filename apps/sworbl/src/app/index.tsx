@@ -404,7 +404,9 @@ export default function HomeScreen() {
               tint={theme.mode === 'dark' ? 'dark' : 'light'}
               style={[styles.dockSlice, { top: 42, bottom: 0 }]}
             />
-            <View style={[styles.dockInner, { paddingBottom: Math.max(insets.bottom - 6, 8) }]}>
+            {/* full home-indicator inset + breathing room — the chevron must
+                never kiss the bottom edge (owner: "not very native") */}
+            <View style={[styles.dockInner, { paddingBottom: Math.max(insets.bottom, 12) + 6 }]}>
               <CountdownDock played={played} />
             </View>
           </View>
