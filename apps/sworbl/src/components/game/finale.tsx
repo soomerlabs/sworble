@@ -46,22 +46,43 @@ interface Props {
   onDone: (r: FinaleResult) => void;
 }
 
-// a keyboard KEY: the board tile's little sibling — mono face on a ledge
+// a keyboard KEY: the board tile's little sibling — candy construction, not
+// corporate: round shoulders, deep ledge, action keys in brand color
+const KEY_ACCENTS: Record<string, { bg: string; edge: string; ink: string }> = {
+  '⏎': { bg: '#8971FF', edge: '#5A43C9', ink: '#FFFFFF' }, // submit = THE brand key
+  '⌫': { bg: MONO_DARK.bg, edge: MONO_DARK.edge, ink: '#F58A66' }, // coral nib
+};
 function Key({
   ch, w, h, onPress,
 }: { ch: string; w: number; h: number; onPress: () => void }) {
+  const acc = KEY_ACCENTS[ch];
+  const rad = Math.round(h * 0.26);
   return (
-    <Pressable onPress={onPress} style={{ width: w, height: h + 3 }}>
+    <Pressable onPress={onPress} style={{ width: w, height: h + 4 }}>
       {({ pressed }) => (
         <>
-          <View style={[styles.keyLedge, { width: w, height: h, borderRadius: Math.round(h * 0.2) }]} />
+          <View
+            style={[
+              styles.keyLedge,
+              { width: w, height: h, borderRadius: rad, backgroundColor: acc?.edge ?? MONO_DARK.edge },
+            ]}
+          />
           <View
             style={[
               styles.keyFace,
-              { width: w, height: h, borderRadius: Math.round(h * 0.2) },
-              pressed && { transform: [{ translateY: 2 }], backgroundColor: MONO_DARK.hi },
+              { width: w, height: h, borderRadius: rad, backgroundColor: acc?.bg ?? MONO_DARK.bg },
+              pressed && {
+                transform: [{ translateY: 3 }, { scale: 0.96 }],
+                backgroundColor: acc ? acc.bg : MONO_DARK.hi,
+              },
             ]}>
-            <Text style={[styles.keyText, { fontSize: Math.min(20, h * 0.42) }]}>{ch}</Text>
+            <Text
+              style={[
+                styles.keyText,
+                { fontSize: Math.min(23, h * 0.44), color: acc?.ink ?? MONO_INK },
+              ]}>
+              {ch}
+            </Text>
           </View>
         </>
       )}
@@ -166,11 +187,11 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone 
 
   // the KEYBOARD: three rows, keys sized to fill the width like a real one
   const KEY_ROWS = useMemo(() => ['QWERTYUIOP', 'ASDFGHJKL', '⌫ZXCVBNM⏎'], []);
-  const kbPad = 8;
-  const keyGap = 5;
+  const kbPad = 6;
+  const keyGap = 6;
   const keyW = Math.floor((width - kbPad * 2 - 9 * keyGap) / 10);
-  const keyH = Math.round(keyW * 1.42);
-  const wideW = Math.floor(keyW * 1.45);
+  const keyH = Math.round(keyW * 1.6); // taller — a REAL keyboard's presence
+  const wideW = Math.floor(keyW * 1.5);
 
   return (
     <Animated.View entering={E(FadeIn.duration(220).delay(D(120)))} style={styles.wrap}>
@@ -257,7 +278,7 @@ const styles = StyleSheet.create({
   pip: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#2a2446' },
   pipUsed: { backgroundColor: '#ff6b5a' },
   kb: {
-    gap: 7,
+    gap: 9,
     alignItems: 'center',
   },
   kbRow: {
@@ -266,23 +287,20 @@ const styles = StyleSheet.create({
   },
   keyLedge: {
     position: 'absolute',
-    top: 3,
+    top: 4, // deeper ledge — candy, not corporate
     left: 0,
-    backgroundColor: MONO_DARK.edge,
   },
   keyFace: {
     position: 'absolute',
     top: 0,
     left: 0,
-    backgroundColor: MONO_DARK.bg,
     alignItems: 'center',
     justifyContent: 'center',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.12)',
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(255,255,255,0.14)',
   },
   keyText: {
     fontFamily: 'Fredoka_600SemiBold',
-    color: MONO_INK,
     includeFontPadding: false,
   },
 });
