@@ -8,6 +8,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { GAME_DARK, type GameSurface } from '@/game/palette';
+import { Crown } from '@/components/crown';
 
 interface Props {
   score: number;
@@ -63,7 +64,7 @@ export function ScoreHeader({ score, target, marks, width, gs = GAME_DARK }: Pro
         <Animated.View style={[styles.knob, { backgroundColor: gs.bg, borderColor: gs.line }, knobStyle]} />
       </View>
       <View style={styles.targetWrap}>
-        <Text style={styles.crown}>♛</Text>
+        <Crown width={15} style={styles.crown} />
         <Text style={styles.target}>{target.toLocaleString()}</Text>
       </View>
     </View>
@@ -151,9 +152,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   crown: {
-    fontSize: 13,
-    color: '#8971FF',
-    lineHeight: 14,
+    marginBottom: 2,
   },
   target: {
     fontFamily: 'Fredoka_600SemiBold',

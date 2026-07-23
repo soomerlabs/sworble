@@ -10,7 +10,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, withDelay, Easing,
 } from 'react-native-reanimated';
-import Svg, { Path, Circle } from 'react-native-svg';
+import { Crown as CrownSvg } from '@/components/crown';
 import { PALETTE, tileColorFor } from '@/game/palette';
 import { type Theme, ACCENT, ACCENT_EDGE } from '@/game/theme';
 import { type LbEntry } from '@/game/standings';
@@ -85,20 +85,7 @@ function useFloatC() {
 }
 
 function Crown() {
-  return (
-    <Svg width={22} height={15} viewBox="0 0 34 24" style={styles.crown}>
-      <Path
-        d="M3 21 L2 7 L10 13 L17 3 L24 13 L32 7 L31 21 Z"
-        fill="#F5B84A"
-        stroke="#CE9022"
-        strokeWidth={1.5}
-        strokeLinejoin="round"
-      />
-      <Circle cx={2} cy={6.5} r={2.4} fill="#F5B84A" />
-      <Circle cx={32} cy={6.5} r={2.4} fill="#F5B84A" />
-      <Circle cx={17} cy={2.6} r={2.4} fill="#F5B84A" />
-    </Svg>
-  );
+  return <CrownSvg width={22} fill="#F5B84A" edge="#CE9022" style={styles.crown} />;
 }
 
 // web auraPulse: the champion's gold radial glow, breathing
