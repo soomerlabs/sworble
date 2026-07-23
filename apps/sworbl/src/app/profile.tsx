@@ -13,6 +13,7 @@ import { useTheme, CLUE_GREEN } from '@/game/theme';
 import { PALETTE, tileColorFor } from '@/game/palette';
 import { loadStats, historyGrid, streakDays } from '@/game/stats';
 import { getPlayerName } from '@/game/player';
+import { lexiconCount, titleFor } from '@/game/lexicon';
 
 const HEAT_DARK = ['#1b1a22', '#3d3557', '#8a72d6', '#B485FF'];
 const HEAT_LIGHT = ['#E2DFEE', '#CFC4EC', '#A98FE8', '#8971FF'];
@@ -29,6 +30,7 @@ export default function ProfileScreen() {
   const { width } = useWindowDimensions();
   const stats = useMemo(() => loadStats(), []);
   const name = getPlayerName();
+  const collected = useMemo(() => lexiconCount(), []);
   const avatarPal = PALETTE[tileColorFor(name[0]?.toLowerCase() ?? 'p', 0)];
   const grid = useMemo(() => historyGrid(stats), [stats]);
   const heat = theme.mode === 'dark' ? HEAT_DARK : HEAT_LIGHT;
@@ -39,7 +41,7 @@ export default function ProfileScreen() {
     { label: 'BEST SCORE', value: stats.best, dot: PALETTE[2], accent: CLUE_GREEN },
     { label: 'AVG SCORE', value: stats.games ? Math.round(stats.total / stats.games) : 0, dot: PALETTE[0] },
     { label: 'GAMES', value: stats.games, dot: PALETTE[1] },
-    { label: 'WORDS FOUND', value: stats.words, dot: PALETTE[4] },
+    { label: 'WORDS COLLECTED', value: collected, dot: PALETTE[4] },
   ];
 
   return (
@@ -50,7 +52,7 @@ export default function ProfileScreen() {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <ScreenHeader
             theme={theme}
-            eyebrow={`PLAYER · ${sinceLine(stats.firstDay).toUpperCase()}`}
+            eyebrow={`${titleFor(collected).toUpperCase()} · ${sinceLine(stats.firstDay).toUpperCase()}`}
             title={name.toLowerCase()}
             right={
               <View

@@ -82,6 +82,8 @@ export function finishDay(
   // avoids a persist↔stats require cycle at module load
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   require('./stats').recordDay(dayKey, score, wordsPlayed, bestWords);
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('./lexicon').recordWords(bestWords);
 }
 
 // ---- mid-run snapshot (RUN_PREFIX). RN's own versioned shape — the web's

@@ -11,14 +11,26 @@ import engine from '@sworbl/engine';
 import { ScreenBar } from '@/components/screen-bar';
 import { ScreenHeader } from '@/components/screen-header';
 import { DevFlash } from '@/components/game/dev-clue-audit';
-import { useTheme, ACCENT, CLUE_GREEN } from '@/game/theme';
+import { useTheme, ACCENT, ACCENT_EDGE, CLUE_GREEN } from '@/game/theme';
+import { loadLexicon, titleFor, nextTitle } from '@/game/lexicon';
 import { gameSurface } from '@/game/palette';
 import { dealDaily } from '@/game/daily';
 import { loadDay, loadDayWords, type BestWord } from '@/game/persist';
 import { COLS, ROWS } from '@/game/types';
 
+const RENDER_CAP = 250; // the collection can grow huge — cap the list render
+
 export default function WordsScreen() {
   const theme = useTheme();
+  const [tab, setTab] = useState<0 | 1>(0); // 0 today · 1 collection
+  const lexicon = useMemo(() => {
+    const lex = loadLexicon();
+    return Object.entries(lex)
+      .map(([word, pts]) => ({ word, pts }))
+      .sort((a, b) => b.pts - a.pts);
+  }, []);
+  const title = titleFor(lexicon.length);
+  const next = nextTitle(lexicon.length);
   const gs = gameSurface(theme.mode);
   const deal = useMemo(() => dealDaily(), []);
   const day = useMemo(() => (deal ? loadDay(deal.dayKey) : null), [deal]);
@@ -65,13 +77,37 @@ export default function WordsScreen() {
       <SafeAreaView style={styles.safe}>
         <ScreenBar theme={theme} />
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <ScreenHeader theme={theme} eyebrow="TODAY'S HUNT" title="every word" />
+          <ScreenHeader
+            theme={theme}
+            eyebrow={tab === 0 ? "TODAY'S HUNT" : title.toUpperCase()}
+            title="every word"
+          />
+          {/* today ↔ collection (the leaderboard's pill grammar) */}
+          <View style={styles.pills}>
+            {(['today', 'collection'] as const).map((label, i) => (
+              <Pressable
+                key={label}
+                onPress={() => setTab(i as 0 | 1)}
+                style={[
+                  styles.pill,
+                  tab === i
+                    ? { backgroundColor: ACCENT, boxShadow: `0 3px 0 ${ACCENT_EDGE}` }
+                    : { backgroundColor: theme.card },
+                ]}>
+                <Text style={[styles.pillText, { color: tab === i ? '#fff' : theme.sub }]}>
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
           <Text style={[styles.sub, { color: theme.sub }]}>
-            {words.length} found · tap one to trace it
+            {tab === 0
+              ? `${words.length} found · tap one to trace it`
+              : `${lexicon.length} collected${next ? ` · ${next[0]} to ${next[1]}` : ' · the summit'}`}
           </Text>
 
           {/* the mini replay board */}
-          {deal && (
+          {tab === 0 && deal && (
             <View style={[styles.board, { backgroundColor: gs.card, boxShadow: `0 5px 0 ${gs.cardEdge}` }]}>
               <View style={{ width: boardW, height: ROWS * cell - miniGap }}>
                 {deal.tiles.map((t) => (
@@ -109,7 +145,25 @@ export default function WordsScreen() {
 
           {/* the list: ✦ clues green, best word crowned, the rest plain */}
           <View style={styles.list}>
-            {words.map((w, i) => {
+            {tab === 1 &&
+              lexicon.slice(0, RENDER_CAP).map((w) => (
+                <View key={w.word} style={[styles.row, { backgroundColor: theme.card }]}>
+                  <Text style={[styles.dot, { color: theme.faint }]}>·</Text>
+                  <Text style={[styles.word, { color: theme.ink }]}>{w.word.toUpperCase()}</Text>
+                  <Text style={[styles.pts, { color: theme.sub }]}>+{w.pts}</Text>
+                </View>
+              ))}
+            {tab === 1 && lexicon.length > RENDER_CAP && (
+              <Text style={[styles.empty, { color: theme.faint }]}>
+                +{lexicon.length - RENDER_CAP} more in the vault
+              </Text>
+            )}
+            {tab === 1 && lexicon.length === 0 && (
+              <Text style={[styles.empty, { color: theme.sub }]}>
+                every word you ever spell collects here — go get some
+              </Text>
+            )}
+            {tab === 0 && words.map((w, i) => {
               const isClue = found.includes(w.word);
               return (
                 <Pressable
@@ -128,7 +182,7 @@ export default function WordsScreen() {
                 </Pressable>
               );
             })}
-            {words.length === 0 && (
+            {tab === 0 && words.length === 0 && (
               <Text style={[styles.empty, { color: theme.sub }]}>
                 finish a round and the day's whole hunt lives here
               </Text>
@@ -149,6 +203,21 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
     gap: 14,
     alignItems: 'center',
+  },
+  pills: {
+    flexDirection: 'row',
+    gap: 8,
+    alignSelf: 'flex-start',
+  },
+  pill: {
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+  },
+  pillText: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 13.5,
+    letterSpacing: 0.3,
   },
   sub: {
     fontFamily: 'Fredoka_600SemiBold',
