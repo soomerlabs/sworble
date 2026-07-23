@@ -7,7 +7,8 @@
 // into the superlatives pager after) → floating stepped podium + you-block →
 // swipe dock over the storm. Light + dark via the theme tokens.
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, Platform, useWindowDimensions } from 'react-native';
+import { SymbolView } from 'expo-symbols';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect } from 'expo-router';
@@ -337,15 +338,36 @@ export default function HomeScreen() {
             />
           )}
 
-          <Pressable style={styles.podiumTap} onPress={() => router.push('/leaderboard')}>
-            <FloatingPodium theme={theme} entries={standings.podium} you={null} showFoot={false} />
+          {/* standings section — ONLY the chart button opens the leaderboard
+              (owner: not the whole section, "just that button haha") */}
+          <View style={styles.standingsWrap}>
+            <View style={styles.standingsHead}>
+              <Text style={[styles.standingsTitle, { color: theme.sub }]}>standings</Text>
+              <Pressable
+                onPress={() => router.push('/leaderboard')}
+                hitSlop={10}
+                style={[styles.chartBtn, { backgroundColor: theme.card }]}>
+                {Platform.OS === 'ios' ? (
+                  <SymbolView name={'chart.line.uptrend.xyaxis' as never} size={16} tintColor="#8971FF" />
+                ) : (
+                  <Text style={styles.chartGlyph}>↗</Text>
+                )}
+              </Pressable>
+            </View>
+            <FloatingPodium
+              theme={theme}
+              entries={standings.podium}
+              you={null}
+              showTitle={false}
+              showFoot={false}
+            />
             <StandingsList
               theme={theme}
               rows={standings.list}
               youOutside={standings.youOutside}
               ghost={!you}
             />
-          </Pressable>
+          </View>
         </ScrollView>
 
         {/* the swipe-to-play GRAB ZONE is the dock area only (owner call) —
@@ -459,17 +481,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  podiumTap: {
+  standingsWrap: {
     alignSelf: 'stretch',
+    gap: 12,
   },
-  // EQUAL springs: the standings sit dead-center of whatever space is left
-  // between the content group and the dock — same breath above and below
-  // (owner round 3: centered beats floated)
-  spring: {
-    flexGrow: 1,
+  standingsHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  springSmall: {
-    flexGrow: 1,
+  standingsTitle: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 16,
+  },
+  chartBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chartGlyph: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 15,
+    color: '#8971FF',
   },
   hintSlot: {
     height: 33,
