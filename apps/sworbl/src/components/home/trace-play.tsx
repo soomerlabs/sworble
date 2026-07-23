@@ -4,7 +4,7 @@
 // face-on-ledge candy construction at mini scale — gray like a masked board,
 // igniting to candy exactly like tracing on the real thing. Pure display:
 // home owns the gesture and drives sLit (0-4).
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, {
   useAnimatedStyle, useAnimatedReaction, useSharedValue, withDelay, withTiming, withSequence,
@@ -42,7 +42,15 @@ function PlayTile({ ch, i, sLit, sPoke, theme, tile, armed }: {
   const flyY = useSharedValue(0);
   const flyO = useSharedValue(1);
   const flyS = useSharedValue(1);
+  // the rain is a DISARM ceremony, not a boot animation (owner audit: at
+  // cold launch the tiles spawned above the band, clipped, then fell) —
+  // on first mount unarmed tiles simply ARE there
+  const booted = useRef(false);
   useEffect(() => {
+    if (!booted.current) {
+      booted.current = true;
+      if (!armed) return;
+    }
     if (armed) {
       const d = i * 55;
       flyY.value = withDelay(d, withTiming(-44, { duration: 260, easing: FLY_EASE }));

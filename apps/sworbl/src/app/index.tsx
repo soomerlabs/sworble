@@ -7,7 +7,10 @@
 // into the superlatives pager after) → floating stepped podium + you-block →
 // swipe dock over the storm. Light + dark via the theme tokens.
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView, Share, Platform, useWindowDimensions } from 'react-native';
+import {
+  View, Text, Pressable, StyleSheet, ScrollView, Share, Platform, useWindowDimensions,
+  type StyleProp, type ViewStyle,
+} from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
@@ -119,6 +122,27 @@ function FlipTile({ ch, i, w, h, r, palBg, palEdge, monoBg, monoEdge }: {
 }
 
 
+
+// BOOT CHOREOGRAPHY (owner audit: "everything slams in at once") — each home
+// section rises once at launch, 120ms apart: header → hero → hints →
+// standings. Shared values only (house rule); plays on mount, never again.
+function BootRise({ i, style, children }: {
+  i: number; style?: StyleProp<ViewStyle>; children: React.ReactNode;
+}) {
+  const p = useSharedValue(0);
+  useEffect(() => {
+    p.value = withDelay(
+      80 + i * 120,
+      withTiming(1, { duration: 380, easing: Easing.out(Easing.cubic) })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const pose = useAnimatedStyle(() => ({
+    opacity: p.value,
+    transform: [{ translateY: (1 - p.value) * 10 }],
+  }));
+  return <Animated.View style={[style, pose]}>{children}</Animated.View>;
+}
 
 // the six blank hint slots: staggered widths, NO letter-count leak. SMALLER
 // than the hero word blocks in both axes (owner: the placeholders were
@@ -596,9 +620,16 @@ export default function HomeScreen() {
     opacity: interpolate(sheetY.value, [closedY - 170, closedY - 50], [0, 1], Extrapolation.CLAMP),
   }));
   // aurora weather: CALM at rest (dimmed under the frost), IGNITED when the
-  // door arms — brightness + a slow swell, nothing layout-touching
+  // door arms — brightness + a slow swell, nothing layout-touching. At boot
+  // the weather ROLLS IN over 600ms instead of popping with the Skia canvas
+  // (owner audit: the color pop read as a glitch)
+  const sStormIn = useSharedValue(0);
+  useEffect(() => {
+    sStormIn.value = withDelay(250, withTiming(1, { duration: 600 }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const stormGlowStyle = useAnimatedStyle(() => ({
-    opacity: 0.45 + sGlow.value * 0.55,
+    opacity: sStormIn.value * (0.45 + sGlow.value * 0.55),
     transform: [{ scale: 1 + sGlow.value * 0.08 }],
   }));
   // THE INVISIBLE PARK (owner): at rest the sheet does NOT read as a layer —
@@ -675,6 +706,7 @@ export default function HomeScreen() {
           contentContainerStyle={[styles.content, { paddingBottom: DOCK_H + insets.bottom + 10 }]}
           showsVerticalScrollIndicator={false}>
           {deal && (
+            <BootRise i={0}>
             <DateHeader
               theme={theme}
               dayKey={deal.dayKey}
@@ -697,11 +729,12 @@ export default function HomeScreen() {
                 }).catch(() => {})
               }
             />
+            </BootRise>
           )}
 
           {/* word of the day: candy bloom when the day is done, dashed
               blanks before (the answer is hidden — no spoilers) */}
-          <View style={styles.heroRow}>
+          <BootRise i={1} style={styles.heroRow}>
             {played && deal
               ? [...deal.sworb].map((ch, i) => {
                   const pal = PALETTE[tileColorFor(ch, i)];
@@ -732,7 +765,7 @@ export default function HomeScreen() {
                     ]}
                   />
                 ))}
-          </View>
+          </BootRise>
           {played && !solved && (
             <Text style={[styles.missLine, { color: theme.sub }]}>
               not cracked — tomorrow's another sworbl
@@ -747,18 +780,18 @@ export default function HomeScreen() {
           {/* pre-play: six BLANK hint slots (no letter counts, no spoilers).
               post-play the clue intel lives inside the superlatives pager. */}
           {!played && (
-            <View style={styles.hintRow}>
+            <BootRise i={2} style={styles.hintRow}>
               {HINT_SLOT_W.map((w, i) => (
                 <View
                   key={i}
-                  style={[styles.hintSlot, { width: w, borderColor: theme.dashed }]}
+                  style={[styles.hintSlot, { width: w, backgroundColor: theme.card }]}
                 />
               ))}
-            </View>
+            </BootRise>
           )}
 
           {played && deal && (
-            <View style={styles.pagerWrap}>
+            <BootRise i={2} style={styles.pagerWrap}>
             <SuperlativesPager
               theme={theme}
               bestWords={day?.bestWords ?? []}
@@ -766,12 +799,12 @@ export default function HomeScreen() {
               clues={deal.clues}
               totalWords={loadDayWords(deal.dayKey).length}
             />
-            </View>
+            </BootRise>
           )}
 
           {/* standings section — ONLY the chart button opens the leaderboard
               (owner: not the whole section, "just that button haha") */}
-          <View style={styles.standingsWrap}>
+          <BootRise i={3} style={styles.standingsWrap}>
             <View style={styles.standingsHead}>
               <Text style={[styles.standingsTitle, { color: theme.sub }]}>
                 standings
@@ -796,17 +829,26 @@ export default function HomeScreen() {
                 showTitle={false}
                 showFoot={false}
               />
-              <StandingsList
-                theme={theme}
-                rows={standings.list}
-                youOutside={standings.youOutside}
-                // the dashed seat only when you're truly ABSENT from the field —
-                // a podium #1 doesn't need a placeholder chair (owner)
-                ghost={!you && !entries.some((e) => e.isMe)}
-                emptyRows={entries.length <= 3 ? 3 : 0}
-              />
+              {standings.podium.length === 0 ? (
+                // TRULY EMPTY field (audit): the ghost podium already says
+                // it — piling dashed rows + a ghost-you underneath tripled
+                // the message and walled the screen in wireframe
+                <Text style={[styles.fieldAwait, { color: theme.faint }]}>
+                  first scores land here today
+                </Text>
+              ) : (
+                <StandingsList
+                  theme={theme}
+                  rows={standings.list}
+                  youOutside={standings.youOutside}
+                  // the dashed seat only when you're truly ABSENT from the field —
+                  // a podium #1 doesn't need a placeholder chair (owner)
+                  ghost={!you && !entries.some((e) => e.isMe)}
+                  emptyRows={entries.length <= 3 && entries.length > 0 ? 3 : 0}
+                />
+              )}
             </Arrive>
-          </View>
+          </BootRise>
         </ScrollView>
 
       </SafeAreaView>
@@ -1093,10 +1135,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#8971FF',
   },
+  // solid low-contrast cards (owner audit): the HERO owns the dash idiom —
+  // a second row of dashes read as wireframe, not mystery
   hintSlot: {
     height: 33,
     borderRadius: 11,
-    borderWidth: 2,
-    borderStyle: 'dashed',
+  },
+  fieldAwait: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 12,
+    textAlign: 'center',
+    paddingVertical: 6,
   },
 });
