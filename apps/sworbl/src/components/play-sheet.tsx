@@ -341,7 +341,16 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
           <Animated.View style={[styles.brandCenter, brandClick]} pointerEvents="none">
             <Brand />
           </Animated.View>
-          <Text style={styles.score}>{score.toLocaleString()}</Text>
+          {/* score lives in the ScoreHeader rail only (it showed twice) —
+              the corner is the PAUSE button, the visible face of swipe-down */}
+          {onBoard ? (
+            <Pressable onPress={onClose} hitSlop={12} style={styles.pauseBtn}>
+              <View style={styles.pauseBar} />
+              <View style={styles.pauseBar} />
+            </Pressable>
+          ) : (
+            <Text style={styles.score}>{score.toLocaleString()}</Text>
+          )}
         </View>
 
         {onBoard && (
@@ -478,6 +487,23 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#EDEFF7',
     fontVariant: ['tabular-nums'],
+  },
+  pauseBtn: {
+    flexDirection: 'row',
+    gap: 4,
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: '#26262E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 2px 0 #141418',
+  },
+  pauseBar: {
+    width: 4,
+    height: 13,
+    borderRadius: 2,
+    backgroundColor: '#9DA2B3',
   },
   center: {
     // WEB-PARITY LAYOUT: top-anchored stack (header → score bar → stepper →

@@ -139,14 +139,22 @@ export function GameBoard({
     return true;
   }, [findableUnfound, firePing, deal]);
 
-  // FINALE FLOOR: the clock is dying — enter the guess round with at least 2
+  // FINALE FLOOR: enter the guess round with at least 2 clues banked. Keyed on
+  // the finale prop ARRIVING — the old secsLeft<=0 trigger never fired (the
+  // sheet flips remaining=0 and phase='finale' in ONE batched update, so the
+  // board never renders secsLeft===0; owner's zero-word game got no hints).
+  // No findability gate here: the hunt is over, these are pure guessing intel.
   useEffect(() => {
-    if (secsLeft === undefined || secsLeft > 0) return;
-    if (ladder.floorGiven) return;
+    if (!finale || ladder.floorGiven) return;
     setLadder((l) => ({ ...l, floorGiven: true }));
-    let need = FINALE_FLOOR - foundRef.current.length;
-    while (need > 0 && grantFreeClue()) need--;
-  }, [secsLeft, ladder.floorGiven, grantFreeClue]);
+    const need = FINALE_FLOOR - foundRef.current.length;
+    if (need <= 0) return;
+    const grants = deal.clues.filter((c) => !foundRef.current.includes(c)).slice(0, need);
+    if (grants.length) {
+      setFound((cur) => [...cur, ...grants.filter((c) => !cur.includes(c))]);
+      haptic.good();
+    }
+  }, [finale, ladder.floorGiven, deal]);
 
   // ---- UI-thread state (tier-2) ----
   const sGrid = useSharedValue<(TraceTile | null)[][]>([]);
