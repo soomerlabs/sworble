@@ -155,6 +155,9 @@ function Chips({ word, red, fly }: { word: string; red?: boolean; fly?: boolean 
       {[...word].map((ch, i) => {
         const pal = PALETTE[tileColorFor(ch, i)];
         return (
+          // entering/exiting live on the WRAPPER; every visual style — incl
+          // the drunken lean's transform — on the inner node (a layout
+          // animation may overwrite a sibling transform: the reanimated warn)
           <Animated.View
             key={i + ch}
             entering={
@@ -164,27 +167,29 @@ function Chips({ word, red, fly }: { word: string; red?: boolean; fly?: boolean 
                   ZoomIn.springify().mass(0.5).delay(i * 40 + 240)
                 : ZoomIn.springify().mass(0.5)
             }
-            exiting={red ? chipFallAt(i) : undefined}
-            style={[
-              styles.chip,
-              {
-                width: hs,
-                height: hs,
-                borderRadius: Math.round(hs * 0.27), borderCurve: 'continuous',
-                backgroundColor: red ? '#E5484D' : pal.bg,
-                boxShadow: `0 2px 0 ${red ? '#8C2328' : pal.edge}`,
-              },
-              // the drunken lean (web _bannerMiss): each chip knocked askew
-              red && {
-                transform: [
-                  { rotate: `${i % 2 ? 5 : -6}deg` },
-                  { translateY: i % 2 ? -2 : 2 },
-                ],
-              },
-            ]}>
-            <Text style={[styles.chipText, { fontSize: Math.round(hs * 0.55) }]}>
-              {ch.toUpperCase()}
-            </Text>
+            exiting={red ? chipFallAt(i) : undefined}>
+            <View
+              style={[
+                styles.chip,
+                {
+                  width: hs,
+                  height: hs,
+                  borderRadius: Math.round(hs * 0.27), borderCurve: 'continuous',
+                  backgroundColor: red ? '#E5484D' : pal.bg,
+                  boxShadow: `0 2px 0 ${red ? '#8C2328' : pal.edge}`,
+                },
+                // the drunken lean (web _bannerMiss): each chip knocked askew
+                red && {
+                  transform: [
+                    { rotate: `${i % 2 ? 5 : -6}deg` },
+                    { translateY: i % 2 ? -2 : 2 },
+                  ],
+                },
+              ]}>
+              <Text style={[styles.chipText, { fontSize: Math.round(hs * 0.55) }]}>
+                {ch.toUpperCase()}
+              </Text>
+            </View>
           </Animated.View>
         );
       })}
