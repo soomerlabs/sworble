@@ -68,7 +68,7 @@ export function ScoreHeader({ score, target, marks, width, gs = GAME_DARK }: Pro
 const styles = StyleSheet.create({
   wrap: {
     gap: 4, // owner-tuned (knob removed — the glow fill alone marks progress)
-    marginBottom: 8,
+    marginBottom: 4, // symmetric with the top gap (owner)
   },
   reading: {
     flexDirection: 'row',
