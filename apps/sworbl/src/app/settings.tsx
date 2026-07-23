@@ -15,6 +15,8 @@ import { ScreenHeader } from '@/components/screen-header';
 import { useTheme, useThemeMode, setThemeMode, ACCENT, type ThemeMode } from '@/game/theme';
 import { getPlayerName, setPlayerName } from '@/game/player';
 import { hapticsEnabled, setHapticsEnabled, haptic } from '@/game/haptics';
+import { ensurePlayer } from '@/net/supabase';
+import { toast } from '@/components/toast';
 
 const MODES: { key: ThemeMode; label: string }[] = [
   { key: 'system', label: 'system' },
@@ -29,8 +31,16 @@ export default function SettingsScreen() {
   const [haptics, setHaptics] = useState(hapticsEnabled());
 
   const commitName = () => {
+    const before = getPlayerName();
     const saved = setPlayerName(name);
     setName(saved); // normalization (or rejection) reflects back
+    if (saved !== before) {
+      // the server learns IMMEDIATELY (it only synced at boot before) —
+      // standings rename on the next fetch
+      void ensurePlayer(saved);
+      toast(`you're ${saved} now`, { title: 'name changed', pal: 2 });
+      haptic.good();
+    }
   };
 
   return (
