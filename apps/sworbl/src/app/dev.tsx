@@ -18,7 +18,7 @@ import { dealDaily, getDevDay, setDevDay, authoredDays } from '@/game/daily';
 import { loadDay, resetDay, getResetNonce, bumpResetNonce } from '@/game/persist';
 import { isFullDictionary, dict } from '@/game/dict';
 import { getLbFieldMode, setLbFieldMode, type LbFieldMode } from '@/game/standings';
-import { getClueAudit, setClueAudit } from '@/game/dev-flags';
+import { getClueAudit, setClueAudit, getCountInStall, setCountInStall } from '@/game/dev-flags';
 import { ARCHETYPE_LABEL } from '@/components/game/result-view';
 import { TUNING } from '@/game/tuning';
 import { haptic } from '@/game/haptics';
@@ -221,6 +221,19 @@ export default function DevScreen() {
             </Text>
             <Text style={[styles.actionText, { color: getClueAudit() ? CLUE_GREEN : theme.faint }]}>
               {getClueAudit() ? 'ON' : 'off'}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              const next = !getCountInStall();
+              setCountInStall(next);
+              refresh(next ? 'stall ON — JS blocks 900ms across GO (freeze repro)' : 'stall off');
+            }}
+            style={[styles.actionRow, { backgroundColor: theme.card }]}>
+            <Text style={[styles.actionText, { color: theme.ink }]}>stress: count-in stall</Text>
+            <Text style={[styles.actionText, { color: getCountInStall() ? '#FF8A8E' : theme.faint }]}>
+              {getCountInStall() ? 'ON' : 'off'}
             </Text>
           </Pressable>
 

@@ -9,6 +9,8 @@ import Animated, { ZoomIn, FadeOut } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 import { PALETTE, INK, GAME_DARK, type GameSurface } from '@/game/palette';
 import { haptic } from '@/game/haptics';
+import { getCountInStall } from '@/game/dev-flags';
+import { countInTick } from '@/game/count-in-tick';
 
 interface Props {
   onRelease: () => void; // board unlocks + wakes (engine GO beat)
@@ -37,24 +39,28 @@ export function CountIn({ onRelease, onUnmount, gs = GAME_DARK }: Props) {
     const MS = engine.run.COUNT_IN_MS;
     const t0 = Date.now();
     let released = false;
+    // DEV stress: busy-block the JS thread across the GO beat (freeze repro)
+    if (getCountInStall()) {
+      setTimeout(() => {
+        const until = Date.now() + 900;
+        while (Date.now() < until) {
+          /* deliberate stall */
+        }
+      }, MS.GO - 200);
+    }
     const h = setInterval(() => {
-      const el = Date.now() - t0;
-      if (el >= MS.GO) {
-        // RELEASE FIRST, ALWAYS (owner freeze): one late tick could land past
-        // the unmount deadline — the old order unmounted without ever
-        // releasing, stranding the round in count-in with a paused clock.
-        if (!released) {
-          released = true;
-          setOut(true);
-          onRelease();
-        }
-        if (el >= MS.GO + 400) {
-          clearInterval(h);
-          onUnmount();
-        }
+      const t = countInTick(Date.now() - t0, MS);
+      if (t.release && !released) {
+        released = true;
+        setOut(true);
+        onRelease();
+      }
+      if (t.done) {
+        clearInterval(h);
+        onUnmount();
         return;
       }
-      setStep(el >= MS.STEP1 ? '1' : el >= MS.STEP2 ? '2' : '3');
+      if (t.step) setStep(t.step);
     }, 40);
     return () => clearInterval(h);
   }, []);
