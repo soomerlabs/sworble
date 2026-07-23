@@ -6,7 +6,9 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing,
 } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
+import { type SharedValue } from 'react-native-reanimated';
 import { useTheme } from '@/game/theme';
+import { TracePlay } from './trace-play';
 
 function nextIn(): string {
   const ms = engine.core.msToNextDay(new Date());
@@ -16,7 +18,7 @@ function nextIn(): string {
   return `${h}:${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
-export function CountdownDock({ played }: { played: boolean }) {
+export function CountdownDock({ played, sLit }: { played: boolean; sLit?: SharedValue<number> }) {
   const theme = useTheme();
   const [clock, setClock] = useState(nextIn);
   useEffect(() => {
@@ -42,10 +44,16 @@ export function CountdownDock({ played }: { played: boolean }) {
           <Text style={[styles.nextClock, { color: theme.ink }]}>{clock}</Text>
         </View>
       ) : (
-        <View key="swipe" style={styles.face}>
-          {/* the ^ (owner: pill tried, chevron won) */}
-          <Animated.Text style={[styles.chev, bobStyle]}>︿</Animated.Text>
-          <Text style={[styles.swipeLabel, { color: theme.ink }]}>swipe up to play</Text>
+        <View key="trace" style={styles.face}>
+          {sLit ? (
+            // TRACE TO PLAY — the launch IS the game's first trace (owner)
+            <TracePlay sLit={sLit} theme={theme} />
+          ) : (
+            <>
+              <Animated.Text style={[styles.chev, bobStyle]}>︿</Animated.Text>
+              <Text style={[styles.swipeLabel, { color: theme.ink }]}>swipe up to play</Text>
+            </>
+          )}
         </View>
       )}
     </View>

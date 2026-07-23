@@ -30,6 +30,7 @@ import Animated, {
 import Storm from '@/components/game/storm';
 import { Floaters } from '@/components/home/floaters';
 import { CountdownDock } from '@/components/home/countdown-dock';
+import { PLAY_TILE, PLAY_GAP, PLAY_ROW_W } from '@/components/home/trace-play';
 import { AppBar } from '@/components/home/app-bar';
 import { DateHeader } from '@/components/home/date-header';
 import { FloatingPodium } from '@/components/home/floating-podium';
@@ -173,6 +174,10 @@ export default function HomeScreen() {
   const peekH = DOCK_H + insets.bottom;
   const closedY = height - peekH; // rest position: only the peek visible
   const sheetY = useSharedValue(bootOpen ? 0 : closedY); // closedY = peek, 0 = open
+  // TRACE TO PLAY: 0-4 lit tiles; the open gesture is DUAL-MODE — the first
+  // decisive movement axis picks trace (horizontal) or sheet-pull (vertical)
+  const sLit = useSharedValue(0);
+  const sMode = useSharedValue(0); // 0 undecided · 1 sheet · 2 trace · 3 launched
   const sSquash = useSharedValue(1); // candy squash when the sheet docks at full
   const sDetent = useSharedValue(0); // 1 once the pull crosses the commit line
   const [sheetOpen, setSheetOpen] = useState(bootOpen); // fully open → home drag off, round armed
@@ -195,6 +200,8 @@ export default function HomeScreen() {
   const finishClose = useCallback(() => {
     setSheetOpen(false);
     saveSheetOpen(null); // a closed sheet must never restore
+    sLit.value = 0;
+    sMode.value = 0;
   }, []);
   const closeSheet = useCallback(() => {
     sheetRef.current?.pauseForClose();
@@ -600,7 +607,7 @@ export default function HomeScreen() {
               style={[styles.peekFace, { height: peekH }, faceStyle]}>
               {frostLive && <DockFrost tint={theme.mode === 'dark' ? 'dark' : 'light'} />}
               <View style={[styles.dockInner, { paddingBottom: Math.max(insets.bottom, 14) }]}>
-                <CountdownDock played={played} />
+                <CountdownDock played={played} sLit={sLit} />
               </View>
               {__DEV__ && getDiagnostics() && (
                 <Text style={styles.devBand}>
