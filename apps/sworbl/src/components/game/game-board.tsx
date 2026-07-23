@@ -371,6 +371,15 @@ export function GameBoard({
               ]}
             />
           ))}
+          {/* web z-order: the dotted links run UNDER the blocks */}
+          <TraceConnector
+            sPath={sPath}
+            jsPath={jsPath}
+            size={size}
+            gap={gap}
+            width={boardW}
+            height={boardH}
+          />
           {tiles.map((t) => (
             <GameTile
               key={t.id}
@@ -384,14 +393,6 @@ export function GameBoard({
               nopeTotal={nope.total}
             />
           ))}
-          <TraceConnector
-            sPath={sPath}
-            jsPath={jsPath}
-            size={size}
-            gap={gap}
-            width={boardW}
-            height={boardH}
-          />
           {ping && (
             <PingRings
               key={ping.key}
