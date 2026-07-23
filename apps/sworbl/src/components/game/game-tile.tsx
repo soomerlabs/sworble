@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
   withDelay,
   withSequence,
+  ZoomOut,
   type SharedValue,
 } from 'react-native-reanimated';
 import { PALETTE, INK } from '@/game/palette';
@@ -82,8 +83,14 @@ function GameTileInner({ tile, size, gap, sPath, clearing }: Props) {
     backgroundColor: sSel.value ? pal.hi : pal.bg,
   }));
 
+  // THE MORPH (exit half): when the board unmounts at 0:00, tiles collapse in
+  // a center-out wave — the keyboard's entrance mirrors it (finale.tsx). A
+  // layout `exiting` runs on the removal snapshot, so it costs nothing live.
+  const morphDelay = Math.round(Math.hypot(tile.col - 2, tile.row - 2.5) * 55);
+
   return (
     <Animated.View
+      exiting={ZoomOut.duration(230).delay(morphDelay)}
       style={[
         styles.tile,
         anim,

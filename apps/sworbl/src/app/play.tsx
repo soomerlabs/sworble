@@ -18,7 +18,7 @@ import { PauseCover } from '@/components/game/pause-cover';
 import Storm from '@/components/game/storm';
 import { BG_DARK } from '@/game/palette';
 import { dealDaily, bumpNextId } from '@/game/daily';
-import { CLUE_COUNT, type TileT } from '@/game/types';
+import { type TileT } from '@/game/types';
 import { loadDay, saveProgress, finishDay, saveRun, type RunSnap, type BestWord } from '@/game/persist';
 import { TUNING } from '@/game/tuning';
 import { router } from 'expo-router';
@@ -283,8 +283,8 @@ export default function PlayScreen() {
           {phase === 'finale' && deal && (
             <Finale
               entry={{ sworb: deal.sworb }}
-              foundCount={found.length}
-              clueTotal={CLUE_COUNT}
+              clues={deal.clues}
+              found={found}
               size={tile}
               restore={finaleRestore.current}
               onProgress={onFinaleProgress}
