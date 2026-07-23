@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
 import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -131,9 +130,11 @@ function BootRise({ i, style, children }: {
 }) {
   const p = useSharedValue(0);
   useEffect(() => {
+    // a FAST ripple (owner: the first cut "seemed hesitated") — the whole
+    // cascade lands inside ~half a second
     p.value = withDelay(
-      80 + i * 120,
-      withTiming(1, { duration: 380, easing: Easing.out(Easing.cubic) })
+      30 + i * 70,
+      withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic) })
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -154,52 +155,8 @@ const HINT_SLOT_W = [40, 36, 44, 38, 36, 42];
 const DOCK_H = 106; // sized for the (slightly under board scale) PLAY tiles
 const ASSIST_RISE = 0; // assist rise retired (owner) — constant kept for the fade window math
 
-// TRUE gradient frost: one BlurView masked by a LinearGradient (the sliced
-// approximation banded — owner: "woof"). FLIP THIS TO true AFTER the next
-// pod install + rebuild (the mask packages are native). Runtime detection
-// was a trap: the packages' JS loads fine WITHOUT their native halves, the
-// broken MaskedView then swallows the blur entirely (owner: "no blur at
-// all") — a hand-flipped constant is deterministic.
-const USE_MASKED_FROST = false;
-
-// APPLE LIQUID GLASS (owner ask): iOS 26's real UIGlassEffect for the band —
-// checked ONCE at module load (native availability can't change mid-run).
-// Anywhere it's absent (older iOS, Android, web) the BlurView frost stands.
-let GlassViewT: React.ComponentType<{ style?: object; glassEffectStyle?: string }> | null = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const glass = require('expo-glass-effect');
-  if (glass.isLiquidGlassAvailable?.()) GlassViewT = glass.GlassView;
-} catch {
-  GlassViewT = null;
-}
-
-function DockFrost({ tint }: { tint: 'dark' | 'light' }) {
-  if (GlassViewT) {
-    const Glass = GlassViewT;
-    return <Glass style={StyleSheet.absoluteFill} glassEffectStyle="regular" />;
-  }
-  if (!USE_MASKED_FROST) {
-    return <BlurView intensity={40} tint={tint} style={StyleSheet.absoluteFill} />;
-  }
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const MaskedView = require('@react-native-masked-view/masked-view').default;
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { LinearGradient } = require('expo-linear-gradient');
-  return (
-    <MaskedView
-      style={StyleSheet.absoluteFill}
-      maskElement={
-        <LinearGradient
-          colors={['transparent', 'black', 'black']}
-          locations={[0, 0.32, 1]}
-          style={StyleSheet.absoluteFill}
-        />
-      }>
-      <BlurView intensity={45} tint={tint} style={StyleSheet.absoluteFill} />
-    </MaskedView>
-  );
-}
+// (the frost/glass era is over — owner: the pull RIDES THE STORM UP now;
+// no blur ever rides the moving sheet, which is also the cheaper path)
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
@@ -356,11 +313,10 @@ export default function HomeScreen() {
     // AUDIT BLOCKER #1: sheetOpen flips false SYNCHRONOUSLY at close-start;
     // closingRef keeps the self-heal's hands off the park spring
     closingRef.current = true;
-    setFrostLive(true); // pre-mount the frost — it must be WARM before landing
     finishClose();
     requestAnimationFrame(() => {
-      // the spring starts one frame AFTER the close's JS burst (frost mount +
-      // state batch) — its first frames stay clean
+      // the spring starts one frame AFTER the close's JS burst (state batch)
+      // — its first frames stay clean
       sheetY.value = withSpring(closedY, PARK_SPRING, () => {
         'worklet';
         runOnJS(closeSettled)();
@@ -542,10 +498,9 @@ export default function HomeScreen() {
   const commitClose = useCallback(() => {
     sheetRef.current?.pauseForClose();
     closingRef.current = true;
-    finishClose(); // frost already warmed at drag start
+    finishClose();
     setTimeout(refreshDay, 300);
   }, [finishClose, refreshDay]);
-  const prepFrost = useCallback(() => setFrostLive(true), []);
   const closeDrag = useMemo(
     () =>
       Gesture.Pan()
@@ -553,11 +508,6 @@ export default function HomeScreen() {
         // math would TELEPORT the sheet on a downward touch
         .enabled(sheetOpen)
         .activeOffsetY(15)
-        .onStart(() => {
-          'worklet';
-          // frost warms at drag START — the commit moment stays lean
-          runOnJS(prepFrost)();
-        })
         .onUpdate((e) => {
           'worklet';
           sheetY.value = Math.min(closedY, Math.max(0, e.translationY));
@@ -585,7 +535,7 @@ export default function HomeScreen() {
             sheetY.value = withSpring(0, { ...OPEN_SPRING, velocity: e.velocityY });
           }
         }),
-    [height, closedY, sheetOpen, commitClose, prepFrost, detentIn, detentOut]
+    [height, closedY, sheetOpen, commitClose, detentIn, detentOut]
   );
 
   // PERF: transform ONLY — animating border radius on a clipped full-screen
@@ -625,22 +575,34 @@ export default function HomeScreen() {
   // (owner audit: the color pop read as a glitch)
   const sStormIn = useSharedValue(0);
   useEffect(() => {
-    sStormIn.value = withDelay(250, withTiming(1, { duration: 600 }));
+    // the band is the FINALE of the boot choreography (owner): PLAY tiles
+    // and the glow fade in TOGETHER right as the last section lands
+    // (last section starts at 240ms and runs 300ms)
+    sStormIn.value = withDelay(420, withTiming(1, { duration: 380 }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const stormGlowStyle = useAnimatedStyle(() => ({
-    opacity: sStormIn.value * (0.45 + sGlow.value * 0.55),
-    transform: [{ scale: 1 + sGlow.value * 0.08 }],
-  }));
-  // THE INVISIBLE PARK (owner): at rest the sheet does NOT read as a layer —
-  // no frost, no shadow, no lip. The aurora floats on home itself. Pulling
-  // up MATERIALIZES the sheet: its dressing fades in over the first stretch
-  // of travel, so the weather "fades into the sheet".
-  const materializeStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      sheetY.value, [closedY - 110, closedY - 20], [1, 0], Extrapolation.CLAMP
-    ),
-  }));
+  // RIDE THE STORM UP (owner pick): the aurora is glued to the sheet's top
+  // edge, so the pull literally drags the weather up the screen. Travel
+  // SWELLS it (scale from the top edge, blobs spreading over the emerging
+  // surface) and BRIGHTENS it to full burn; near full-open it dissolves and
+  // the board stands alone. All interpolation off sheetY — butter by
+  // construction, and no blur ever rides the moving sheet.
+  const stormRideStyle = useAnimatedStyle(() => {
+    const travel = interpolate(sheetY.value, [0, closedY], [1, 0], Extrapolation.CLAMP);
+    const calm = 0.45 + sGlow.value * 0.55; // parked: muted → armed: ignited
+    const burn = interpolate(travel, [0, 0.3], [calm, 1], Extrapolation.CLAMP);
+    const settle = interpolate(travel, [0.72, 0.94], [1, 0], Extrapolation.CLAMP);
+    return {
+      opacity: sStormIn.value * burn * settle,
+      transform: [
+        // restrained swell for the GLOW field (the 3.2× blob swell would
+        // blow a gradient out) — it stretches down over the emerging board
+        { scale: 1 + sGlow.value * 0.06 + travel * 1.1 },
+      ],
+    };
+  }, [closedY]);
+  // the band pair (aurora + PLAY tiles) fades in as ONE at boot
+  const bandInStyle = useAnimatedStyle(() => ({ opacity: sStormIn.value }));
   // (the pending beacon strips were owner-removed — "weird spaced out
   // ovals" once the invisible park exposed them; the free-floating aurora
   // plus the arm ignition IS the pending signal)
@@ -666,17 +628,6 @@ export default function HomeScreen() {
       interpolate(sheetY.value, [closedY - 60, closedY - 8], [1, 0], Extrapolation.CLAMP)
     ),
   }));
-  // LIVE BLUR GATE: a BlurView riding a moving sheet re-samples its backdrop
-  // every frame — long after the face has faded out. Past 180px of travel
-  // the frost unmounts entirely (30px hysteresis so it can't flicker).
-  const [frostLive, setFrostLive] = useState(true);
-  useAnimatedReaction(
-    () => sheetY.value > closedY - 180,
-    (near, prev) => {
-      if (near !== prev) runOnJS(setFrostLive)(near);
-    },
-    [closedY]
-  );
   // (the matched-geometry grabber pill was owner-removed — the ✕ button and
   // the paused-cover tap are the explicit affordances now)
 
@@ -866,23 +817,6 @@ export default function HomeScreen() {
       {deal && (
         <GestureDetector gesture={openDrag}>
           <Animated.View style={[styles.sheet, sheetStyle]}>
-            {/* shadow on a THIN carrier, not the full-screen layer — iOS
-                recomputes a pathless layer shadow EVERY FRAME of movement
-                (the Apple-sheet smoothness gap, owner) */}
-            <Animated.View
-              style={[
-                styles.shadowStrip,
-                {
-                  // the deep throw belongs to the MATERIALIZED sheet only —
-                  // at park it's gone (invisible-park, owner)
-                  boxShadow:
-                    theme.mode === 'dark'
-                      ? '0 -18px 56px rgba(0,0,0,0.72), 0 -2px 10px rgba(0,0,0,0.5)'
-                      : '0 -18px 48px rgba(31,20,66,0.4), 0 -2px 10px rgba(31,20,66,0.22)',
-                },
-                materializeStyle,
-              ]}
-            />
             <View style={styles.sheetClip}>
             {/* the GAME layer (opaque) — transparent at peek so the frost
                 below can sample home */}
@@ -896,42 +830,28 @@ export default function HomeScreen() {
                 closeGesture={closeDrag}
               />
             </Animated.View>
-            {/* the COLLAPSED FACE: frost + swipe-to-play/countdown */}
+            {/* THE STORM, glued to the sheet's top edge — it rides the pull,
+                swelling and burning over the emerging board, then settles */}
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.stormRide, { height: peekH }, stormRideStyle]}>
+              <Storm width={width} height={peekH} zoom={2.2} />
+            </Animated.View>
+            {/* the COLLAPSED FACE: swipe-to-play/countdown */}
             <Animated.View
               pointerEvents="none"
               style={[styles.peekFace, { height: peekH }, faceStyle]}>
-              {/* the aurora IS the band's backdrop now (owner: 'make it the
-                  background of the bottom sheet') — the frost above turns the
-                  blobs into pure color weather */}
-              <Animated.View pointerEvents="none" style={[styles.bandStorm, stormGlowStyle]}>
-                <Storm width={width} height={peekH} zoom={2.2} />
-              </Animated.View>
-              {/* frost + lip only exist on the MATERIALIZED sheet — at park
-                  the aurora floats naked on home (invisible-park, owner) */}
               <Animated.View
-                pointerEvents="none"
-                style={[StyleSheet.absoluteFill, materializeStyle]}>
-                {frostLive && <DockFrost tint={theme.mode === 'dark' ? 'dark' : 'light'} />}
-                <View
-                  style={[
-                    styles.lipLight,
-                    {
-                      backgroundColor:
-                        theme.mode === 'dark' ? 'rgba(255,255,255,0.13)' : 'rgba(255,255,255,0.9)',
-                    },
-                  ]}
-                />
-              </Animated.View>
-              <View
                 style={[
                   styles.dockInner,
                   { flex: 0, height: peekH, paddingBottom: Math.max(insets.bottom, 14) },
+                  bandInStyle,
                 ]}>
                 <CountdownDock
                   played={played} sLit={sLit} sPoke={sPoke} armed={armed}
                   tile={pm.tile} gap={pm.gap}
                 />
-              </View>
+              </Animated.View>
               {__DEV__ && devSnap.diag && (
                 <Text style={styles.devBand}>
                   {deal?.dayKey ?? 'no-deal'}·{day?.route ?? 'no-day'}·{played ? 'played' : 'open'}
@@ -954,17 +874,16 @@ const styles = StyleSheet.create({
   scrim: {
     backgroundColor: '#000000',
   },
-  bandStorm: {
+  // the storm rides the sheet's TOP edge; scaling from that edge lets the
+  // swell spread DOWN over the emerging board during the pull
+  stormRide: {
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 0,
     top: 0,
-    overflow: 'hidden',
-    // blobs anchor to the storm's bottom edge — centering the storm box in
-    // the band floats them through the MIDDLE of the space (owner)
     justifyContent: 'center',
     alignItems: 'center',
+    transformOrigin: '50% 0%',
   },
   safe: {
     flex: 1,
@@ -991,24 +910,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     zIndex: 20,
-  },
-  lipLight: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1.5,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-  },
-  shadowStrip: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 24,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
   },
   sheetClip: {
     flex: 1,
