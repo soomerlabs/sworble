@@ -98,8 +98,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
   },
+  // left/right pinned: WEB shrinks an absolute view to content width
+  // (native gives it the parent's) — "swipe up to start" wrapped into a
+  // three-line crunch (owner)
   pose: {
     position: 'absolute',
+    left: 0,
+    right: 0,
     alignItems: 'center',
     gap: 2,
   },
