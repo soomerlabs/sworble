@@ -532,15 +532,12 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
                 />
               )}
               {active && (phase === 'paused' || phase === 'idle') && (
-                <Animated.View
-                  entering={FadeIn.duration(160)}
-                  exiting={FadeOut.duration(120)}
-                  style={styles.pausedCoverWrap}>
+                <View style={styles.pausedCoverWrap}>
                   <Pressable style={styles.pausedCover} onPress={rearm}>
                     <Text style={[styles.pausedTitle, { color: gs.ink }]}>paused</Text>
                     <Text style={[styles.pausedSub, { color: gs.sub }]}>tap to resume</Text>
                   </Pressable>
-                </Animated.View>
+                </View>
               )}
             </Animated.View>
           )}

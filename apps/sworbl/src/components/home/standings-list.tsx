@@ -4,7 +4,6 @@
 // ghost row while you haven't played yet.
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
 import { PALETTE, tileColorFor } from '@/game/palette';
 import { type Theme, ACCENT, ACCENT_EDGE } from '@/game/theme';
 
@@ -19,8 +18,7 @@ function Row({ r, theme }: { r: StandingRow; theme: Theme }) {
   const pal = PALETTE[tileColorFor(r.name[0]?.toLowerCase() ?? 'a', 0)];
   const ink = r.you ? '#1F1442' : theme.ink;
   return (
-    <Animated.View
-      entering={FadeIn.duration(220)}
+    <View
       style={[
         styles.row,
         { backgroundColor: r.you ? ACCENT : theme.card },
@@ -38,7 +36,7 @@ function Row({ r, theme }: { r: StandingRow; theme: Theme }) {
       </View>
       <Text style={[styles.name, { color: ink }]}>{r.you ? 'you' : r.name.toLowerCase()}</Text>
       <Text style={[styles.score, { color: ink }]}>{r.score.toLocaleString()}</Text>
-    </Animated.View>
+    </View>
   );
 }
 

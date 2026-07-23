@@ -807,7 +807,7 @@ export function GameBoard({
           )}
           </Animated.View>
           {inFinale && fin && (
-            <Animated.View entering={FadeIn.duration(320)} style={StyleSheet.absoluteFill}>
+            <View style={StyleSheet.absoluteFill}>
             <BoardKeyboard
               gs={gs}
               size={size}
@@ -817,7 +817,7 @@ export function GameBoard({
               onBackspace={() => fKey(engine.daily.BACKSPACE)}
               onSubmit={fSubmit}
             />
-            </Animated.View>
+            </View>
           )}
         </View>
         </GestureDetector>

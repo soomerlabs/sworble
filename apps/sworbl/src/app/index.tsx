@@ -16,8 +16,6 @@ import { router, useFocusEffect } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   ZoomIn,
-  FadeIn,
-  FadeOut,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
@@ -469,7 +467,7 @@ export default function HomeScreen() {
           {/* THE DAY'S HEADLINE (owner: score was buried in the list) —
               score + rank + the sworbl-style share card */}
           {played && deal && you && (
-            <Animated.View entering={FadeIn.duration(260)} style={styles.scoreLine}>
+            <View style={styles.scoreLine}>
               <Text style={[styles.scoreBig, { color: theme.ink }]}>
                 {you.score.toLocaleString()}
                 <Text style={[styles.scoreUnit, { color: theme.sub }]}> pts</Text>
@@ -497,45 +495,41 @@ export default function HomeScreen() {
                   <Text style={styles.chartGlyph}>↗</Text>
                 )}
               </Pressable>
-            </Animated.View>
+            </View>
           )}
           {played && !solved && (
-            <Animated.Text
-              entering={FadeIn.duration(260)}
-              style={[styles.missLine, { color: theme.sub }]}>
+            <Text style={[styles.missLine, { color: theme.sub }]}>
               not cracked — tomorrow's another sworbl
-            </Animated.Text>
+            </Text>
           )}
           {played && deal?.archetype && twistLabel(deal.archetype) && (
-            <Animated.View entering={FadeIn.delay(200).duration(260)} style={styles.twistPill}>
+            <View style={styles.twistPill}>
               <Text style={styles.twistText}>today's twist: {twistLabel(deal.archetype)}</Text>
-            </Animated.View>
+            </View>
           )}
 
           {/* pre-play: six BLANK hint slots (no letter counts, no spoilers).
               post-play the clue intel lives inside the superlatives pager. */}
           {!played && (
-            <Animated.View exiting={FadeOut.duration(150)} style={styles.hintRow}>
+            <View style={styles.hintRow}>
               {HINT_SLOT_W.map((w, i) => (
                 <View
                   key={i}
                   style={[styles.hintSlot, { width: w, borderColor: theme.dashed }]}
                 />
               ))}
-            </Animated.View>
+            </View>
           )}
 
           {played && deal && (
-            <Animated.View
-              entering={FadeIn.delay(120).duration(280)}
-              style={styles.pagerWrap}>
+            <View style={styles.pagerWrap}>
             <SuperlativesPager
               theme={theme}
               bestWords={day?.bestWords ?? []}
               foundClues={day?.found ?? []}
               clues={deal.clues}
             />
-            </Animated.View>
+            </View>
           )}
 
           {/* standings section — ONLY the chart button opens the leaderboard
