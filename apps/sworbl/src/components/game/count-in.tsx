@@ -22,22 +22,32 @@ export function CountIn({ onRelease, onUnmount }: Props) {
   const [out, setOut] = useState(false);
 
   useEffect(() => {
+    // DRIFT-CORRECTED beats (owner: "not in perfect sync"): timeout chains
+    // fire late under JS-thread load and the error compounds per beat. One
+    // anchored clock instead — every tick derives the step from TRUE elapsed
+    // time, so a late tick self-corrects instead of accumulating.
     const MS = engine.run.COUNT_IN_MS;
-    const at = (ms: number, fn: () => void) => setTimeout(fn, ms);
-    // countInStepAt returns null only for unknown ms — these are its own constants
-    const stepAt = (ms: number, fallback: string) =>
-      String(engine.run.countInStepAt(ms, {})?.countIn ?? fallback);
-    const timers = [
-      at(MS.STEP2, () => setStep(stepAt(MS.STEP2, '2'))),
-      at(MS.STEP1, () => setStep(stepAt(MS.STEP1, '1'))),
-      // the GO beat: no card — the overlay clears and the BOARD wakes
-      at(MS.GO, () => {
-        setOut(true);
-        onRelease();
-      }),
-      at(MS.GO + 400, () => onUnmount()),
-    ];
-    return () => timers.forEach(clearTimeout);
+    const t0 = Date.now();
+    let released = false;
+    const h = setInterval(() => {
+      const el = Date.now() - t0;
+      if (el >= MS.GO + 400) {
+        clearInterval(h);
+        onUnmount();
+        return;
+      }
+      if (el >= MS.GO) {
+        // the GO beat: no card — the overlay clears and the BOARD wakes
+        if (!released) {
+          released = true;
+          setOut(true);
+          onRelease();
+        }
+        return;
+      }
+      setStep(el >= MS.STEP1 ? '1' : el >= MS.STEP2 ? '2' : '3');
+    }, 40);
+    return () => clearInterval(h);
   }, []);
 
   const pal = PALETTE[BEAT_PAL[step] ?? 0];

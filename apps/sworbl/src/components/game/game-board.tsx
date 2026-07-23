@@ -3,7 +3,10 @@
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Gesture, GestureDetector, type PanGesture } from 'react-native-gesture-handler';
-import { useSharedValue, useAnimatedReaction, runOnJS, runOnUI } from 'react-native-reanimated';
+import Animated, {
+  useSharedValue, useAnimatedReaction, useAnimatedStyle, runOnJS, runOnUI,
+  withSequence, withTiming, Easing,
+} from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 import { GameTile } from './game-tile';
 import TraceConnector from './trace-connector';
@@ -17,7 +20,6 @@ import { haptic } from '@/game/haptics';
 import { loadLadder, saveLadder, NUDGE_AT_WORDS, FREE_CLUE_AT_WORDS, FINALE_FLOOR, type HintLadder } from '@/game/hints';
 import { PingRings } from './ping-rings';
 import { StepperCard, type SworbFace } from './stepper-card';
-import { Shockwave } from './shockwave';
 import { BoardKeyboard } from './board-keyboard';
 import { applyGuess } from '@/game/finale-logic';
 import type { FinaleRestore } from './finale';
@@ -141,17 +143,22 @@ export function GameBoard({
     return true;
   }, [findableUnfound, firePing, deal]);
 
-  // THE WAKE: concealment lifting = the board turning ON — one shockwave
-  // (owner count-in redesign: no GO card, the board itself announces it)
+  // THE WAKE: concealment lifting = the board turning ON. The ring shockwave
+  // was owner-rejected ("don't like it, something subtle") — the announcement
+  // is the radial letter stamp-in plus one soft BREATH of the whole board.
   const prevConcealed = useRef(!!concealed);
-  const [wave, setWave] = useState(0);
+  const sBreath = useSharedValue(1);
   useEffect(() => {
     if (prevConcealed.current && !concealed) {
-      setWave((w) => w + 1);
+      sBreath.value = withSequence(
+        withTiming(1.012, { duration: 130, easing: Easing.out(Easing.quad) }),
+        withTiming(1, { duration: 240, easing: Easing.inOut(Easing.quad) })
+      );
       haptic.good();
     }
     prevConcealed.current = !!concealed;
   }, [concealed]);
+  const breathStyle = useAnimatedStyle(() => ({ transform: [{ scale: sBreath.value }] }));
 
   // FINALE FLOOR: enter the guess round with at least 2 clues banked. Keyed on
   // the finale prop ARRIVING — the old secsLeft<=0 trigger never fired (the
@@ -518,10 +525,12 @@ export function GameBoard({
       <StepperCard width={boardW + 24} traceWord={trace.word} verdict={verdict} sworb={sworbFace} />
 
       {/* THE BOARD CARD (web boardCardStyle): tiles live ON a card with sunken
-          cell wells — not floating on the screen background */}
-        <View
+          cell wells — not floating on the screen background. breathStyle:
+          the one soft pulse when the board turns on at GO. */}
+        <Animated.View
           style={[
             styles.card,
+            breathStyle,
             {
               width: boardW + 24,
               paddingBottom: 12 + Math.max(3, Math.round(size * 0.08)),
@@ -582,7 +591,6 @@ export function GameBoard({
               concealed={!!concealed}
             />
           ))}
-          {wave > 0 && !concealed && <Shockwave key={wave} width={boardW} height={boardH} />}
           {ping && (
             <PingRings
               key={ping.key}
@@ -607,7 +615,7 @@ export function GameBoard({
         </View>
         </GestureDetector>
         </View>
-        </View>
+        </Animated.View>
 
       <ClueFan clues={deal.clues} found={found} nudged={ladder.nudged} />
     </View>
