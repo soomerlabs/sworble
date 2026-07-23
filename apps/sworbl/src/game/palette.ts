@@ -67,8 +67,11 @@ export const GAME_LIGHT: GameSurface = {
   card: '#FFFFFF',
   cardEdge: '#C9CDDD',
   well: '#EDEFF4',
-  mono: { bg: '#C8C4D2', hi: '#D6D2DF', edge: '#A9A5B3' },
-  monoInk: '#6B6775',
+  // the fossil's REAL light mono (index.html MONO + --rji): pale lavender
+  // faces, near-BLACK letters — the first port lifted a settings-pill token
+  // by mistake (owner caught it: "we had black characters in light")
+  mono: { bg: '#EAE8F0', hi: '#F5F4F9', edge: '#C8C4D2' },
+  monoInk: '#1C1B20',
   line: '#D3D6E0',
   ink: '#1F1442',
   sub: '#6E7180',
