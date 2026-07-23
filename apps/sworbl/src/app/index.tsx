@@ -70,7 +70,7 @@ const HINT_SLOT_W = [40, 36, 44, 38, 36, 42];
 
 // the frosted dock band: taller grab zone; home content scrolls UNDER it to
 // the screen's bottom edge and blurs out; "swipe to play" always rides on top
-const DOCK_H = 116; // board-size PLAY tiles need the extra air
+const DOCK_H = 106; // sized for the (slightly under board scale) PLAY tiles
 
 // TRUE gradient frost: one BlurView masked by a LinearGradient (the sliced
 // approximation banded — owner: "woof"). FLIP THIS TO true AFTER the next

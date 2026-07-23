@@ -1,4 +1,5 @@
-// TRACE TO PLAY (owner: "i love it") — the door handle teaches the game.
+// SWIPE TO PLAY (owner naming: sworbl's verb is swiping, not tracing) —
+// the door handle teaches the game.
 // The P·L·A·Y tiles are REAL BOARD TILES (owner round 2): the mono
 // face-on-ledge candy construction at mini scale — gray like a masked board,
 // igniting to candy exactly like tracing on the real thing. Pure display:
@@ -14,7 +15,8 @@ export const PLAY_WORD = ['p', 'l', 'a', 'y'] as const;
 // BOARD-SIZE tiles (owner): the door previews the game — same sizing rule
 // as the real board (play-sheet's tile formula)
 export function playMetrics(width: number) {
-  const tile = Math.min(64, Math.floor((Math.min(width, 480) - 32) / (5 + 4 * 0.16)));
+  // slightly under board scale (owner round 2) — same proportions
+  const tile = Math.min(52, Math.floor((Math.min(width, 480) - 32) / (5 + 4 * 0.16)));
   const gap = Math.round(tile * 0.16);
   const rowW = tile * 4 + gap * 3;
   return { tile, gap, rowW, left: (width - rowW) / 2 };
@@ -66,7 +68,7 @@ export function TracePlay({ sLit, theme, tile, gap }: {
           <PlayTile key={ch} ch={ch} i={i} sLit={sLit} theme={theme} tile={tile} />
         ))}
       </View>
-      <Text style={[styles.label, { color: theme.ink }]}>trace to play</Text>
+      <Text style={[styles.label, { color: theme.ink }]}>swipe to play</Text>
     </View>
   );
 }
