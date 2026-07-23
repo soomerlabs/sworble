@@ -15,20 +15,29 @@ const fill: React.CSSProperties = {
 
 export function ParkFrost({ mode }: { mode: 'light' | 'dark' }) {
   const tint = mode === 'dark' ? 'rgba(16,16,20,0.18)' : 'rgba(237,239,247,0.2)';
+  // Chrome quirk: where a mask hits PURE zero alpha it truncates the
+  // backdrop-filter region — the blur switches on as a hard line at the
+  // first non-zero stop (owner saw it after a nav round-trip recomposited
+  // the layer). A 4% floor keeps the filter region continuous; 4% of a
+  // 6px blur is imperceptible.
+  const hazeMask =
+    'linear-gradient(to bottom, rgba(0,0,0,0.04), rgba(0,0,0,0.7) 38%, #000 75%)';
+  const frostMask =
+    'linear-gradient(to bottom, rgba(0,0,0,0.04), rgba(0,0,0,0.12) 42%, #000 82%)';
   const haze: React.CSSProperties = {
     ...fill,
     backdropFilter: 'blur(6px)',
     WebkitBackdropFilter: 'blur(6px)',
-    maskImage: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.7) 38%, #000 75%)',
-    WebkitMaskImage: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.7) 38%, #000 75%)',
+    maskImage: hazeMask,
+    WebkitMaskImage: hazeMask,
   };
   const frost: React.CSSProperties = {
     ...fill,
     backgroundColor: tint,
     backdropFilter: 'blur(14px)',
     WebkitBackdropFilter: 'blur(14px)',
-    maskImage: 'linear-gradient(to bottom, transparent, transparent 42%, #000 82%)',
-    WebkitMaskImage: 'linear-gradient(to bottom, transparent, transparent 42%, #000 82%)',
+    maskImage: frostMask,
+    WebkitMaskImage: frostMask,
   };
   return (
     <>
