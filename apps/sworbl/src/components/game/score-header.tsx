@@ -13,8 +13,11 @@ interface Props {
 
 export function ScoreHeader({ score, target, width }: Props) {
   const ratio = Math.min(1, target > 0 ? score / target : 0);
+  // NUMERIC width — Reanimated tweens numbers, not '%' strings (the header
+  // silently broke on device with the string version)
+  const trackW = Math.max(0, width - 50 - 10 - 44 - 10); // score minWidth + gaps + target col
   const fillStyle = useAnimatedStyle(() => ({
-    width: withTiming(`${ratio * 100}%`, { duration: 350 }),
+    width: withTiming(ratio * trackW, { duration: 350 }),
   }));
 
   return (

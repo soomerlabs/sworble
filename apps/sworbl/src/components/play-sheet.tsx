@@ -297,10 +297,13 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
               </View>
             </Pressable>
           )}
+          <View style={styles.brandCenter} pointerEvents="none">
+            <Brand scale={0.8} />
+          </View>
           <Text style={styles.score}>{score.toLocaleString()}</Text>
         </View>
 
-        {onBoard && (
+        {(onBoard || phase === 'finale') && (
           <View style={styles.scoreHdrWrap}>
             <ScoreHeader score={score} target={TUNING.PAR_TARGET} width={tile * 5 + gap * 4 + 24} />
           </View>
@@ -438,6 +441,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingBottom: 64, // bias the board ABOVE dead-center (owner: felt low)
   },
   doneWrap: {
     alignItems: 'center',
