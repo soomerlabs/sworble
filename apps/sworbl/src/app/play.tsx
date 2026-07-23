@@ -256,21 +256,25 @@ export default function PlayScreen() {
             </View>
           )}
           {onBoard && deal && (
-            <View pointerEvents={phase === 'live' ? 'auto' : 'none'}>
-              <GameBoard
-                deal={deal}
-                size={tile}
-                gap={gap}
-                initialTiles={initialTiles}
-                initialFound={boot?.run?.found}
-                initialScore={boot?.run?.score}
-                secsLeft={phase === 'live' ? remaining : undefined}
-                mercySecs={TUNING.MERCY_SECS}
-                onScore={setScore}
-                onClues={setFound}
-                onTiles={onTiles}
-                onWordSpelled={onWordSpelled}
-              />
+            <View>
+              {/* only the BOARD is input-gated — the covers above it must stay
+                  tappable (the old parent-level gate ate the resume tap) */}
+              <View pointerEvents={phase === 'live' ? 'auto' : 'none'}>
+                <GameBoard
+                  deal={deal}
+                  size={tile}
+                  gap={gap}
+                  initialTiles={initialTiles}
+                  initialFound={boot?.run?.found}
+                  initialScore={boot?.run?.score}
+                  secsLeft={phase === 'live' ? remaining : undefined}
+                  mercySecs={TUNING.MERCY_SECS}
+                  onScore={setScore}
+                  onClues={setFound}
+                  onTiles={onTiles}
+                  onWordSpelled={onWordSpelled}
+                />
+              </View>
               {countInMounted && phase === 'countin' && (
                 <CountIn onRelease={onRelease} onUnmount={() => setCountInMounted(false)} />
               )}
