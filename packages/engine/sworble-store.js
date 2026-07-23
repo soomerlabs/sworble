@@ -14,7 +14,7 @@
 
   // storage-blocked contexts (zip/mail/Drive previews, some private modes) throw on ANY
   // localStorage touch — fall back to in-memory so the game still runs.
-  const LS = (() => {
+  let backing = (() => {
     try {
       const t = (root.localStorage || globalThis.localStorage);
       t.setItem('__ls_t', '1'); t.removeItem('__ls_t'); return t;
@@ -29,6 +29,24 @@
       };
     }
   })();
+
+  // LS is a stable FACADE over a swappable backing (living-engine change, Phase 1 of the
+  // RN rebuild): callers keep their `const LS = SworbleStore.LS` reference forever while
+  // setBacking() redirects it — MMKV on native, localStorage on web, memory in tests.
+  // A backing must provide getItem/setItem/removeItem, and key(i)+length for keys().
+  const LS = {
+    getItem: (k) => backing.getItem(k),
+    setItem: (k, v) => backing.setItem(k, v),
+    removeItem: (k) => backing.removeItem(k),
+    key: (i) => (backing.key ? backing.key(i) : null),
+    get length() { return backing.length || 0; },
+  };
+  function setBacking(b) {
+    if (!b || typeof b.getItem !== 'function' || typeof b.setItem !== 'function' || typeof b.removeItem !== 'function') {
+      throw new Error('setBacking: backing needs getItem/setItem/removeItem');
+    }
+    backing = b;
+  }
 
   // Every key in one place. PREFIX entries are concatenated with a day-key or board id.
   const K = {
@@ -136,7 +154,7 @@
   }
 
   const API = { LS, K, getInt, getJSON, set, setJSON, remove, keys,
-    dayKeyAgeDays, agedDayKeys, AGE_GC_MAX_DAYS };
+    setBacking, dayKeyAgeDays, agedDayKeys, AGE_GC_MAX_DAYS };
   root.SworbleStore = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

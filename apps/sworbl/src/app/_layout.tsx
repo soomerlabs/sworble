@@ -6,8 +6,12 @@ import { useEffect } from 'react';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
+import { initStorage } from '@/game/storage';
 
 SplashScreen.preventAutoHideAsync();
+// storage backing FIRST — everything downstream reads through the engine store
+// (MMKV on native via setBacking; localStorage on web needs no injection)
+initStorage();
 
 export default function TabLayout() {
   // sworbl is dark, always (the game's visual identity — not a scheme choice)

@@ -14,6 +14,7 @@ import Storm from '@/components/game/storm';
 import { BG_DARK } from '@/game/palette';
 import { dealDaily } from '@/game/daily';
 import { CLUE_COUNT } from '@/game/types';
+import { loadDay, saveProgress, finishDay } from '@/game/persist';
 
 const ROUND_SECS = 420; // "the Seven" — dev knob arrives with the settings screen
 
@@ -21,16 +22,29 @@ type Phase = 'countin' | 'live' | 'finale' | 'done';
 
 export default function PlayScreen() {
   const { width, height } = useWindowDimensions();
-  const [phase, setPhase] = useState<Phase>('countin');
-  const [countInMounted, setCountInMounted] = useState(true);
-  const [score, setScore] = useState(0);
-  const [found, setFound] = useState<string[]>([]);
-  const [remaining, setRemaining] = useState(ROUND_SECS);
-  const [result, setResult] = useState<{ solved: boolean; guessesUsed: number; bonus: number } | null>(null);
-  const endAtRef = useRef<number>(0);
 
   // deal info for the finale/result (the board deals identically off the same day)
   const deal = useMemo(() => dealDaily(), []);
+  // boot routing via the engine: consumed day → straight to the reveal, one shot per day
+  const boot = useMemo(() => (deal ? loadDay(deal.dayKey) : null), [deal]);
+  const consumed = !!boot && boot.route === 'consumed';
+
+  const [phase, setPhase] = useState<Phase>(consumed ? 'done' : 'countin');
+  const [countInMounted, setCountInMounted] = useState(!consumed);
+  const [score, setScore] = useState(consumed ? boot!.score : 0);
+  const [found, setFound] = useState<string[]>(consumed ? boot!.found : []);
+  const [remaining, setRemaining] = useState(ROUND_SECS);
+  const [result, setResult] = useState<{ solved: boolean; guessesUsed: number; bonus: number } | null>(
+    // defensive: a consumed day with no sworb state (interrupted write) still lands
+    // on a coherent reveal rather than a blank screen
+    consumed ? (boot!.sworb ?? { solved: false, guessesUsed: 0, bonus: 0 }) : null
+  );
+  const endAtRef = useRef<number>(0);
+
+  // live progress persists on every change (sync writes; consumed days never re-save)
+  useEffect(() => {
+    if (deal && !consumed && phase !== 'done') saveProgress(deal.dayKey, score, found);
+  }, [deal, consumed, phase, score, found]);
 
   // clock: anchored at GO, ticks while live, 0:00 → finale
   useEffect(() => {
@@ -52,10 +66,19 @@ export default function PlayScreen() {
   const onFinaleDone = useCallback(
     (r: { solved: boolean; guessesUsed: number; bonus: number }) => {
       setResult(r);
-      if (r.bonus > 0) setScore((s) => s + r.bonus);
+      const finalScore = score + (r.bonus > 0 ? r.bonus : 0);
+      if (r.bonus > 0) setScore(finalScore);
+      // the day ends exactly once: result written, then the DONE lock
+      if (deal) {
+        finishDay(deal.dayKey, finalScore, found, {
+          guessesUsed: r.guessesUsed,
+          solved: r.solved,
+          bonus: r.bonus,
+        });
+      }
       setPhase('done');
     },
-    []
+    [deal, score, found]
   );
 
   const tile = Math.min(64, Math.floor((Math.min(width, 480) - 32) / (5 + 4 * 0.16)));
