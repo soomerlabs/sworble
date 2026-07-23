@@ -196,26 +196,35 @@ export default function HomeScreen() {
   // sheetY at 0 with sheetOpen false, parking the sheet over the whole
   // screen and eating every touch ("swipe up broken", "stuck on top").
   // Whenever the sheet is logically closed, its position must agree.
+  const closingRef = useRef(false); // an ANIMATED close is in flight
   useEffect(() => {
-    if (!sheetOpen) sheetY.value = closedY;
+    // hot-reload stranding guard ONLY — it must never kill a real close's
+    // park spring (it was snapping every ✕ close and cancelling the spring
+    // callback, which left PLAY armed — owner report)
+    if (!sheetOpen && !closingRef.current) sheetY.value = closedY;
   }, [sheetOpen, closedY]);
 
+  // everything a close must guarantee, applied UP-FRONT (sync) — never
+  // gambled on an animation callback that a cancellation can eat
   const finishClose = useCallback(() => {
     setSheetOpen(false);
     saveSheetOpen(null); // a closed sheet must never restore
     sLit.value = 0;
     sMode.value = 0;
     sArmed.value = 0;
-    setArmed(false); // the door re-locks: tomorrow starts with a fresh trace
+    setArmed(false); // the door re-locks: fresh swipe next time
     if (armIdle.current) clearTimeout(armIdle.current);
     if (meltTick.current) clearInterval(meltTick.current);
   }, []);
+  const closeSettled = useCallback(() => {
+    closingRef.current = false;
+  }, []);
   const closeSheet = useCallback(() => {
     sheetRef.current?.pauseForClose();
-    // AUDIT BLOCKER #1: sheetOpen must flip false SYNCHRONOUSLY at close-start —
-    // if it waits for the animation, the arm effect re-fires and the count-in
-    // restarts invisibly behind the closed sheet, burning the round
-    setSheetOpen(false);
+    // AUDIT BLOCKER #1: sheetOpen flips false SYNCHRONOUSLY at close-start;
+    // closingRef keeps the self-heal's hands off the park spring
+    closingRef.current = true;
+    finishClose();
     sheetY.value = withSpring(closedY, PARK_SPRING, (fin) => {
       'worklet';
       if (fin) {
@@ -223,12 +232,12 @@ export default function HomeScreen() {
           withTiming(0.988, { duration: 80 }),
           withTiming(1, { duration: 190 })
         );
-        runOnJS(finishClose)();
       }
+      runOnJS(closeSettled)();
     });
     // day state may have changed inside the round (finish/lock)
     setTimeout(refreshDay, 300);
-  }, [closedY, refreshDay, finishClose]);
+  }, [closedY, refreshDay, finishClose, closeSettled]);
 
   // pull UP from the dock: the sheet (pre-mounted, hidden) rides the finger —
   // pure transform on the UI thread, nothing mounts mid-gesture.
@@ -353,6 +362,7 @@ export default function HomeScreen() {
   const parkBeat = useCallback(() => haptic.soft(), []);
   const commitClose = useCallback(() => {
     sheetRef.current?.pauseForClose();
+    closingRef.current = true;
     finishClose();
     setTimeout(refreshDay, 300);
   }, [finishClose, refreshDay]);
@@ -390,6 +400,7 @@ export default function HomeScreen() {
                 );
                 runOnJS(parkBeat)(); // the soft "docked at the peek" tap
               }
+              runOnJS(closeSettled)();
             });
           } else {
             // abort: the round never paused — the sheet just springs back
