@@ -80,7 +80,7 @@ function BlobField({ width, height }: { width: number; height: number }) {
   );
 }
 
-export default function Storm({ width, height = 260 }: { width: number; height?: number }) {
+export default function Storm({ width, height = 260, zoom = 1 }: { width: number; height?: number; zoom?: number }) {
   const hazeT = useOrbit(20000);
   const hazeOpacity = useDerivedValue(() => 0.4 + hazeT.value * 0.22);
   const cx = width / 2;

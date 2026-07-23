@@ -49,9 +49,11 @@ function Blob({ b, width, height }: { b: (typeof BLOBS)[number]; width: number; 
   );
 }
 
-export default function Storm({ width, height = 260 }: { width: number; height?: number }) {
+export default function Storm({ width, height = 260, zoom = 1 }: { width: number; height?: number; zoom?: number }) {
   return (
-    <Animated.View pointerEvents="none" style={[styles.wrap, { width, height }]}>
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.wrap, { width, height, transform: [{ scale: zoom }] }]}>
       {BLOBS.map((b, i) => (
         <Blob key={i} b={b} width={width} height={height} />
       ))}

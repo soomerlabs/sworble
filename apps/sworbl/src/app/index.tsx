@@ -602,17 +602,6 @@ export default function HomeScreen() {
       {/* fully occluded at dock — stop paying for goo + floaters under an
           opaque sheet */}
       {!sheetOpen && <Floaters width={width} height={height} />}
-      {!sheetOpen && (
-        <View
-          pointerEvents="none"
-          style={[
-            styles.stormWrap,
-            { height: Math.min(280, height * 0.32) },
-            played && styles.stormRest,
-          ]}>
-          <Storm width={width} height={Math.min(280, height * 0.32)} />
-        </View>
-      )}
 
       <Animated.View style={[styles.safe, homeStyle]}>
       <SafeAreaView edges={['top']} style={styles.safe}>
@@ -804,6 +793,12 @@ export default function HomeScreen() {
             <Animated.View
               pointerEvents="none"
               style={[styles.peekFace, { height: peekH }, faceStyle]}>
+              {/* the aurora IS the band's backdrop now (owner: 'make it the
+                  background of the bottom sheet') — the frost above turns the
+                  blobs into pure color weather */}
+              <View pointerEvents="none" style={styles.bandStorm}>
+                <Storm width={width} height={peekH + 30} zoom={1.5} />
+              </View>
               {frostLive && <DockFrost tint={theme.mode === 'dark' ? 'dark' : 'light'} />}
               <View
                 style={[
@@ -834,14 +829,13 @@ const styles = StyleSheet.create({
   scrim: {
     backgroundColor: '#000000',
   },
-  stormWrap: {
+  bandStorm: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-  },
-  stormRest: {
-    opacity: 0.4, // resting storm after the day is played
+    top: 0,
+    overflow: 'hidden',
   },
   safe: {
     flex: 1,
