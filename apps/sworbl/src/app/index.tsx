@@ -12,6 +12,7 @@ import {
   type StyleProp, type ViewStyle,
 } from 'react-native';
 import { SymbolView } from 'expo-symbols';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect } from 'expo-router';
@@ -29,6 +30,7 @@ import Animated, {
   Extrapolation,
   Easing,
   runOnJS,
+  type SharedValue,
 } from 'react-native-reanimated';
 
 import Storm from '@/components/game/storm';
@@ -122,27 +124,32 @@ function FlipTile({ ch, i, w, h, r, palBg, palEdge, monoBg, monoEdge }: {
 
 
 
-// BOOT CHOREOGRAPHY (owner audit: "everything slams in at once") — each home
-// section rises once at launch, 120ms apart: header → hero → hints →
-// standings. Shared values only (house rule); plays on mount, never again.
-function BootRise({ i, style, children }: {
-  i: number; style?: StyleProp<ViewStyle>; children: React.ReactNode;
+// BOOT CHOREOGRAPHY v3 (owner: "a chain reaction... one fell swoop...
+// perfectly flawless flow"). ONE master clock sweeps 0→1; every section
+// reads its own window of it. One clock = one wave: the timing between
+// links is mathematically continuous, not four timers approximating each
+// other, and the band is simply the last link of the same motion.
+const BOOT_MS = 720;
+const BOOT_STEP = 0.13; // each link ignites when the previous is ~1/4 in
+const BOOT_SPAN = 0.5; // each link's slice of the master clock
+
+// cubic ease-out inside a window of the master clock (module-level worklet)
+function bootWindow(m: number, start: number, span: number): number {
+  'worklet';
+  const t = Math.min(1, Math.max(0, (m - start) / span));
+  return 1 - (1 - t) * (1 - t) * (1 - t);
+}
+
+function BootRise({ i, boot, style, children }: {
+  i: number; boot: SharedValue<number>; style?: StyleProp<ViewStyle>; children: React.ReactNode;
 }) {
-  const p = useSharedValue(0);
-  useEffect(() => {
-    // GRACEFUL, not hesitant (owner, twice): starts almost immediately,
-    // sections overlap heavily, and the quint-out curve spends most of its
-    // time easing to rest — silk, but the cascade still lands in ~600ms
-    p.value = withDelay(
-      20 + i * 60,
-      withTiming(1, { duration: 440, easing: Easing.bezier(0.22, 1, 0.36, 1) })
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const pose = useAnimatedStyle(() => ({
-    opacity: p.value,
-    transform: [{ translateY: (1 - p.value) * 8 }],
-  }));
+  const pose = useAnimatedStyle(() => {
+    const p = bootWindow(boot.value, i * BOOT_STEP, BOOT_SPAN);
+    return {
+      opacity: p,
+      transform: [{ translateY: (1 - p) * 10 }],
+    };
+  });
   return <Animated.View style={[style, pose]}>{children}</Animated.View>;
 }
 
@@ -158,6 +165,10 @@ const ASSIST_RISE = 0; // assist rise retired (owner) — constant kept for the 
 
 // (the frost/glass era is over — owner: the pull RIDES THE STORM UP now;
 // no blur ever rides the moving sheet, which is also the cheaper path)
+
+// the COLOR WASH (owner): during the pull the whole emerging sheet IS the
+// six hues — the board's real surface only takes over at the settle
+const WASH_HUES = ['#A78BFA', '#5BC8F5', '#5FD6A8', '#F58FB8', '#F5B84A', '#F58A66'] as const;
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
@@ -457,22 +468,8 @@ export default function HomeScreen() {
           // stage 2: the pull preserves the grab offset — continuous from
           // wherever the sheet was resting (assist rise included)
           sheetY.value = Math.min(closedY, Math.max(0, e.absoluteY - sGrab.value));
-          // HYSTERESIS: enter at 22%, exit only below 19% — hovering at the
-          // line can't chatter the detent (each fire is a JS hop + native
-          // generator spin-up: the slow-drag stutter, owner)
-          const risenNow = closedY - sheetY.value;
-          const past = sDetent.value
-            ? risenNow > height * 0.19
-              ? 1
-              : 0
-            : risenNow > height * 0.22
-              ? 1
-              : 0;
-          if (past !== sDetent.value) {
-            sDetent.value = past;
-            if (past) runOnJS(detentIn)();
-            else runOnJS(detentOut)();
-          }
+          // (the mid-swipe detent tick was owner-removed — the ONLY beat on
+          // the way up is the dock landing; the close drag keeps its detent)
         })
         .onEnd((e) => {
           'worklet';
@@ -488,7 +485,7 @@ export default function HomeScreen() {
             runOnJS(disarm)(); // released without committing → PLAY melts back NOW
           }
         }),
-    [width, height, closedY, sheetOpen, played, markOpen, traceBeat, nudgeBeat, armSoon, disarm, detentIn, detentOut]
+    [width, height, closedY, sheetOpen, played, markOpen, traceBeat, nudgeBeat, armSoon, disarm]
   );
 
   // close drag (home owns sheetY): the round pauses ONLY when the close
@@ -574,14 +571,11 @@ export default function HomeScreen() {
   // door arms — brightness + a slow swell, nothing layout-touching. At boot
   // the weather ROLLS IN over 600ms instead of popping with the Skia canvas
   // (owner audit: the color pop read as a glitch)
-  const sStormIn = useSharedValue(0);
+  const sBoot = useSharedValue(0);
   useEffect(() => {
-    // the band is the FINALE of the boot choreography (owner): PLAY tiles
-    // and the glow fade in TOGETHER, overlapping the last section's landing
-    sStormIn.value = withDelay(340, withTiming(1, {
-      duration: 520,
-      easing: Easing.bezier(0.22, 1, 0.36, 1),
-    }));
+    // the MASTER CLOCK: linear sweep — each link shapes its own curve
+    // inside its window, so the wave itself never decelerates mid-chain
+    sBoot.value = withDelay(20, withTiming(1, { duration: BOOT_MS, easing: Easing.linear }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // RIDE THE STORM UP (owner pick): the aurora is glued to the sheet's top
@@ -598,7 +592,7 @@ export default function HomeScreen() {
     // pull still has momentum (owner: the late overlap smeared)
     const settle = interpolate(travel, [0.55, 0.8], [1, 0], Extrapolation.CLAMP);
     return {
-      opacity: sStormIn.value * burn * settle,
+      opacity: bootWindow(sBoot.value, 4 * BOOT_STEP, BOOT_SPAN) * burn * settle,
       transform: [
         // a crest of light riding the leading edge — brightness carries the
         // drama; the big stretch smeared hues over the board (owner)
@@ -606,8 +600,20 @@ export default function HomeScreen() {
       ],
     };
   }, [closedY]);
+  // the WASH: mid-pull the sheet's whole face is color; it lets go right at
+  // the settle so the real surface arrives as the sheet docks (owner). One
+  // static gradient, opacity-only — compositing-cheap, and the game subtree
+  // underneath stays opaque (no alpha-group tax during the drag).
+  const washStyle = useAnimatedStyle(() => {
+    const travel = interpolate(sheetY.value, [0, closedY], [1, 0], Extrapolation.CLAMP);
+    const build = interpolate(travel, [0.06, 0.32], [0, 1], Extrapolation.CLAMP);
+    const reveal = interpolate(travel, [0.78, 0.97], [1, 0], Extrapolation.CLAMP);
+    return { opacity: build * reveal };
+  }, [closedY]);
   // the band pair (aurora + PLAY tiles) fades in as ONE at boot
-  const bandInStyle = useAnimatedStyle(() => ({ opacity: sStormIn.value }));
+  const bandInStyle = useAnimatedStyle(() => ({
+    opacity: bootWindow(sBoot.value, 4 * BOOT_STEP, BOOT_SPAN),
+  }));
   // (the pending beacon strips were owner-removed — "weird spaced out
   // ovals" once the invisible park exposed them; the free-floating aurora
   // plus the arm ignition IS the pending signal)
@@ -665,7 +671,7 @@ export default function HomeScreen() {
           contentContainerStyle={[styles.content, { paddingBottom: DOCK_H + insets.bottom + 10 }]}
           showsVerticalScrollIndicator={false}>
           {deal && (
-            <BootRise i={0}>
+            <BootRise i={0} boot={sBoot}>
             <DateHeader
               theme={theme}
               dayKey={deal.dayKey}
@@ -693,7 +699,7 @@ export default function HomeScreen() {
 
           {/* word of the day: candy bloom when the day is done, dashed
               blanks before (the answer is hidden — no spoilers) */}
-          <BootRise i={1} style={styles.heroRow}>
+          <BootRise i={1} boot={sBoot} style={styles.heroRow}>
             {played && deal
               ? [...deal.sworb].map((ch, i) => {
                   const pal = PALETTE[tileColorFor(ch, i)];
@@ -739,7 +745,7 @@ export default function HomeScreen() {
           {/* pre-play: six BLANK hint slots (no letter counts, no spoilers).
               post-play the clue intel lives inside the superlatives pager. */}
           {!played && (
-            <BootRise i={2} style={styles.hintRow}>
+            <BootRise i={2} boot={sBoot} style={styles.hintRow}>
               {HINT_SLOT_W.map((w, i) => (
                 <View
                   key={i}
@@ -750,7 +756,7 @@ export default function HomeScreen() {
           )}
 
           {played && deal && (
-            <BootRise i={2} style={styles.pagerWrap}>
+            <BootRise i={2} boot={sBoot} style={styles.pagerWrap}>
             <SuperlativesPager
               theme={theme}
               bestWords={day?.bestWords ?? []}
@@ -763,7 +769,7 @@ export default function HomeScreen() {
 
           {/* standings section — ONLY the chart button opens the leaderboard
               (owner: not the whole section, "just that button haha") */}
-          <BootRise i={3} style={styles.standingsWrap}>
+          <BootRise i={3} boot={sBoot} style={styles.standingsWrap}>
             <View style={styles.standingsHead}>
               <Text style={[styles.standingsTitle, { color: theme.sub }]}>
                 standings
@@ -836,6 +842,17 @@ export default function HomeScreen() {
                 onClose={closeSheet}
                 active={sheetOpen}
                 closeGesture={closeDrag}
+              />
+            </Animated.View>
+            {/* the COLOR WASH: mid-pull the emerging sheet's face is pure
+                hue; it dissolves at the settle and the board's real surface
+                takes over (owner) */}
+            <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, washStyle]}>
+              <LinearGradient
+                colors={[...WASH_HUES]}
+                start={{ x: 0.1, y: 0 }}
+                end={{ x: 0.9, y: 1 }}
+                style={StyleSheet.absoluteFill}
               />
             </Animated.View>
             {/* THE STORM, glued to the sheet's top edge — it rides the pull,
