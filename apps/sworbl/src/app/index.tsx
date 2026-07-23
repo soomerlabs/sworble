@@ -208,6 +208,7 @@ export default function PlayScreen() {
                 initialTiles={initialTiles}
                 initialFound={boot?.run?.found}
                 initialScore={boot?.run?.score}
+                secsLeft={phase === 'live' ? remaining : undefined}
                 onScore={setScore}
                 onClues={setFound}
                 onTiles={onTiles}

@@ -10,10 +10,12 @@ import TraceConnector from './trace-connector';
 import { ClueFan } from './clue-fan';
 import { COLS, ROWS, type TileT, type TraceTile } from '@/game/types';
 import { PALETTE } from '@/game/palette';
-import { dealDaily, settle, landsInMs, type DailyDeal } from '@/game/daily';
+import { settle, landsInMs, type DailyDeal } from '@/game/daily';
 import { dict, prefixMap, scoreWord } from '@/game/dict';
 import { beginW, moveW, type TraceCtx } from '@/game/trace';
 import { haptic } from '@/game/haptics';
+import { loadTokens, saveTokens, type TokenState } from '@/game/hints';
+import { PingRings } from './ping-rings';
 
 interface Props {
   deal: DailyDeal; // the screen owns the deal — resume injects restored state
@@ -22,13 +24,14 @@ interface Props {
   initialTiles?: TileT[];
   initialFound?: string[];
   initialScore?: number;
+  secsLeft?: number; // live clock feed — the mercy pulse watches the 2:00 crossing
   onScore?: (total: number) => void;
   onClues?: (found: string[]) => void;
   onTiles?: (tiles: TileT[], queueIdx: number) => void; // run-snapshot feed
 }
 
 export function GameBoard({
-  deal, size, gap, initialTiles, initialFound, initialScore, onScore, onClues, onTiles,
+  deal, size, gap, initialTiles, initialFound, initialScore, secsLeft, onScore, onClues, onTiles,
 }: Props) {
   const cell = size + gap;
   const boardW = COLS * cell - gap;
@@ -40,6 +43,8 @@ export function GameBoard({
   const [trace, setTrace] = useState({ word: '', ci: 0 });
   const [jsPath, setJsPath] = useState<TraceTile[]>([]); // web connector mirror
   const [found, setFound] = useState<string[]>(initialFound ?? []);
+  const foundRef = useRef(found);
+  foundRef.current = found;
   const scoreRef = useRef(initialScore ?? 0);
   useEffect(() => {
     onClues && onClues(found);
@@ -47,6 +52,76 @@ export function GameBoard({
   useEffect(() => {
     onTiles && onTiles(tiles, deal.getQueueIdx());
   }, [tiles]);
+
+  // ---- HINT AIDS: token bank + sonar ping (engine decides, board acts) ----
+  const [tokens, setTokens] = useState<TokenState>(() => loadTokens(deal.dayKey));
+  const [ping, setPing] = useState<{ key: number; x: number; y: number; color: string } | null>(null);
+  const pingKeyRef = useRef(0);
+  const tilesMirror = useRef(tiles);
+  tilesMirror.current = tiles;
+  const clearingMirror = useRef(clearingIds);
+  clearingMirror.current = clearingIds;
+  useEffect(() => {
+    saveTokens(deal.dayKey, tokens);
+  }, [deal.dayKey, tokens]);
+
+  // fire the ping at a clue's STARTING tile (compass, not answer)
+  const firePing = useCallback(
+    (clue: string, slot: number) => {
+      const live = tilesMirror.current.filter((t: TileT) => !clearingMirror.current.has(t.id));
+      const path = engine.solver.findWord(live, {
+        word: clue,
+        expand: engine.core.expandLetter,
+        diag: true,
+      });
+      // fallback: clue path broken by cascades (re-stamp port pending) — ping
+      // any tile carrying the clue's first letter rather than staying silent
+      const startId: number | undefined = path ? path[0] : live.find((t: TileT) => t.letter === clue[0])?.id;
+      const t = startId != null ? live.find((x: TileT) => x.id === startId) : undefined;
+      if (!t) return false;
+      setPing({
+        key: ++pingKeyRef.current,
+        x: t.col * cell + size / 2,
+        y: t.row * cell + size / 2,
+        color: PALETTE[slot % PALETTE.length].bg,
+      });
+      haptic.good();
+      return true;
+    },
+    [cell, size]
+  );
+
+  // spend: tap a ghost pill while a token is banked
+  const onGhostTap = useCallback(
+    (clue: string, slot: number) => {
+      if (tokens.count <= 0) return;
+      if (firePing(clue, slot)) setTokens((t) => ({ ...t, count: t.count - 1 }));
+    },
+    [tokens.count, firePing]
+  );
+
+  // mercy pulse: crossing 2:00 with ≤2 clues found auto-pings, token-free
+  const prevSecsRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (secsLeft === undefined) return;
+    const prev = prevSecsRef.current;
+    prevSecsRef.current = secsLeft;
+    if (prev === undefined) return;
+    if (
+      engine.daily.mercyPulseShouldFire({
+        alreadyFired: tokens.mercyFired,
+        prevSecsLeft: prev,
+        secsLeft,
+        cluesFound: found.length,
+      })
+    ) {
+      const clue = engine.daily.firstUnfoundClue(deal.clues, found);
+      if (clue) {
+        firePing(clue, deal.clues.indexOf(clue));
+        setTokens((t) => ({ ...t, mercyFired: true }));
+      }
+    }
+  }, [secsLeft]);
 
   // ---- UI-thread state (tier-2) ----
   const sGrid = useSharedValue<(TraceTile | null)[][]>([]);
@@ -131,14 +206,25 @@ export function GameBoard({
       }
       const pts = scoreWord(word);
       // the ENGINE decides whether this word banks a clue ("trims" banks "trim")
-      setFound((cur) => {
-        const res = engine.daily.resolveCatch({ found: cur, word, targets: deal.clues });
-        if (res.isNew) {
-          setVerdict({ word: word.toUpperCase(), pts, ok: true, clue: res.clue });
-        } else {
-          setVerdict({ word: word.toUpperCase(), pts, ok: true });
-        }
-        return res.banked;
+      const res = engine.daily.resolveCatch({ found: foundRef.current, word, targets: deal.clues });
+      setVerdict(
+        res.isNew
+          ? { word: word.toUpperCase(), pts, ok: true, clue: res.clue }
+          : { word: word.toUpperCase(), pts, ok: true }
+      );
+      if (res.isNew) setFound(res.banked);
+      // token earn (engine one-per-round + threshold rules)
+      setTokens((tk) => {
+        const words = tk.words + 1;
+        const ev = engine.daily.hintTokenEvents({
+          wordsSpelledThisRound: words,
+          cluesFound: res.banked.length,
+          cluesTotal: deal.clues.length,
+          tokensEarnedAlready: tk.granted,
+        });
+        return ev.grant
+          ? { ...tk, words, count: tk.count + 1, granted: tk.granted + 1 }
+          : { ...tk, words };
       });
       setTimeout(() => setVerdict(null), 1200);
       haptic.good();
@@ -249,10 +335,23 @@ export function GameBoard({
             width={boardW}
             height={boardH}
           />
+          {ping && (
+            <PingRings
+              key={ping.key}
+              x={ping.x}
+              y={ping.y}
+              size={size}
+              color={ping.color}
+              onFinish={() => setPing(null)}
+            />
+          )}
         </View>
       </GestureDetector>
 
-      <ClueFan clues={deal.clues} found={found} />
+      {tokens.count > 0 && (
+        <Text style={styles.tokenLine}>✦ hint ready — tap a dashed clue</Text>
+      )}
+      <ClueFan clues={deal.clues} found={found} tokenReady={tokens.count > 0} onGhostTap={onGhostTap} />
     </View>
   );
 }
@@ -273,6 +372,13 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderStyle: 'dashed',
     borderColor: '#26262E',
+  },
+  tokenLine: {
+    marginTop: 12,
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 12.5,
+    letterSpacing: 0.4,
+    color: '#F5B84A',
   },
   noDay: {
     padding: 32,
