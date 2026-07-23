@@ -114,6 +114,14 @@ export default function HomeScreen() {
   // it): pauses at first movement — fairness — then the sheet rides the finger
   // down; release past 25% (or a flick) commits the close, else springs back.
   const prepClose = useCallback(() => sheetRef.current?.pauseForClose(), []);
+  // commit-close: settle the round AGAIN at the moment of commit — the arm
+  // effect can legally re-arm a count-in during the drag (abort = restart at
+  // 3), so the commit must disarm whatever re-armed (owner bug: count-in
+  // finishing behind a closed sheet, round going live invisibly)
+  const commitClose = useCallback(() => {
+    sheetRef.current?.pauseForClose();
+    finishClose();
+  }, [finishClose]);
   const closeDrag = useMemo(
     () =>
       Gesture.Pan()
@@ -131,7 +139,7 @@ export default function HomeScreen() {
           if (e.translationY > height * 0.25 || e.velocityY > 900) {
             // commit: deactivate NOW (blocker #1 — never let the arm effect
             // re-fire while the sheet slides away)
-            runOnJS(finishClose)();
+            runOnJS(commitClose)();
             sheetY.value = withTiming(height, { duration: 220 });
           } else {
             // abort: sheet springs back OPEN — active stays true, so a
@@ -139,7 +147,7 @@ export default function HomeScreen() {
             sheetY.value = withSpring(0, SHEET_SPRING);
           }
         }),
-    [height, prepClose, finishClose]
+    [height, prepClose, commitClose]
   );
 
   // PERF: transform ONLY — animating border radius on a clipped full-screen

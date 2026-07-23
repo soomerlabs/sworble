@@ -85,6 +85,15 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     }
   }, [awake, active, phase]);
 
+  // SAFETY NET: a count-in may never survive a closed sheet, whatever path
+  // closed it — reopening must always start from 3 (owner rule)
+  useEffect(() => {
+    if (!active && phase === 'countin') {
+      setCountInMounted(false);
+      setPhase('idle');
+    }
+  }, [active, phase]);
+
   // the logo CLICK: at the exact dock moment the sheet's brand snaps
   // magnetically into home's slot — a tiny overshoot-settle (pairs with the
   // dock haptic)
