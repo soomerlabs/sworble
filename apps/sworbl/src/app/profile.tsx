@@ -172,16 +172,18 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
     gap: 20,
   },
+  // sized to the header's title line (36px) — the 46px block overflowed the
+  // row and knocked the whole header out of whack (owner)
   avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarLetter: {
     fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 22,
+    fontSize: 18,
     color: '#1F1442',
     includeFontPadding: false,
   },
