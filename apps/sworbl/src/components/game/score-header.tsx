@@ -84,7 +84,7 @@ export function ScoreHeader({ score, target, marks, width, gs = GAME_DARK }: Pro
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: 14, // the knob needs its own airspace above the numbers (owner ×2)
+    gap: 10, // honest spacing now that the track has its real height
     marginBottom: 8,
   },
   reading: {
@@ -92,7 +92,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 2, // flush with the track's inset edges
-    paddingTop: 12, // top padding ON the numbers row itself (owner ×3)
   },
   score: {
     fontFamily: 'Fredoka_600SemiBold',
@@ -100,7 +99,9 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   track: {
-    flex: 1,
+    // NO flex — in the old ROW layout flex:1 meant "grow wide"; in the
+    // stacked column it ZEROED the height (basis 0 beats height:18), the
+    // knob overflowed the collapsed track onto the score (owner's overlap)
     height: 18,
     justifyContent: 'center',
   },
