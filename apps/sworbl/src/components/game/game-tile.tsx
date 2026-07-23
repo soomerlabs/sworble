@@ -15,6 +15,7 @@ import Animated, {
   withDelay,
   withSequence,
   Easing,
+  interpolateColor,
   type SharedValue,
 } from 'react-native-reanimated';
 import { PALETTE, INK, MONO_DARK, MONO_INK } from '@/game/palette';
@@ -103,7 +104,7 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
 
   // lit: 0 mono · 1 chain · 2 head; dimmed while a chain is lit elsewhere
   const sLit = useSharedValue(0);
-  const sDim = useSharedValue(false);
+  const sDim = useSharedValue(1);
   const liftY = useSharedValue(0);
   const headScale = useSharedValue(1);
   useAnimatedReaction(
@@ -119,7 +120,8 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
       if (cur === prev) return;
       const lit = cur === 1 || cur === 2 ? cur : 0;
       sLit.value = lit;
-      sDim.value = cur === 3;
+      // web: the recede is EASED (opacity 0.25s), never a snap
+      sDim.value = withTiming(cur === 3 ? 0.9 : 1, { duration: 250 });
       liftY.value = withTiming(
         lit === 2 ? -Math.max(2, Math.round(size * 0.06)) : lit === 1 ? -Math.max(1, Math.round(size * 0.03)) : 0,
         { duration: 110 }
@@ -136,19 +138,32 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
       { scale: headScale.value },
       { scaleY: squashY.value },
     ],
-    opacity: opacity.value * (sDim.value ? 0.9 : 1),
+    opacity: opacity.value * sDim.value,
   }));
 
-  const ledgeStyle = useAnimatedStyle(() => ({
-    backgroundColor: sRed.value > 0.5 ? '#8C2328' : sLit.value ? pal.edge : MONO_DARK.edge,
-    top: lift + (sLit.value === 2 ? 2 : sLit.value === 1 ? 1 : 0),
-  }));
-  const faceStyle = useAnimatedStyle(() => ({
-    backgroundColor: sRed.value > 0.5 ? '#E5484D' : sLit.value ? pal.bg : MONO_DARK.bg,
-  }));
-  const letterStyle = useAnimatedStyle(() => ({
-    color: sRed.value > 0.5 ? '#FFFFFF' : sLit.value ? INK : MONO_INK,
-  }));
+  // the red BLENDS in and drains out (web rjArrive/rjDrainOut are color
+  // transitions) — the old `> 0.5` test snapped mid-drain, the reported jank
+  const ledgeStyle = useAnimatedStyle(() => {
+    const base = sLit.value ? pal.edge : MONO_DARK.edge;
+    return {
+      backgroundColor:
+        sRed.value > 0 ? interpolateColor(sRed.value, [0, 1], [base, '#8C2328']) : base,
+      top: lift + (sLit.value === 2 ? 2 : sLit.value === 1 ? 1 : 0),
+    };
+  });
+  const faceStyle = useAnimatedStyle(() => {
+    const base = sLit.value ? pal.bg : MONO_DARK.bg;
+    return {
+      backgroundColor:
+        sRed.value > 0 ? interpolateColor(sRed.value, [0, 1], [base, '#E5484D']) : base,
+    };
+  });
+  const letterStyle = useAnimatedStyle(() => {
+    const base = sLit.value ? INK : MONO_INK;
+    return {
+      color: sRed.value > 0 ? interpolateColor(sRed.value, [0, 1], [base, '#FFFFFF']) : base,
+    };
+  });
 
 
   // OUTER/INNER split (layout-anim vs transforms); the board→finale fade is
