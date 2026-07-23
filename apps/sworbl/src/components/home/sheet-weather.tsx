@@ -28,11 +28,11 @@ interface Props {
 // Living out here lets it stand TALLER than the band (owner: "taller, more
 // northern-light-ish") — it rises above the sheet's top edge over home.
 export function StormCrest({ sheetY, sGlow, sBoot, sReveal, closedY, width, peekH }: Props) {
-  const stormH = Math.round(peekH * 2.4);
+  const stormH = Math.round(peekH * 3);
   // the stretch target: at full open the SAME canvas must cover the whole
   // sheet face — home's aurora and the board's takeover are ONE THING
   // elongating (owner: the flat wash read as a second, mismatched system)
-  const stretchTo = (closedY + peekH * 0.9) / stormH;
+  const stretchTo = (closedY + peekH * 1.4) / stormH;
   const stormRideStyle = useAnimatedStyle(() => {
     const travel = interpolate(sheetY.value, [0, closedY], [1, 0], Extrapolation.CLAMP);
     const calm = 0.45 + sGlow.value * 0.55; // parked: muted → armed: ignited
@@ -54,7 +54,7 @@ export function StormCrest({ sheetY, sGlow, sBoot, sReveal, closedY, width, peek
         styles.stormRide,
         // the crest's head rises ~a band-height ABOVE the sheet's top edge;
         // its tail (the bottom melt) hangs past the screen at park
-        { height: stormH, top: -Math.round(peekH * 0.9) },
+        { height: stormH, top: -Math.round(peekH * 1.4) },
         stormRideStyle,
       ]}>
       <Storm width={width} height={stormH} zoom={2.2} />

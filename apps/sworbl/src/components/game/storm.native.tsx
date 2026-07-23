@@ -31,13 +31,15 @@ const CURTAINS = [
 // THE GOO BLOBS — fossil .stormB1-B6 geometry ×1.4, y as canvas fraction
 // (the band's visible zone on the tall crest canvas); f/t = the 0%/50%
 // orbit keyframes (dx, dy, scale), periods 15-22s
+// risen into the PLAY tiles' zone — the color washes BEHIND the door,
+// not below it (owner) — and a touch bigger
 const BLOBS = [
-  { x: 0.04, y: 0.66, s: 62, c: '#A78BFA', dur: 17000, f: [-6, 7, 0.9], t: [14, -13, 1.02] },
-  { x: 0.21, y: 0.62, s: 76, c: '#5BC8F5', dur: 19000, f: [7, 6, 1.02], t: [-20, -27, 0.93] },
-  { x: 0.4, y: 0.57, s: 95, c: '#5FD6A8', dur: 15000, f: [-11, 8, 0.94], t: [14, -45, 1.12] },
-  { x: 0.57, y: 0.58, s: 90, c: '#F58FB8', dur: 21000, f: [11, 7, 1.05], t: [-14, -41, 0.9] },
-  { x: 0.75, y: 0.62, s: 76, c: '#F5B84A', dur: 18000, f: [-7, 6, 0.96], t: [21, -25, 1.06] },
-  { x: 0.9, y: 0.66, s: 62, c: '#F58A66', dur: 22000, f: [6, 7, 0.9], t: [-14, -13, 1.02] },
+  { x: 0.04, y: 0.58, s: 68, c: '#A78BFA', dur: 17000, f: [-6, 7, 0.9], t: [14, -13, 1.02] },
+  { x: 0.21, y: 0.54, s: 84, c: '#5BC8F5', dur: 19000, f: [7, 6, 1.02], t: [-20, -27, 0.93] },
+  { x: 0.4, y: 0.5, s: 104, c: '#5FD6A8', dur: 15000, f: [-11, 8, 0.94], t: [14, -45, 1.12] },
+  { x: 0.57, y: 0.51, s: 99, c: '#F58FB8', dur: 21000, f: [11, 7, 1.05], t: [-14, -41, 0.9] },
+  { x: 0.75, y: 0.54, s: 84, c: '#F5B84A', dur: 18000, f: [-7, 6, 0.96], t: [21, -25, 1.06] },
+  { x: 0.9, y: 0.58, s: 68, c: '#F58A66', dur: 22000, f: [6, 7, 0.9], t: [-14, -13, 1.02] },
 ] as const;
 
 // the fossil #stormGoo alpha snap: blur first, then alpha ×30 −14 — soft
@@ -115,7 +117,7 @@ function GooBlob({ b, width, height }: { b: (typeof BLOBS)[number]; width: numbe
   });
   return (
     <Group transform={transform} origin={vec(b.s / 2, b.s / 2)}>
-      <RoundedRect x={0} y={0} width={b.s} height={b.s} r={Math.round(b.s * 0.33)} color={b.c} />
+      <RoundedRect x={0} y={0} width={b.s} height={b.s} r={Math.round(b.s * 0.26)} color={b.c} />
     </Group>
   );
 }
@@ -148,7 +150,7 @@ export default function Storm({ width, height = 260 }: {
               at full strength it washed the blobs out (owner, v3) */}
           <Group layer={<Paint><Blur blur={24} /></Paint>} opacity={0.62}>
             <Group transform={sweepX}>
-              <Rect x={0} y={height * 0.55} width={W} height={height * 0.6}>
+              <Rect x={0} y={height * 0.46} width={W} height={height * 0.66}>
                 <LinearGradient
                   start={vec(0, 0)}
                   end={vec(W, 0)}
@@ -171,9 +173,9 @@ export default function Storm({ width, height = 260 }: {
           {/* THE GOO BLOBS — the fossil recipe, the heroes: sharp source
               UNDER the goo'd copy (blur 11 → alpha ×30 −14), the whole
               composite inside a soft blur(10) so it sits IN the weather */}
-          <Group layer={<Paint><Blur blur={10} /></Paint>}>
+          <Group layer={<Paint><Blur blur={6} /></Paint>}>
             <BlobField width={width} height={height} />
-            <Group layer={<Paint><Blur blur={11} /><ColorMatrix matrix={GOO} /></Paint>}>
+            <Group layer={<Paint><Blur blur={8} /><ColorMatrix matrix={GOO} /></Paint>}>
               <BlobField width={width} height={height} />
             </Group>
           </Group>
