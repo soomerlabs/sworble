@@ -72,6 +72,7 @@ const HINT_SLOT_W = [40, 36, 44, 38, 36, 42];
 // the frosted dock band: taller grab zone; home content scrolls UNDER it to
 // the screen's bottom edge and blurs out; "swipe to play" always rides on top
 const DOCK_H = 106; // sized for the (slightly under board scale) PLAY tiles
+const ASSIST_RISE = 48; // armed: the sheet lifts itself to meet the swipe
 
 // TRUE gradient frost: one BlurView masked by a LinearGradient (the sliced
 // approximation banded — owner: "woof"). FLIP THIS TO true AFTER the next
@@ -272,15 +273,20 @@ export default function HomeScreen() {
     sArmed.value = 0;
     setArmed(false);
     sLit.value = 0; // the tiles RAIN BACK IN gray (trace-play owns the fall)
+    sheetY.value = withSpring(closedY, PARK_SPRING); // settle back flat
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [closedY]);
   const armNow = useCallback(() => {
     if (traceIdle.current) clearTimeout(traceIdle.current);
     haptic.good();
     setArmed(true);
+    // the sheet RISES to assist (owner): a head start that also counts
+    // toward the commit threshold — the door leans into your hand
+    sheetY.value = withSpring(closedY - ASSIST_RISE, { mass: 0.8, damping: 26, stiffness: 200 });
     if (armIdle.current) clearTimeout(armIdle.current);
     armIdle.current = setTimeout(disarm, 4000);
-  }, [disarm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [disarm, closedY]);
   const pm = playMetrics(width);
   // TWO-STAGE DOOR (owner): trace P·L·A·Y to unlock, then the chevron —
   // swipe up launches. The trace teaches the verb; the swipe starts the day.
@@ -675,9 +681,13 @@ export default function HomeScreen() {
             {/* the COLLAPSED FACE: frost + swipe-to-play/countdown */}
             <Animated.View
               pointerEvents="none"
-              style={[styles.peekFace, { height: peekH }, faceStyle]}>
+              style={[styles.peekFace, { height: peekH + ASSIST_RISE + 12 }, faceStyle]}>
               {frostLive && <DockFrost tint={theme.mode === 'dark' ? 'dark' : 'light'} />}
-              <View style={[styles.dockInner, { paddingBottom: Math.max(insets.bottom, 14) }]}>
+              <View
+                style={[
+                  styles.dockInner,
+                  { flex: 0, height: peekH, paddingBottom: Math.max(insets.bottom, 14) },
+                ]}>
                 <CountdownDock played={played} sLit={sLit} armed={armed} tile={pm.tile} gap={pm.gap} />
               </View>
               {__DEV__ && getDiagnostics() && (
