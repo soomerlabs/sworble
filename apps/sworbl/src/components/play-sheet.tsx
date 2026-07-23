@@ -6,7 +6,7 @@
 // display) — resume RE-ARMS the count-in, never jumps to a running clock.
 import React, { useState, useEffect, useMemo, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { AppState, StyleSheet, Text, View, Pressable, useWindowDimensions } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { GestureDetector, type PanGesture } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -53,6 +53,10 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   // useSafeAreaInsets is SYNCHRONOUS — SafeAreaView reflows a frame late, which
   // jitters the top bar every time the sheet mounts mid-drag (owner report)
   const insets = useSafeAreaInsets();
+  // the board's trace pan — the full-screen close drag YIELDS to it, so a
+  // downward trace on tiles can never slide the sheet (owner: close from the
+  // whole screen, not just the top bar)
+  const boardPanRef = useRef<PanGesture | undefined>(undefined);
 
   const deal = useMemo(() => dealDaily(), []);
   const boot = useMemo(() => (deal ? loadDay(deal.dayKey) : null), [deal]);
@@ -252,11 +256,18 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   const clock = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`;
   const onBoard = phase === 'idle' || phase === 'countin' || phase === 'live' || phase === 'paused';
 
+  const fullClose = useMemo(() => {
+    const g = closeGesture as PanGesture;
+    return boardPanRef.current || phase === 'live'
+      ? g.requireExternalGestureToFail(boardPanRef as React.MutableRefObject<PanGesture>)
+      : g;
+  }, [closeGesture, phase]);
+
   return (
+    <GestureDetector gesture={fullClose}>
     <View style={styles.root}>
       {phase !== 'idle' && <Storm width={width} height={Math.min(280, height * 0.32)} />}
       <View style={[styles.safe, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <GestureDetector gesture={closeGesture}>
         <View style={styles.top}>
           <Text style={styles.brand}>sworbl</Text>
           {onBoard && (
@@ -283,7 +294,6 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
           )}
           <Text style={styles.score}>{score.toLocaleString()}</Text>
         </View>
-        </GestureDetector>
 
         <View style={styles.center}>
           {!deal && (
@@ -353,6 +363,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
         </View>
       </View>
     </View>
+    </GestureDetector>
   );
 });
 

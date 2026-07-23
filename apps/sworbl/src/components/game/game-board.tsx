@@ -2,7 +2,7 @@
 // The ENGINE decides (deal, validation targets, clue banking); this component acts.
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, type PanGesture } from 'react-native-gesture-handler';
 import { useSharedValue, useAnimatedReaction, runOnJS, runOnUI } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 import { GameTile } from './game-tile';
@@ -31,10 +31,11 @@ interface Props {
   onTiles?: (tiles: TileT[], queueIdx: number) => void; // run-snapshot feed
   onWordSpelled?: (word: string, pts: number, caughtClue: boolean) => void; // superlatives + time-fuel feed
   mercySecs?: number; // mercy threshold override (time-fuel rounds fire later)
+  gestureRef?: React.MutableRefObject<PanGesture | undefined>; // the sheet's close-drag yields to this
 }
 
 export function GameBoard({
-  deal, size, gap, initialTiles, initialFound, initialScore, secsLeft, onScore, onClues, onTiles, onWordSpelled, mercySecs,
+  deal, size, gap, initialTiles, initialFound, initialScore, secsLeft, onScore, onClues, onTiles, onWordSpelled, mercySecs, gestureRef,
 }: Props) {
   const cell = size + gap;
   const boardW = COLS * cell - gap;
@@ -279,8 +280,8 @@ export function GameBoard({
 
   // ---- the gesture: pure worklets in the hot path (PHASE2 #1/#6) ----
   const pan = useMemo(
-    () =>
-      Gesture.Pan()
+    () => {
+      const g = Gesture.Pan()
         .minDistance(0)
         .maxPointers(1)
         .onBegin((e) => {
@@ -308,8 +309,11 @@ export function GameBoard({
           'worklet';
           sDragging.value = false;
           sPath.value = [];
-        }),
-    [ctx, commitWord]
+        });
+      if (gestureRef) g.withRef(gestureRef);
+      return g;
+    },
+    [ctx, commitWord, gestureRef]
   );
 
   if (!deal) {
