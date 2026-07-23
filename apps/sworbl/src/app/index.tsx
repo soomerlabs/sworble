@@ -56,7 +56,9 @@ import { haptic } from '@/game/haptics';
 // · every release INHERITS the finger's velocity — the spring continues the
 //   throw instead of restarting from rest (the dead-hand-off fix)
 const OPEN_SPRING = { mass: 0.8, damping: 24, stiffness: 210 };
-const PARK_SPRING = { mass: 0.9, damping: 32, stiffness: 200 };
+// park got its bounce back (owner: "like it took the hit") — one soft
+// overshoot, plus the landing squash below
+const PARK_SPRING = { mass: 0.9, damping: 25, stiffness: 210 };
 
 const twistLabel = (a: string) => ARCHETYPE_LABEL[a] ?? null;
 
@@ -203,7 +205,13 @@ export default function HomeScreen() {
     setSheetOpen(false);
     sheetY.value = withSpring(closedY, PARK_SPRING, (fin) => {
       'worklet';
-      if (fin) runOnJS(finishClose)();
+      if (fin) {
+        sSquash.value = withSequence(
+          withTiming(0.988, { duration: 80 }),
+          withTiming(1, { duration: 190 })
+        );
+        runOnJS(finishClose)();
+      }
     });
     // day state may have changed inside the round (finish/lock)
     setTimeout(refreshDay, 300);
@@ -257,7 +265,15 @@ export default function HomeScreen() {
             });
             runOnJS(markOpen)();
           } else {
-            sheetY.value = withSpring(closedY, { ...PARK_SPRING, velocity: e.velocityY });
+            sheetY.value = withSpring(closedY, { ...PARK_SPRING, velocity: e.velocityY }, (fin) => {
+              'worklet';
+              if (fin) {
+                sSquash.value = withSequence(
+                  withTiming(0.988, { duration: 80 }),
+                  withTiming(1, { duration: 190 })
+                );
+              }
+            });
           }
         }),
     [height, closedY, sheetOpen, played, markOpen, detentIn, detentOut]
@@ -299,7 +315,14 @@ export default function HomeScreen() {
             runOnJS(commitClose)();
             sheetY.value = withSpring(closedY, { ...PARK_SPRING, velocity: e.velocityY }, (fin) => {
               'worklet';
-              if (fin) runOnJS(parkBeat)(); // the soft "docked at the peek" tap
+              if (fin) {
+                // took the hit: the peek compresses on landing, then breathes out
+                sSquash.value = withSequence(
+                  withTiming(0.988, { duration: 80 }),
+                  withTiming(1, { duration: 190 })
+                );
+                runOnJS(parkBeat)(); // the soft "docked at the peek" tap
+              }
             });
           } else {
             // abort: the round never paused — the sheet just springs back
