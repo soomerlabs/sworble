@@ -6,15 +6,14 @@
 //     top, committed rows reveal their colors block-by-block, keys rise
 //     bottom-up on the morph
 // The ENGINE still decides everything (applyGuess/nextSlots/scoreGuess).
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform, useWindowDimensions } from 'react-native';
-import Animated, { ZoomIn, FadeIn, SlideInUp, SlideInDown, runOnJS } from 'react-native-reanimated';
-import { Gesture, GestureDetector, type PanGesture } from 'react-native-gesture-handler';
+import Animated, { ZoomIn, FadeIn, SlideInUp, SlideInDown } from 'react-native-reanimated';
+import { type PanGesture } from 'react-native-gesture-handler';
 import engine from '@sworbl/engine';
 import { INK, MONO_DARK, MONO_INK } from '@/game/palette';
 import { haptic } from '@/game/haptics';
-import { applyGuess, decodeSwipe } from '@/game/finale-logic';
-import { dict, starterWords } from '@/game/dict';
+import { applyGuess } from '@/game/finale-logic';
 import { ClueFan } from './clue-fan';
 
 const C = {
@@ -213,76 +212,8 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone,
   const keyH = Math.round(keyW * 1.75); // taller still — the keyboard OWNS the bottom
   const wideW = Math.floor(keyW * 1.5);
 
-  // ---- THE GLIDE (swipe-to-guess): trace a word across the keys; the pure
-  // decoder (finale-logic.decodeSwipe, test-pinned) turns the glide into a
-  // candidate that honors length + locked greens; commons win ties ----
-  const seqRef = useRef<string[]>([]);
-  const rowStride = keyH + 4 + 10; // key height + ledge + row gap
-  const keyAt = useCallback(
-    (x: number, y: number): string | null => {
-      const row = Math.floor(y / rowStride);
-      if (row < 0 || row > 2) return null;
-      const rows = ['qwertyuiop', 'asdfghjkl', '\u232bzxcvbnm\u23ce'];
-      const chars = rows[row];
-      const widths = [...chars].map((c) => (c === '\u232b' || c === '\u23ce' ? wideW : keyW));
-      const totalW = widths.reduce((a, b) => a + b, 0) + (chars.length - 1) * keyGap;
-      let cx = (width - totalW) / 2;
-      for (let i = 0; i < chars.length; i++) {
-        if (x >= cx && x < cx + widths[i]) {
-          const c = chars[i];
-          return c === '\u232b' || c === '\u23ce' ? null : c;
-        }
-        cx += widths[i] + keyGap;
-      }
-      return null;
-    },
-    [width, keyW, wideW, keyGap, rowStride]
-  );
-  const glideCollect = useCallback(
-    (x: number, y: number, fresh: boolean) => {
-      if (fresh) seqRef.current = [];
-      const k = keyAt(x, y);
-      if (!k) return;
-      const seq = seqRef.current;
-      if (seq[seq.length - 1] !== k) {
-        seq.push(k);
-        haptic.soft();
-      }
-    },
-    [keyAt]
-  );
-  const glideEnd = useCallback(() => {
-    const seq = seqRef.current;
-    seqRef.current = [];
-    if (locked || seq.length < 3) return;
-    const greens = colors.map((c, i) => (c === 'green' ? slots[i] : null));
-    const w = decodeSwipe({ seq, len, greens, words: dict(), commons: starterWords() });
-    if (w) {
-      setSlots([...w]);
-      setColors(colors.map((c) => (c === 'green' ? 'green' : null)));
-      haptic.good();
-    } else {
-      haptic.bad();
-    }
-  }, [locked, colors, slots, len]);
-  const glide = useMemo(() => {
-    const g = Gesture.Pan()
-      .minDistance(16) // taps stay taps
-      .onStart((e) => {
-        'worklet';
-        runOnJS(glideCollect)(e.x, e.y, true);
-      })
-      .onUpdate((e) => {
-        'worklet';
-        runOnJS(glideCollect)(e.x, e.y, false);
-      })
-      .onEnd(() => {
-        'worklet';
-        runOnJS(glideEnd)();
-      });
-    if (gestureRef) g.withRef(gestureRef);
-    return g;
-  }, [glideCollect, glideEnd, gestureRef]);
+  // (glide keyboard PARKED 2026-07-23 — owner: too touchy for now. The pure
+  // decoder + tests live on in finale-logic.decodeSwipe; rewiring is ~30 lines.)
 
   return (
     <Animated.View entering={E(FadeIn.duration(220).delay(D(120)))} style={styles.wrap}>
@@ -315,8 +246,7 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone,
           <ClueFan clues={clues} found={found} />
         </Animated.View>
 
-        {/* THE KEYBOARD — glide-enabled: trace a word across the keys */}
-        <GestureDetector gesture={glide}>
+        {/* THE KEYBOARD */}
         <View style={[styles.kb, { paddingHorizontal: kbPad }]}>
         {KEY_ROWS.map((krow, ki) => (
           <Animated.View
@@ -340,7 +270,6 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone,
           </Animated.View>
         ))}
         </View>
-        </GestureDetector>
       </View>
     </Animated.View>
   );
@@ -352,7 +281,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     justifyContent: 'space-between',
     paddingTop: 6,
-    paddingBottom: 10,
+    paddingBottom: 22, // keyboard floats clear of the bottom (iOS-keyboard style)
   },
   rowsArea: {
     alignItems: 'center',
