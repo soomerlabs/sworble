@@ -41,6 +41,9 @@ export interface GameSurface {
   sub: string; // secondary text
   tileAmbient: string; // soft under-tile shadow ('' = none; light mode only —
   // the hard ledge carries less depth on a bright ground)
+  tileBevel: string; // the candy bevel (fossil --rjhi/--rjbot resting state):
+  // inset top highlight + soft inset bottom shade — TRUE inset shadows, not
+  // the border-faked lines the owner rightly killed
   timer: string; // the round clock (mint family, per-scheme contrast)
   timerLow: string; // ≤30s warning
   overlay: string; // count-in / paused dim
@@ -57,6 +60,7 @@ export const GAME_DARK: GameSurface = {
   ink: '#EDEFF7',
   sub: '#9DA2B3',
   tileAmbient: '', // dark reads deep off the ledge alone (web parity)
+  tileBevel: 'inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -3px 4px rgba(0,0,0,0.28)',
   timer: '#EDEFF7', // plain ink (owner: no green — white on dark, black on light)
   timerLow: '#FF8A8E',
   overlay: 'rgba(16,16,20,0.55)',
@@ -76,6 +80,7 @@ export const GAME_LIGHT: GameSurface = {
   ink: '#1F1442',
   sub: '#6E7180',
   tileAmbient: '0 2px 3px rgba(31,20,66,0.13)', // fossil recap-block ambient, dialed subtle
+  tileBevel: 'inset 0 2px 0 rgba(255,255,255,0.8), inset 0 -3px 4px rgba(0,0,0,0.07)',
   timer: '#1F1442', // plain ink (owner: no green — white on dark, black on light)
   timerLow: '#C43B44',
   overlay: 'rgba(237,239,247,0.6)',

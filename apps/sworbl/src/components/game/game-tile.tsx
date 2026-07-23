@@ -239,7 +239,11 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
           ]}
         />
         <Animated.View
-          style={[styles.face, faceStyle, { width: size, height: size, borderRadius: rad }]}>
+          style={[
+            styles.face,
+            faceStyle,
+            { width: size, height: size, borderRadius: rad, boxShadow: gs.tileBevel },
+          ]}>
           <Animated.Text
             style={[
               styles.letter,
