@@ -62,4 +62,23 @@ for (const t of restamped) {
 const untouched = restampBroken({ deal: deal!, tiles: settled, added, unfound: [] });
 assert.strictEqual(untouched, settled, 'nothing unfound → identical reference, zero work');
 
+// BONUS WAVES: pure derivation from the found set — 3 at a time, only once
+// everything currently active is caught
+{
+  const { activeClues } = await import('../src/game/daily');
+  const core = ['a1', 'a2'];
+  const extras = ['b1', 'b2', 'b3', 'b4'];
+  assert.deepStrictEqual(activeClues(core, extras, []), core, 'no wave before the core is done');
+  assert.deepStrictEqual(
+    activeClues(core, extras, ['a1', 'a2']),
+    ['a1', 'a2', 'b1', 'b2', 'b3'],
+    'core cleared → wave of 3'
+  );
+  assert.deepStrictEqual(
+    activeClues(core, extras, ['a1', 'a2', 'b1', 'b2', 'b3']),
+    ['a1', 'a2', 'b1', 'b2', 'b3', 'b4'],
+    'wave cleared → the remainder arrives'
+  );
+}
+
 console.log('daily: deal/settle/re-stamp invariants all passed');

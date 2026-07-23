@@ -14,7 +14,7 @@ import { ClueFan } from './clue-fan';
 import { COLS, ROWS, type TileT, type TraceTile } from '@/game/types';
 import { PALETTE, CARD, gameSurface, type GameSurface } from '@/game/palette';
 import { useTheme } from '@/game/theme';
-import { settle, restampBroken, landsInMs, type DailyDeal } from '@/game/daily';
+import { settle, restampBroken, landsInMs, activeClues, type DailyDeal } from '@/game/daily';
 import { dict, prefixMap, scoreWord } from '@/game/dict';
 import { beginW, moveW, type TraceCtx } from '@/game/trace';
 import { haptic } from '@/game/haptics';
@@ -82,6 +82,22 @@ export function GameBoard({
   useEffect(() => {
     onTiles && onTiles(tiles, deal.getQueueIdx());
   }, [tiles]);
+
+  // ---- BONUS WAVES (owner): all current clues caught + time left → 3 more
+  // from the authored pool join the hunt. Pure function of `found` — resumes
+  // and kills re-derive the same set. The fan grows; catches still pay fuel.
+  const act = activeClues(deal.clues, deal.poolExtras, found);
+  const actRef = useRef(act);
+  actRef.current = act;
+  const prevActLen = useRef(act.length);
+  useEffect(() => {
+    if (act.length > prevActLen.current) {
+      setVerdict({ word: 'bonus', ok: true });
+      setTimeout(() => setVerdict(null), 1200);
+      haptic.good();
+    }
+    prevActLen.current = act.length;
+  }, [act.length]);
 
   // ---- HINT LADDER (owner 2026-07-23): blank pills; earned, validated grants ----
   const [ladder, setLadder] = useState<HintLadder>(() => loadLadder(deal.dayKey));
@@ -154,6 +170,19 @@ export function GameBoard({
   const audit = __DEV__ && getClueAudit();
   const [devFlash, setDevFlash] = useState<{ key: number; cells: { col: number; row: number }[] } | null>(null);
   const devFlashKey = useRef(0);
+  // the AVAILABILITY meter (owner: "always a couple clues available or it's
+  // a needle in a haystack") — solver-counted per board change, dev only
+  const devFindable = useMemo(() => {
+    if (!audit) return 0;
+    const live = tiles.filter((t) => !clearingIds.has(t.id));
+    return act.filter(
+      (c) =>
+        !found.includes(c) &&
+        !!engine.solver.findWord(live, { word: c, expand: engine.core.expandLetter, diag: true })
+    ).length;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audit, tiles, clearingIds, act, found]);
+
   const devProve = useCallback((clue: string): boolean => {
     const live = tilesMirror.current.filter((t: TileT) => !clearingMirror.current.has(t.id));
     const path = engine.solver.findWord(live, {
@@ -442,7 +471,7 @@ export function GameBoard({
       );
       const pts = Math.round(base * 10 * engine.core.lenMult(word.length));
       // the ENGINE decides whether this word banks a clue ("trims" banks "trim")
-      const res = engine.daily.resolveCatch({ found: foundRef.current, word, targets: deal.clues });
+      const res = engine.daily.resolveCatch({ found: foundRef.current, word, targets: actRef.current });
       setVerdict(
         res.isNew
           ? { word: word.toUpperCase(), pts, ok: true, clue: res.clue ?? undefined }
@@ -487,10 +516,13 @@ export function GameBoard({
         setTiles((cur) => {
           const { tiles: settled, added } = settle(cur.filter((t) => !gone.has(t.id)), deal.nextLetter);
           // web parity: broken un-found clues ride back in on the refill
-          const unfound = deal.clues.filter(
+          const unfound = actRef.current.filter(
             (c) => !foundRef.current.includes(c) && !playedRef.current.has(c)
           );
-          return restampBroken({ deal, tiles: settled, added, unfound });
+          const caught = actRef.current.filter(
+            (c) => foundRef.current.includes(c) || playedRef.current.has(c)
+          );
+          return restampBroken({ deal, tiles: settled, added, unfound, caught });
         });
       }, 240 + ids.length * 45);
     },
@@ -657,8 +689,10 @@ export function GameBoard({
         </View>
         </Animated.View>
 
-      <ClueFan clues={deal.clues} found={found} nudged={ladder.nudged} gs={gs} />
-      {audit && <DevClueAudit clues={deal.clues} found={found} onTap={devProve} />}
+      <ClueFan clues={act} found={found} nudged={ladder.nudged} gs={gs} />
+      {audit && (
+        <DevClueAudit clues={act} found={found} findableNow={devFindable} onTap={devProve} />
+      )}
     </View>
   );
 }

@@ -16,6 +16,7 @@ export interface DailyDeal {
   archetype: string | null; // today's twist — REVEALED ONLY POST-ROUND (owner:
   // pre-round diagnosis IS the game; the tag teaches the vocabulary after)
   clues: string[]; // the 6 realized clue words actually stamped on this board
+  poolExtras: string[]; // authored theme words the seed didn't use — bonus waves
   tiles: TileT[];
   nextLetter: () => string; // deterministic finite-bag refill dealer
   getQueueIdx: () => number; // dealer position — persisted so a resumed run
@@ -51,6 +52,19 @@ export function authoredDays(): { day: string; sworb: string; archetype: string 
       sworb: dailies[day].sworb,
       archetype: typeof dailies[day].archetype === 'string' ? dailies[day].archetype : null,
     }));
+}
+
+// BONUS WAVES (owner): catch ALL current clues with time left → 3 more from
+// the authored pool join the hunt. PURE function of the found set — no new
+// state to persist, so kills/restores/resumes derive the same answer.
+export function activeClues(core: string[], extras: string[], found: string[]): string[] {
+  let act = [...core];
+  let i = 0;
+  while (i < extras.length && act.every((c) => found.includes(c))) {
+    act = [...act, ...extras.slice(i, i + 3)];
+    i += 3;
+  }
+  return act;
 }
 
 export function dealDaily(now = new Date()): DailyDeal | null {
@@ -99,6 +113,7 @@ export function dealDaily(now = new Date()): DailyDeal | null {
     definition: entry.definition || '',
     archetype: typeof entry.archetype === 'string' ? entry.archetype : null,
     clues: cand.realized,
+    poolExtras: entry.themeWords.filter((w: string) => !cand.realized.includes(w)),
     tiles,
     nextLetter,
     getQueueIdx: () => qi,
@@ -162,9 +177,11 @@ export function restampBroken(args: {
   tiles: TileT[]; // post-settle full board
   added: TileT[]; // this refill's incoming tiles
   unfound: string[]; // clues minus found minus playedThisRun (the roundWords guard)
+  caught?: string[]; // DO-NOT-SEED (owner): clues already banked — if a refill
+  // organically re-forms one THROUGH a fresh tile, break the path
 }): TileT[] {
-  const { deal, tiles, added, unfound } = args;
-  if (!unfound.length || !added.length) return tiles;
+  const { deal, tiles, added, unfound, caught = [] } = args;
+  if ((!unfound.length && !caught.length) || !added.length) return tiles;
   const addedIds = new Set(added.map((t) => t.id));
   const survivors = tiles.filter((t) => !addedIds.has(t.id));
   const isFindable = (w: string) =>
@@ -172,19 +189,43 @@ export function restampBroken(args: {
   const rng = engine.core.mulberry32(
     (engine.core.hashSeed(deal.dayKey + '|refill') ^ (deal.getQueueIdx() * 2654435761)) >>> 0
   );
-  const changes: { r: number; c: number; letter: string }[] = engine.seed.reseedBroken({
-    tiles: added,
-    unfound,
-    isFindable,
-    rng,
-    reserve: new Set(),
-  });
-  if (!changes.length) return tiles;
+  const changes: { r: number; c: number; letter: string }[] = unfound.length
+    ? engine.seed.reseedBroken({
+        tiles: added,
+        unfound,
+        isFindable,
+        rng,
+        reserve: new Set(),
+      })
+    : [];
   const byCell = new Map(changes.map((ch) => [ch.r + ',' + ch.c, ch.letter]));
-  return tiles.map((t) => {
+  let out = tiles.map((t) => {
     if (!addedIds.has(t.id)) return t;
     const letter = byCell.get(t.row + ',' + t.col);
     if (!letter) return t;
     return { ...t, letter, ci: tileColorFor(letter, t.id) };
   });
+  // the DO-NOT-SEED breaker: a banked clue must not quietly rebuild itself on
+  // a refill. Only FRESH tiles may be altered (never the stable board), and
+  // never a cell the unfound re-stamp just claimed.
+  const stamped = new Set(changes.map((ch) => ch.r + ',' + ch.c));
+  const ALT = 'bcdfghklmnprst';
+  for (const w of caught) {
+    for (let guard = 0; guard < 4; guard++) {
+      const path = engine.solver.findWord(out, {
+        word: w, expand: engine.core.expandLetter, diag: true,
+      }) as number[] | null;
+      if (!path) break;
+      const victim = out.find(
+        (t) => path.includes(t.id) && addedIds.has(t.id) && !stamped.has(t.row + ',' + t.col)
+      );
+      if (!victim) break; // path lives on stable tiles — the board is honest, leave it
+      const alt = ALT[Math.floor(rng() * ALT.length)];
+      if (alt === victim.letter) continue;
+      out = out.map((t) =>
+        t.id === victim.id ? { ...t, letter: alt, ci: tileColorFor(alt, t.id) } : t
+      );
+    }
+  }
+  return out;
 }

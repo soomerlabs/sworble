@@ -13,6 +13,7 @@ import { PALETTE } from '@/game/palette';
 interface StripProps {
   clues: string[];
   found: string[];
+  findableNow: number; // solver-proven findable among the unfound, RIGHT NOW
   // returns true if the solver proved a path (board flashes it)
   onTap: (clue: string) => boolean;
 }
@@ -56,10 +57,15 @@ function AuditChip({ clue, slot, isFound, onTap }: {
   );
 }
 
-export function DevClueAudit({ clues, found, onTap }: StripProps) {
+export function DevClueAudit({ clues, found, findableNow, onTap }: StripProps) {
+  const unfound = clues.filter((c) => !found.includes(c)).length;
+  const starved = unfound >= 2 && findableNow < 2;
   return (
     <View style={styles.strip}>
-      <Text style={styles.label}>DEV · tap a clue to prove it on the board</Text>
+      <Text style={[styles.label, starved && styles.labelBad]}>
+        DEV · findable now: {findableNow}/{unfound} unfound
+        {starved ? '  ⚠ STARVED' : ''} · tap to prove
+      </Text>
       <View style={styles.row}>
         {clues.map((c, i) => (
           <AuditChip key={c} clue={c} slot={i} isFound={found.includes(c)} onTap={onTap} />
@@ -128,6 +134,9 @@ const styles = StyleSheet.create({
     fontSize: 8.5,
     letterSpacing: 1.2,
     color: '#F5B84A',
+  },
+  labelBad: {
+    color: '#FF8A8E',
   },
   row: {
     flexDirection: 'row',
