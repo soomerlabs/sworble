@@ -26,6 +26,52 @@ export const MONO_INK = '#F2F1F4';
 // the board card + its sunken cell wells (web: --card/--card-edge dark + cells)
 export const CARD = { bg: '#1E1E24', edge: '#0A0A0D', well: '#141418' };
 
+// GAME SURFACES per scheme — the fossil's exact theme table (index.html
+// rootStyle vars + the light mono block from clueToken). STABLE module
+// objects: components take these as props without breaking memoization.
+export interface GameSurface {
+  bg: string; // the sheet's game layer
+  card: string; // board card + stepper card
+  cardEdge: string;
+  well: string; // sunken cells
+  mono: Pal; // idle tiles + keyboard keys
+  monoInk: string;
+  line: string; // dashed ghosts, tracks, knobs (web --line)
+  ink: string; // primary text on the game layer
+  sub: string; // secondary text
+  overlay: string; // count-in / paused dim
+}
+
+export const GAME_DARK: GameSurface = {
+  bg: '#101014',
+  card: '#1E1E24',
+  cardEdge: '#0A0A0D',
+  well: '#141418',
+  mono: MONO_DARK,
+  monoInk: MONO_INK,
+  line: '#3A3A44',
+  ink: '#EDEFF7',
+  sub: '#9DA2B3',
+  overlay: 'rgba(16,16,20,0.55)',
+};
+
+export const GAME_LIGHT: GameSurface = {
+  bg: '#EDEFF7',
+  card: '#FFFFFF',
+  cardEdge: '#C9CDDD',
+  well: '#EDEFF4',
+  mono: { bg: '#C8C4D2', hi: '#D6D2DF', edge: '#A9A5B3' },
+  monoInk: '#6B6775',
+  line: '#D3D6E0',
+  ink: '#1F1442',
+  sub: '#6E7180',
+  overlay: 'rgba(237,239,247,0.6)',
+};
+
+export function gameSurface(mode: 'light' | 'dark'): GameSurface {
+  return mode === 'light' ? GAME_LIGHT : GAME_DARK;
+}
+
 // same families as the web tileColorFor: vowels amber/coral, premium pink,
 // mid-value violet, commons cyan/mint
 export function tileColorFor(letter: string, id: number | null = null): number {

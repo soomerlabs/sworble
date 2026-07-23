@@ -341,9 +341,6 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     <View style={styles.root}>
       {phase !== 'idle' && <Storm width={width} height={Math.min(280, height * 0.32)} />}
       <View style={[styles.safe, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        {/* the GRABBER (Maps idiom): the visible "I'm draggable" affordance —
-            the full-screen close-drag already exists; this just says so */}
-        <View style={styles.grabber} />
         <View style={styles.top}>
           {onBoard && phase !== 'finale' && (
             // tap = pause · DEV-ONLY shortcut: long-press → straight to the finale
@@ -491,15 +488,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-  },
-  grabber: {
-    alignSelf: 'center',
-    width: 38,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    marginTop: 6,
-    marginBottom: -4,
   },
   top: {
     flexDirection: 'row',
