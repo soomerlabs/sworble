@@ -58,28 +58,21 @@ const HINT_SLOT_W = [40, 36, 44, 38, 36, 42];
 const DOCK_H = 96;
 
 // TRUE gradient frost: one BlurView masked by a LinearGradient (the sliced
-// approximation banded — owner: "woof"). The mask packages are native — until
-// the next pod install + rebuild the lazy require fails and we fall back to
-// the clean hard-edged frost, which is the pre-gradient look.
-let Masked: { MaskedView: React.ComponentType<object>; LinearGradient: React.ComponentType<object> } | null = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mv = require('@react-native-masked-view/masked-view').default;
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const lg = require('expo-linear-gradient').LinearGradient;
-  if (mv && lg) Masked = { MaskedView: mv, LinearGradient: lg };
-} catch {
-  Masked = null;
-}
+// approximation banded — owner: "woof"). FLIP THIS TO true AFTER the next
+// pod install + rebuild (the mask packages are native). Runtime detection
+// was a trap: the packages' JS loads fine WITHOUT their native halves, the
+// broken MaskedView then swallows the blur entirely (owner: "no blur at
+// all") — a hand-flipped constant is deterministic.
+const USE_MASKED_FROST = false;
 
 function DockFrost({ tint }: { tint: 'dark' | 'light' }) {
-  if (!Masked) {
+  if (!USE_MASKED_FROST) {
     return <BlurView intensity={40} tint={tint} style={StyleSheet.absoluteFill} />;
   }
-  const { MaskedView, LinearGradient } = Masked as {
-    MaskedView: React.ComponentType<Record<string, unknown>>;
-    LinearGradient: React.ComponentType<Record<string, unknown>>;
-  };
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const MaskedView = require('@react-native-masked-view/masked-view').default;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { LinearGradient } = require('expo-linear-gradient');
   return (
     <MaskedView
       style={StyleSheet.absoluteFill}
@@ -423,9 +416,10 @@ export default function HomeScreen() {
         <GestureDetector gesture={openDrag}>
           <View style={[styles.dockBand, { height: DOCK_H + insets.bottom }]}>
             <DockFrost tint={theme.mode === 'dark' ? 'dark' : 'light'} />
-            {/* full home-indicator inset + breathing room — the chevron must
-                never kiss the bottom edge (owner: "not very native") */}
-            <View style={[styles.dockInner, { paddingBottom: Math.max(insets.bottom, 12) + 6 }]}>
+            {/* ONE owner of vertical placement: content CENTERED in the zone
+                above the home indicator (inset reserved via paddingBottom) —
+                no stacked magic paddings (owner twice: bottom felt like zero) */}
+            <View style={[styles.dockInner, { paddingBottom: Math.max(insets.bottom, 14) }]}>
               <CountdownDock played={played} />
             </View>
           </View>
@@ -490,7 +484,7 @@ const styles = StyleSheet.create({
   },
   dockInner: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
   },
   sheet: {
     position: 'absolute',

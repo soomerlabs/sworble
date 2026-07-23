@@ -53,7 +53,6 @@ const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
     gap: 2,
-    paddingBottom: 18,
   },
   chev: {
     fontFamily: 'Fredoka_600SemiBold',
