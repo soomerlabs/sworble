@@ -42,6 +42,7 @@ interface Props {
   mercySecs?: number; // mercy threshold override (time-fuel rounds fire later)
   gestureRef?: React.MutableRefObject<PanGesture | undefined>; // the sheet's close-drag yields to this
   concealed?: boolean; // pre-GO / paused: blocks render, letters DON'T (anti-stare)
+  arrive?: number; // sheet-dock counter — the board's arrival micro-cascade
   // THE IN-PLACE FINALE (owner loop): at 0:00 the BOARD becomes the keyboard,
   // the STEPPER hosts the guess — the player never leaves the gameboard
   finale?: {
@@ -53,7 +54,7 @@ interface Props {
 }
 
 export function GameBoard({
-  deal, size, gap, initialTiles, initialFound, initialScore, secsLeft, onScore, onClues, onTiles, onWordSpelled, mercySecs, gestureRef, finale, concealed,
+  deal, size, gap, initialTiles, initialFound, initialScore, secsLeft, onScore, onClues, onTiles, onWordSpelled, mercySecs, gestureRef, finale, concealed, arrive,
 }: Props) {
   // LIGHT MODE (owner): one stable surface object per scheme — memo-safe props
   const gs = gameSurface(useTheme().mode);
@@ -617,6 +618,7 @@ export function GameBoard({
               nopeTotal={nope.total}
               concealed={!!concealed}
               gs={gs}
+              arrive={arrive ?? 0}
             />
           ))}
           {devFlash && (
