@@ -110,10 +110,10 @@ export default function HomeScreen() {
     [height, sheetOpen, markOpen]
   );
 
-  // close drag (lives HERE because home owns sheetY; the sheet's top bar wears
-  // it): pauses at first movement — fairness — then the sheet rides the finger
-  // down; release past 25% (or a flick) commits the close, else springs back.
-  const prepClose = useCallback(() => sheetRef.current?.pauseForClose(), []);
+  // close drag (home owns sheetY): the round pauses ONLY when the close
+  // COMMITS (owner: an aborted swipe-down must not restart the count-in —
+  // the round simply never stopped). A mid-drag glimpse can't be traced, so
+  // fairness holds.
   // commit-close: settle the round AGAIN at the moment of commit — the arm
   // effect can legally re-arm a count-in during the drag (abort = restart at
   // 3), so the commit must disarm whatever re-armed (owner bug: count-in
@@ -122,15 +122,10 @@ export default function HomeScreen() {
     sheetRef.current?.pauseForClose();
     finishClose();
   }, [finishClose]);
-  const rearmSheet = useCallback(() => sheetRef.current?.rearm(), []);
   const closeDrag = useMemo(
     () =>
       Gesture.Pan()
         .activeOffsetY(15)
-        .onStart(() => {
-          'worklet';
-          runOnJS(prepClose)();
-        })
         .onUpdate((e) => {
           'worklet';
           sheetY.value = Math.min(height, Math.max(0, e.translationY));
@@ -143,13 +138,11 @@ export default function HomeScreen() {
             runOnJS(commitClose)();
             sheetY.value = withTiming(height, { duration: 220 });
           } else {
-            // abort: sheet springs back OPEN — explicitly re-arm (arming is
-            // edge-triggered now, and `active` never flipped during the drag)
+            // abort: the round never paused — the sheet just springs back
             sheetY.value = withSpring(0, SHEET_SPRING);
-            runOnJS(rearmSheet)();
           }
         }),
-    [height, prepClose, commitClose, rearmSheet]
+    [height, commitClose]
   );
 
   // PERF: transform ONLY — animating border radius on a clipped full-screen

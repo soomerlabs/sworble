@@ -3,9 +3,11 @@
 // pay badge (×mult · pts) fading in at the top-right while a chain is lit.
 // Verdicts land here too: valid word + points, invalid in red.
 // (The sworb-day guess face and the letter-flight arrival are later passes.)
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Animated, { ZoomIn, FadeIn } from 'react-native-reanimated';
+import Animated, {
+  ZoomIn, FadeIn, useSharedValue, useAnimatedStyle, withSequence, withTiming,
+} from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 import { PALETTE, CARD, tileColorFor } from '@/game/palette';
 import { scoreWord } from '@/game/dict';
@@ -17,10 +19,74 @@ export interface StepperVerdict {
   clue?: string;
 }
 
+export interface SworbFace {
+  slots: string[];
+  colors: (string | null)[];
+  guessesUsed: number;
+  shakeKey: number; // increments on a miss → the row shakes it off
+  burstKey: number; // increments on the WIN → confetti
+}
+
 interface Props {
   width: number; // boardW + 24, the shared rail
   traceWord: string; // live chain, lowercase ('' when idle)
   verdict: StepperVerdict | null;
+  sworb?: SworbFace | null; // finale: the stepper hosts the guess (fossil sworb face)
+}
+
+const GUESS_C: Record<string, { bg: string; edge: string; ink: string }> = {
+  green: { bg: '#5FD6A8', edge: '#38AD7F', ink: '#1F1442' },
+  yellow: { bg: '#F5B84A', edge: '#CE9022', ink: '#1F1442' },
+  typed: { bg: '#42424F', edge: '#22222A', ink: '#FFFFFF' },
+};
+
+const CONFETTI = Array.from({ length: 18 }, (_, i) => ({
+  dx: Math.cos((i / 18) * Math.PI * 2 + (i % 5) * 0.11) * (46 + (i % 4) * 22),
+  dy: Math.sin((i / 18) * Math.PI * 2) * (34 + (i % 3) * 18) - 14,
+  rot: (i % 2 ? 1 : -1) * (140 + i * 21),
+  s: 5 + (i % 4) * 2,
+  pal: i % 6,
+  delay: (i % 5) * 24,
+}));
+
+function Burst({ burstKey }: { burstKey: number }) {
+  if (!burstKey) return null;
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {CONFETTI.map((c, i) => (
+        <ConfettiBit key={`${burstKey}-${i}`} c={c} />
+      ))}
+    </View>
+  );
+}
+
+function ConfettiBit({ c }: { c: (typeof CONFETTI)[number] }) {
+  const t = useSharedValue(0);
+  useEffect(() => {
+    t.value = 0;
+    t.value = withSequence(withTiming(0, { duration: c.delay }), withTiming(1, { duration: 750 }));
+  }, []);
+  const st = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: t.value * c.dx },
+      { translateY: t.value * c.dy + t.value * t.value * 26 },
+      { rotate: `${t.value * c.rot}deg` },
+    ],
+    opacity: t.value < 0.7 ? 1 : 1 - (t.value - 0.7) / 0.3,
+  }));
+  const pal = PALETTE[c.pal];
+  return (
+    <Animated.View
+      style={[
+        st,
+        {
+          position: 'absolute', left: '50%', top: '46%',
+          width: c.s, height: c.s, borderRadius: Math.max(1, Math.round(c.s * 0.26)),
+          backgroundColor: pal.bg, boxShadow: `0 1px 0 ${pal.edge}`,
+        },
+      ]}
+    />
+  );
 }
 
 function Chips({ word, red }: { word: string; red?: boolean }) {
@@ -53,10 +119,67 @@ function Chips({ word, red }: { word: string; red?: boolean }) {
   );
 }
 
-export function StepperCard({ width, traceWord, verdict }: Props) {
+export function StepperCard({ width, traceWord, verdict, sworb }: Props) {
   const tracing = traceWord.length > 0;
   const mult = tracing ? engine.core.lenMult(traceWord.length) : 0;
   const pts = tracing && traceWord.length >= 3 ? scoreWord(traceWord) : 0;
+
+  // the miss SHAKE (fossil sworbGuess.shakeKey)
+  const shakeX = useSharedValue(0);
+  useEffect(() => {
+    if (!sworb?.shakeKey) return;
+    shakeX.value = withSequence(
+      withTiming(-7, { duration: 45 }),
+      withTiming(7, { duration: 70 }),
+      withTiming(-4, { duration: 60 }),
+      withTiming(0, { duration: 80 })
+    );
+  }, [sworb?.shakeKey]);
+  const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }] }));
+
+  if (sworb) {
+    const bs = Math.min(34, Math.floor((width - 60) / Math.max(1, sworb.slots.length)) - 5);
+    return (
+      <View style={[styles.card, { width }]}>
+        <Animated.View style={[styles.sworbRow, shakeStyle]}>
+          {sworb.slots.map((l, i) => {
+            const color = sworb.colors[i];
+            const pal = color ? GUESS_C[color] ?? GUESS_C.typed : l ? GUESS_C.typed : null;
+            const isHint = color === 'yellow';
+            return (
+              <View
+                key={i}
+                style={[
+                  styles.slot,
+                  { width: bs, height: bs * 1.14, borderRadius: Math.round(bs * 0.22) },
+                  pal && !isHint
+                    ? { backgroundColor: pal.bg, boxShadow: `0 3px 0 ${pal.edge}` }
+                    : isHint
+                      ? styles.slotHint
+                      : styles.slotEmpty,
+                ]}>
+                <Text
+                  style={[
+                    styles.slotText,
+                    { fontSize: Math.round(bs * 0.52) },
+                    { color: isHint ? '#F5B84A' : pal ? pal.ink : '#9DA2B3' },
+                    isHint && { opacity: 0.75 },
+                  ]}>
+                  {l.toUpperCase()}
+                </Text>
+              </View>
+            );
+          })}
+        </Animated.View>
+        <View style={styles.pips}>
+          {Array.from({ length: 6 }, (_, i) => (
+            <View key={i} style={[styles.pip, i < sworb.guessesUsed && styles.pipUsed]} />
+          ))}
+        </View>
+        <Burst burstKey={sworb.burstKey} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.card, { width }]}>
@@ -153,4 +276,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9DA2B3',
   },
+  sworbRow: {
+    flexDirection: 'row',
+    gap: 5,
+    justifyContent: 'center',
+  },
+  slot: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  slotEmpty: { borderWidth: 2.5, borderStyle: 'dashed', borderColor: '#3A3A44' },
+  slotHint: { borderWidth: 2.5, borderStyle: 'dashed', borderColor: '#CE9022' },
+  slotText: { fontFamily: 'Fredoka_600SemiBold', includeFontPadding: false },
+  pips: { flexDirection: 'row', gap: 5, marginTop: 6, justifyContent: 'center' },
+  pip: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#2a2446' },
+  pipUsed: { backgroundColor: '#ff6b5a' },
 });

@@ -16,7 +16,7 @@ import {
 
 import { GameBoard } from '@/components/game/game-board';
 import { CountIn } from '@/components/game/count-in';
-import { Finale, type FinaleRestore } from '@/components/game/finale';
+import { type FinaleRestore } from '@/components/game/finale';
 import { ResultView } from '@/components/game/result-view';
 import { ScoreHeader } from '@/components/game/score-header';
 import { Brand } from '@/components/brand';
@@ -293,7 +293,8 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   const tile = Math.min(64, Math.floor((Math.min(width, 480) - 32) / (5 + 4 * 0.16)));
   const gap = Math.round(tile * 0.16);
   const clock = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`;
-  const onBoard = phase === 'idle' || phase === 'countin' || phase === 'live' || phase === 'paused';
+  const onBoard =
+    phase === 'idle' || phase === 'countin' || phase === 'live' || phase === 'paused' || phase === 'finale';
 
   const fullClose = useMemo(() => {
     const g = closeGesture as PanGesture;
@@ -339,7 +340,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
           <Text style={styles.score}>{score.toLocaleString()}</Text>
         </View>
 
-        {(onBoard || phase === 'finale') && (
+        {onBoard && (
           <View style={styles.scoreHdrWrap}>
             <ScoreHeader score={score} target={TUNING.PAR_TARGET} width={tile * 5 + gap * 4 + 24} />
           </View>
@@ -360,7 +361,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
             <Animated.View exiting={FadeOut.duration(250)}>
               {/* only the BOARD is input-gated — the covers above it must stay
                   tappable (the old parent-level gate ate the resume tap) */}
-              <View pointerEvents={phase === 'live' ? 'auto' : 'none'}>
+              <View pointerEvents={phase === 'live' || phase === 'finale' ? 'auto' : 'none'}>
                 <GameBoard
                   deal={deal}
                   size={tile}
@@ -373,25 +374,23 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
                   onClues={setFound}
                   onTiles={onTiles}
                   onWordSpelled={onWordSpelled}
+                  gestureRef={boardPanRef}
+                  finale={
+                    phase === 'finale'
+                      ? {
+                          sworb: deal.sworb,
+                          restore: finaleRestore.current,
+                          onProgress: onFinaleProgress,
+                          onDone: onFinaleDone,
+                        }
+                      : null
+                  }
                 />
               </View>
               {countInMounted && phase === 'countin' && (
                 <CountIn onRelease={onRelease} onUnmount={() => setCountInMounted(false)} />
               )}
             </Animated.View>
-          )}
-          {phase === 'finale' && deal && (
-            <Finale
-              entry={{ sworb: deal.sworb }}
-              clues={deal.clues}
-              found={found}
-              size={tile}
-              restore={finaleRestore.current}
-              onProgress={onFinaleProgress}
-              onDone={onFinaleDone}
-              nudged={loadLadder(deal.dayKey).nudged}
-              gestureRef={glideRef}
-            />
           )}
           {phase === 'done' && deal && result && (
             <View style={styles.doneWrap}>

@@ -16,7 +16,10 @@ import { beginW, moveW, type TraceCtx } from '@/game/trace';
 import { haptic } from '@/game/haptics';
 import { loadLadder, saveLadder, NUDGE_AT_WORDS, FREE_CLUE_AT_WORDS, FINALE_FLOOR, type HintLadder } from '@/game/hints';
 import { PingRings } from './ping-rings';
-import { StepperCard } from './stepper-card';
+import { StepperCard, type SworbFace } from './stepper-card';
+import { BoardKeyboard } from './board-keyboard';
+import { applyGuess } from '@/game/finale-logic';
+import type { FinaleRestore } from './finale';
 
 interface Props {
   deal: DailyDeal; // the screen owns the deal — resume injects restored state
@@ -32,11 +35,20 @@ interface Props {
   onWordSpelled?: (word: string, pts: number, caughtClue: boolean) => void; // superlatives + time-fuel feed
   mercySecs?: number; // mercy threshold override (time-fuel rounds fire later)
   gestureRef?: React.MutableRefObject<PanGesture | undefined>; // the sheet's close-drag yields to this
+  // THE IN-PLACE FINALE (owner loop): at 0:00 the BOARD becomes the keyboard,
+  // the STEPPER hosts the guess — the player never leaves the gameboard
+  finale?: {
+    sworb: string;
+    restore?: FinaleRestore;
+    onProgress: (s: FinaleRestore) => void;
+    onDone: (r: { solved: boolean; guessesUsed: number; bonus: number }) => void;
+  } | null;
 }
 
 export function GameBoard({
-  deal, size, gap, initialTiles, initialFound, initialScore, secsLeft, onScore, onClues, onTiles, onWordSpelled, mercySecs, gestureRef,
+  deal, size, gap, initialTiles, initialFound, initialScore, secsLeft, onScore, onClues, onTiles, onWordSpelled, mercySecs, gestureRef, finale,
 }: Props) {
+  const inFinale = !!finale;
   const cell = size + gap;
   const boardW = COLS * cell - gap;
   const boardH = ROWS * cell - gap;
@@ -175,6 +187,76 @@ export function GameBoard({
       return () => clearTimeout(h);
     }
   }, [tiles, clearingIds, landTick]);
+
+  // ---- IN-PLACE FINALE state (fossil sworb face; engine decides) ----
+  const fin = finale;
+  const fLen = fin ? fin.sworb.length : 0;
+  const [fRows, setFRows] = useState<{ letters: string[]; colors: string[] }[]>(
+    fin?.restore?.rows ?? []
+  );
+  const [fSlots, setFSlots] = useState<string[]>(
+    fin?.restore?.slots?.length === fLen ? fin.restore.slots : Array(fLen).fill('')
+  );
+  const [fColors, setFColors] = useState<(string | null)[]>(
+    fin?.restore?.colors?.length === fLen ? fin.restore.colors : Array(fLen).fill(null)
+  );
+  const [fUsed, setFUsed] = useState(fin?.restore?.guessesUsed ?? 0);
+  const [fLocked, setFLocked] = useState(false);
+  const [fShake, setFShake] = useState(0);
+  const [fBurst, setFBurst] = useState(0);
+
+  const fKey = useCallback(
+    (ch: string) => {
+      if (!fin || fLocked) return;
+      const next = engine.daily.nextSlots({ slots: fSlots, colors: fColors, ch, len: fLen });
+      if (!next) return;
+      setFSlots(next.slots);
+      setFColors(next.colors || Array(fLen).fill(null));
+      haptic.soft();
+    },
+    [fin, fLocked, fSlots, fColors, fLen]
+  );
+  const fSubmit = useCallback(() => {
+    if (!fin || fLocked) return;
+    const out = applyGuess({
+      slots: fSlots, rows: fRows, guessesUsed: fUsed,
+      sworb: fin.sworb, foundCount: foundRef.current.length, clueTotal: deal.clues.length,
+    });
+    if (out.kind === 'reject') {
+      haptic.bad();
+      setFShake((k) => k + 1);
+      return;
+    }
+    setFRows(out.rows);
+    setFUsed(out.usedNow);
+    if (out.kind === 'solved' || out.kind === 'lockout') {
+      const solved = out.kind === 'solved';
+      setFLocked(true);
+      if (solved) {
+        // LOTS of confetti (owner) — the win pops in the stepper
+        setFColors(Array(fLen).fill('green'));
+        setFSlots([...fin.sworb]);
+        setFBurst((k) => k + 1);
+        haptic.good();
+      } else {
+        haptic.bad();
+      }
+      setTimeout(
+        () => fin.onDone({ solved, guessesUsed: out.usedNow, bonus: solved ? out.bonus : 0 }),
+        solved ? 1500 : 700 // confetti beat vs a quick exit (owner: fail → just close)
+      );
+      return;
+    }
+    setFSlots(out.slots);
+    setFColors(out.colors);
+    fin.onProgress({ rows: out.rows, slots: out.slots, colors: out.colors, guessesUsed: out.usedNow });
+    setFShake((k) => k + 1);
+    haptic.bad();
+  }, [fin, fLocked, fSlots, fRows, fUsed, deal]);
+
+  const sworbFace: SworbFace | null = fin
+    ? { slots: fSlots, colors: fColors, guessesUsed: fUsed, shakeKey: fShake, burstKey: fBurst }
+    : null;
 
   const ctx: TraceCtx = useMemo(
     () => ({
@@ -344,8 +426,8 @@ export function GameBoard({
 
   return (
     <View style={{ alignItems: 'center' }}>
-      {/* THE STEPPER (web hopperCard) — ABOVE the board, like the web */}
-      <StepperCard width={boardW + 24} traceWord={trace.word} verdict={verdict} />
+      {/* THE STEPPER (web hopperCard) — ABOVE the board; hosts the GUESS in the finale */}
+      <StepperCard width={boardW + 24} traceWord={trace.word} verdict={verdict} sworb={sworbFace} />
 
       {/* THE BOARD CARD (web boardCardStyle): tiles live ON a card with sunken
           cell wells — not floating on the screen background */}
@@ -372,6 +454,8 @@ export function GameBoard({
           }}>
         <GestureDetector gesture={pan}>
         <View style={{ width: boardW, height: boardH, marginTop: 12, marginLeft: 12 }}>
+          {/* the tile layer fades under the incoming keyboard (fossil crossfade) */}
+          <View style={inFinale ? styles.tilesFaded : undefined} pointerEvents={inFinale ? 'none' : 'auto'}>
           {Array.from({ length: COLS * ROWS }, (_, i) => (
             <View
               key={`bgc${i}`}
@@ -419,6 +503,17 @@ export function GameBoard({
               onFinish={() => setPing(null)}
             />
           )}
+          </View>
+          {inFinale && fin && (
+            <BoardKeyboard
+              size={size}
+              gap={gap}
+              full={fSlots.length > 0 && fSlots.every(Boolean)}
+              onKey={fKey}
+              onBackspace={() => fKey(engine.daily.BACKSPACE)}
+              onSubmit={fSubmit}
+            />
+          )}
         </View>
         </GestureDetector>
         </View>
@@ -442,6 +537,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: CARD.well,
     // flat — the border 'inset' approximation drew 30 hard dark lines
+  },
+  tilesFaded: {
+    opacity: 0, // the keyboard layer owns the card during the finale
   },
   noDay: {
     padding: 32,
