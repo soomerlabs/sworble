@@ -16,6 +16,7 @@ import { type BestWord } from '@/game/persist';
 interface Props {
   theme: Theme;
   bestWords: BestWord[]; // top-5 by pts (persisted superlatives)
+  allWords?: BestWord[]; // the FULL day (owner: show every word, mark clues)
   foundClues: string[]; // clue words the player caught
   clues: string[]; // the full clue set for the day
   totalWords?: number; // full day count → the '+N more' door to /words
@@ -56,7 +57,7 @@ function Pill({
   );
 }
 
-export function SuperlativesPager({ theme, bestWords, foundClues, clues, totalWords = 0 }: Props) {
+export function SuperlativesPager({ theme, bestWords, allWords, foundClues, clues, totalWords = 0 }: Props) {
   const [page, setPage] = useState(0);
   // BOTH pages stay mounted, absolutely stacked; the container holds the
   // TALLER page's measured height — cycling can never shift the layout
@@ -79,10 +80,13 @@ export function SuperlativesPager({ theme, bestWords, foundClues, clues, totalWo
       if (Math.abs(e.translationX) >= 30) setPage(e.translationX < 0 ? 1 : 0);
     });
 
-  const best = bestWords[0];
+  // EVERY word of the day (owner), best first, clues marked — capped with
+  // the '+N more' door into the explorer
   const clueSet = new Set(foundClues);
-  const others = bestWords.slice(1).filter((w) => !clueSet.has(w.word));
-  const ptsFor = (w: string) => bestWords.find((b) => b.word === w)?.pts;
+  const words = (allWords?.length ? [...allWords] : [...bestWords]).sort((a, b) => b.pts - a.pts);
+  const CAP = 12;
+  const shown = words.slice(0, CAP);
+  const best = shown[0];
   const missedClues = clues.filter((c) => !clueSet.has(c));
 
   return (
@@ -95,22 +99,24 @@ export function SuperlativesPager({ theme, bestWords, foundClues, clues, totalWo
             style={[styles.pageWrap, gotStyle]}>
             <Text style={[styles.label, { color: theme.faint }]}>WHAT YOU GOT</Text>
             <View style={styles.pills}>
-              {best && <Pill theme={theme} word={best.word} pts={best.pts} kind="best" />}
-              {foundClues.map((c) => (
-                <Pill key={c} theme={theme} word={c} pts={ptsFor(c)} kind="clue" />
+              {shown.map((w, i) => (
+                <Pill
+                  key={w.word}
+                  theme={theme}
+                  word={w.word}
+                  pts={w.pts}
+                  kind={i === 0 ? 'best' : clueSet.has(w.word) ? 'clue' : 'flat'}
+                />
               ))}
-              {others.map((w) => (
-                <Pill key={w.word} theme={theme} word={w.word} pts={w.pts} kind="flat" />
-              ))}
-              {!best && foundClues.length === 0 && (
+              {shown.length === 0 && (
                 <Text style={[styles.emptyLine, { color: theme.sub }]}>
                   nothing landed today
                 </Text>
               )}
-              {totalWords > bestWords.length && (
+              {Math.max(totalWords, words.length) > shown.length && (
                 <Pressable onPress={() => router.push('/words')} hitSlop={8} style={styles.moreTap}>
                   <Text style={styles.moreText}>
-                    +{totalWords - bestWords.length} more ›
+                    +{Math.max(totalWords, words.length) - shown.length} more ›
                   </Text>
                 </Pressable>
               )}

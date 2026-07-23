@@ -130,7 +130,10 @@ export default function HomeScreen() {
     }));
     // splice ONLY into stub fields — a remote field already contains you
     // (the double-you bug: server row + local splice, same score, #1/#2)
-    if (you && !remote) {
+    // splice whenever the FIELD lacks you — a fresh remote field can be
+    // stale for a beat after finishing (the insert races the fetch) and
+    // you'd vanish from your own standings (owner butter audit)
+    if (you && !entries.some((e) => e.isMe)) {
       rows.splice(you.rank - 1, 0, { rank: you.rank, name: getPlayerName(), score: you.score, you: true });
       rows.forEach((r, i) => (r.rank = i + 1));
     }
@@ -241,6 +244,10 @@ export default function HomeScreen() {
   }, []);
   const closeSettled = useCallback(() => {
     closingRef.current = false;
+    // the day re-read happens AFTER the park lands (owner butter audit:
+    // refreshing at +300ms detonated home's biggest re-render — FlipTiles,
+    // pager, standings, dock swap — in the MIDDLE of the park spring)
+    setTimeout(refreshDay, 40);
     // the color rearms only AFTER the park lands (owner: "not the crazy
     // color thing on dismiss") — sReveal stays 1 through the whole descent
     // so the wash/crest can't relight mid-close; the band's calm glow then
@@ -262,9 +269,7 @@ export default function HomeScreen() {
         runOnJS(closeSettled)();
       });
     });
-    // day state may have changed inside the round (finish/lock)
-    setTimeout(refreshDay, 300);
-  }, [closedY, refreshDay, finishClose, closeSettled]);
+  }, [closedY, finishClose, closeSettled]);
 
   // pull UP from the dock: the sheet (pre-mounted, hidden) rides the finger —
   // pure transform on the UI thread, nothing mounts mid-gesture.
@@ -487,8 +492,8 @@ export default function HomeScreen() {
     sheetRef.current?.pauseForClose();
     closingRef.current = true;
     finishClose();
-    setTimeout(refreshDay, 300);
-  }, [finishClose, refreshDay]);
+    // (refresh rides closeSettled — after the park spring lands)
+  }, [finishClose]);
   const closeDrag = useMemo(
     () =>
       Gesture.Pan()
@@ -697,6 +702,7 @@ export default function HomeScreen() {
               bestWords={day?.bestWords ?? []}
               foundClues={day?.found ?? []}
               clues={deal.clues}
+              allWords={loadDayWords(deal.dayKey)}
               totalWords={loadDayWords(deal.dayKey).length}
             />
             </View>
