@@ -9,7 +9,6 @@
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import {
   View, Text, Pressable, StyleSheet, ScrollView, Share, Platform, useWindowDimensions,
-  type StyleProp, type ViewStyle,
 } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -30,7 +29,6 @@ import Animated, {
   Extrapolation,
   Easing,
   runOnJS,
-  type SharedValue,
 } from 'react-native-reanimated';
 
 import Storm from '@/components/game/storm';
@@ -124,33 +122,18 @@ function FlipTile({ ch, i, w, h, r, palBg, palEdge, monoBg, monoEdge }: {
 
 
 
-// BOOT CHOREOGRAPHY v3 (owner: "a chain reaction... one fell swoop...
-// perfectly flawless flow"). ONE master clock sweeps 0→1; every section
-// reads its own window of it. One clock = one wave: the timing between
-// links is mathematically continuous, not four timers approximating each
-// other, and the band is simply the last link of the same motion.
-const BOOT_MS = 720;
-const BOOT_STEP = 0.13; // each link ignites when the previous is ~1/4 in
-const BOOT_SPAN = 0.5; // each link's slice of the master clock
+// BOOT v4 — the PRO idiom (owner: "how do pro apps usually load in"):
+// they DON'T stagger sections. The screen arrives COMPLETE and settles as
+// ONE unit right out of the splash; only the living band blooms a beat
+// behind it. One layer moving once — cheaper to composite, and nothing is
+// ever mid-motion long enough to betray a dropped frame.
+const BOOT_MS = 480;
 
 // cubic ease-out inside a window of the master clock (module-level worklet)
 function bootWindow(m: number, start: number, span: number): number {
   'worklet';
   const t = Math.min(1, Math.max(0, (m - start) / span));
   return 1 - (1 - t) * (1 - t) * (1 - t);
-}
-
-function BootRise({ i, boot, style, children }: {
-  i: number; boot: SharedValue<number>; style?: StyleProp<ViewStyle>; children: React.ReactNode;
-}) {
-  const pose = useAnimatedStyle(() => {
-    const p = bootWindow(boot.value, i * BOOT_STEP, BOOT_SPAN);
-    return {
-      opacity: p,
-      transform: [{ translateY: (1 - p) * 10 }],
-    };
-  });
-  return <Animated.View style={[style, pose]}>{children}</Animated.View>;
 }
 
 // the six blank hint slots: staggered widths, NO letter-count leak. SMALLER
@@ -557,11 +540,20 @@ export default function HomeScreen() {
   }));
   // PARALLAX RECEDE (owner trio): home scales back as the sheet rises — the
   // sheet reads as physically ABOVE the screen (App Store card idiom)
-  const homeStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: interpolate(sheetY.value, [0, closedY], [0.94, 1], Extrapolation.CLAMP) },
-    ],
-  }));
+  const homeStyle = useAnimatedStyle(() => {
+    // boot: the whole screen settles as ONE unit (pro idiom) — a breath of
+    // rise + scale, folded into the sheet-driven scale so the transform
+    // key has a single owner
+    const boot = bootWindow(sBoot.value, 0, 0.72);
+    const sheetScale = interpolate(sheetY.value, [0, closedY], [0.94, 1], Extrapolation.CLAMP);
+    return {
+      opacity: boot,
+      transform: [
+        { translateY: (1 - boot) * 14 },
+        { scale: sheetScale * (0.988 + 0.012 * boot) },
+      ],
+    };
+  });
   // the collapsed FACE (frost + swipe-to-play) and the GAME crossfade as the
   // sheet travels — single-layer opacities, compositing-cheap
   const faceStyle = useAnimatedStyle(() => ({
@@ -592,7 +584,7 @@ export default function HomeScreen() {
     // pull still has momentum (owner: the late overlap smeared)
     const settle = interpolate(travel, [0.55, 0.8], [1, 0], Extrapolation.CLAMP);
     return {
-      opacity: bootWindow(sBoot.value, 4 * BOOT_STEP, BOOT_SPAN) * burn * settle,
+      opacity: bootWindow(sBoot.value, 0.45, 0.55) * burn * settle,
       transform: [
         // a crest of light riding the leading edge — brightness carries the
         // drama; the big stretch smeared hues over the board (owner)
@@ -614,7 +606,7 @@ export default function HomeScreen() {
   }, [closedY]);
   // the band pair (aurora + PLAY tiles) fades in as ONE at boot
   const bandInStyle = useAnimatedStyle(() => ({
-    opacity: bootWindow(sBoot.value, 4 * BOOT_STEP, BOOT_SPAN),
+    opacity: bootWindow(sBoot.value, 0.45, 0.55),
   }));
   // (the pending beacon strips were owner-removed — "weird spaced out
   // ovals" once the invisible park exposed them; the free-floating aurora
@@ -684,7 +676,6 @@ export default function HomeScreen() {
           contentContainerStyle={[styles.content, { paddingBottom: DOCK_H + insets.bottom + 10 }]}
           showsVerticalScrollIndicator={false}>
           {deal && (
-            <BootRise i={0} boot={sBoot}>
             <DateHeader
               theme={theme}
               dayKey={deal.dayKey}
@@ -707,12 +698,11 @@ export default function HomeScreen() {
                 }).catch(() => {})
               }
             />
-            </BootRise>
           )}
 
           {/* word of the day: candy bloom when the day is done, dashed
               blanks before (the answer is hidden — no spoilers) */}
-          <BootRise i={1} boot={sBoot} style={styles.heroRow}>
+          <View style={styles.heroRow}>
             {played && deal
               ? [...deal.sworb].map((ch, i) => {
                   const pal = PALETTE[tileColorFor(ch, i)];
@@ -743,7 +733,7 @@ export default function HomeScreen() {
                     ]}
                   />
                 ))}
-          </BootRise>
+          </View>
           {played && !solved && (
             <Text style={[styles.missLine, { color: theme.sub }]}>
               not cracked — tomorrow's another sworbl
@@ -758,18 +748,18 @@ export default function HomeScreen() {
           {/* pre-play: six BLANK hint slots (no letter counts, no spoilers).
               post-play the clue intel lives inside the superlatives pager. */}
           {!played && (
-            <BootRise i={2} boot={sBoot} style={styles.hintRow}>
+            <View style={styles.hintRow}>
               {HINT_SLOT_W.map((w, i) => (
                 <View
                   key={i}
                   style={[styles.hintSlot, { width: w, backgroundColor: theme.card }]}
                 />
               ))}
-            </BootRise>
+            </View>
           )}
 
           {played && deal && (
-            <BootRise i={2} boot={sBoot} style={styles.pagerWrap}>
+            <View style={styles.pagerWrap}>
             <SuperlativesPager
               theme={theme}
               bestWords={day?.bestWords ?? []}
@@ -777,12 +767,12 @@ export default function HomeScreen() {
               clues={deal.clues}
               totalWords={loadDayWords(deal.dayKey).length}
             />
-            </BootRise>
+            </View>
           )}
 
           {/* standings section — ONLY the chart button opens the leaderboard
               (owner: not the whole section, "just that button haha") */}
-          <BootRise i={3} boot={sBoot} style={styles.standingsWrap}>
+          <View style={styles.standingsWrap}>
             <View style={styles.standingsHead}>
               <Text style={[styles.standingsTitle, { color: theme.sub }]}>
                 standings
@@ -826,7 +816,7 @@ export default function HomeScreen() {
                 />
               )}
             </Arrive>
-          </BootRise>
+          </View>
         </ScrollView>
 
       </SafeAreaView>
