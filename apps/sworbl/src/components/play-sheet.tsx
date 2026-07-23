@@ -27,7 +27,9 @@ import { dealDaily, bumpNextId } from '@/game/daily';
 import { type TileT } from '@/game/types';
 import { loadDay, saveProgress, finishDay, saveRun, type RunSnap, type BestWord } from '@/game/persist';
 import { TUNING } from '@/game/tuning';
-import Animated, { ZoomIn, FadeOut } from 'react-native-reanimated';
+import Animated, {
+  ZoomIn, FadeOut, useSharedValue, useAnimatedStyle, withSequence, withTiming, withSpring,
+} from 'react-native-reanimated';
 
 // TIME FUEL: three minutes given, the Seven if you earn it (engine.run.timeForWord)
 
@@ -78,6 +80,20 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
       setPhase('countin');
     }
   }, [active, phase]);
+
+  // the logo CLICK: at the exact dock moment the sheet's brand snaps
+  // magnetically into home's slot — a tiny overshoot-settle (pairs with the
+  // dock haptic)
+  const brandScale = useSharedValue(1);
+  useEffect(() => {
+    if (active) {
+      brandScale.value = withSequence(
+        withTiming(1.12, { duration: 90 }),
+        withSpring(1, { mass: 0.5, damping: 11, stiffness: 320 })
+      );
+    }
+  }, [active]);
+  const brandClick = useAnimatedStyle(() => ({ transform: [{ scale: brandScale.value }] }));
   const bootedFromKill = useRef(route === 'resume');
   const [score, setScore] = useState(boot?.run ? boot.run.score : route === 'consumed' ? boot!.score : 0);
   const [found, setFound] = useState<string[]>(boot?.run ? boot.run.found : boot ? boot.found : []);
@@ -297,9 +313,9 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
               </View>
             </Pressable>
           )}
-          <View style={styles.brandCenter} pointerEvents="none">
+          <Animated.View style={[styles.brandCenter, brandClick]} pointerEvents="none">
             <Brand />
-          </View>
+          </Animated.View>
           <Text style={styles.score}>{score.toLocaleString()}</Text>
         </View>
 
