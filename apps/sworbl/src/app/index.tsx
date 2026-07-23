@@ -7,7 +7,7 @@
 // into the superlatives pager after) → floating stepped podium + you-block →
 // swipe dock over the storm. Light + dark via the theme tokens.
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect } from 'expo-router';
@@ -36,7 +36,9 @@ import { PALETTE, INK, tileColorFor } from '@/game/palette';
 import { useTheme } from '@/game/theme';
 import { dealDaily, getDevDay } from '@/game/daily';
 import { loadDay, saveSheetOpen, wasSheetOpen, type DayState } from '@/game/persist';
-import { standingsStub, rankFor } from '@/game/standings';
+import { standingsStub, rankFor, type LbEntry } from '@/game/standings';
+import { StandingsList, type StandingRow } from '@/components/home/standings-list';
+import { getPlayerName } from '@/game/player';
 import { useDayKey } from '@/game/use-day-key';
 import { haptic } from '@/game/haptics';
 
@@ -83,6 +85,23 @@ export default function HomeScreen() {
   const you = played || (inProgress && myScore > 0)
     ? { score: myScore, rank: rankFor(entries, myScore) }
     : null;
+  // ONE combined order (owner): you spliced at your true rank — the podium
+  // takes 1-3 (you can BE on it), the list takes 4-10, and past-10 you ride
+  // below an ellipsis. Unplayed → a dashed ghost row instead.
+  const standings = useMemo(() => {
+    const rows: StandingRow[] = entries.map((e, i) => ({
+      rank: i + 1, name: e.name, score: e.score, you: false,
+    }));
+    if (you) {
+      rows.splice(you.rank - 1, 0, { rank: you.rank, name: getPlayerName(), score: you.score, you: true });
+      rows.forEach((r, i) => (r.rank = i + 1));
+    }
+    const podium: LbEntry[] = rows.slice(0, 3).map((r) => ({ name: r.name, score: r.score, solved: true }));
+    const youRow = rows.find((r) => r.you) ?? null;
+    const list = rows.slice(3, 10);
+    const youOutside = youRow && youRow.rank > 10 ? youRow : null;
+    return { podium, list, youOutside };
+  }, [entries, you]);
 
   // ---- UI RESTORATION (owner): killed-in-background with the board open →
   // relaunch OPENS the sheet again, paused (tap-to-resume cover). Decided
@@ -243,7 +262,9 @@ export default function HomeScreen() {
           onSettings={() => router.push('/settings')}
         />
 
-        <View style={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}>
           {deal && <DateHeader theme={theme} dayKey={deal.dayKey} />}
 
           {/* word of the day: candy bloom when the day is done, dashed
@@ -316,16 +337,16 @@ export default function HomeScreen() {
             />
           )}
 
-          {/* flex springs: pre-play the column is short (header + tiles +
-              hints + standings) and everything pooled at the top (owner:
-              "top heavy"). The springs float the standings into the leftover
-              space; on full recap days they collapse to zero. */}
-          <View style={styles.spring} />
           <Pressable style={styles.podiumTap} onPress={() => router.push('/leaderboard')}>
-            <FloatingPodium theme={theme} entries={entries} you={you} />
+            <FloatingPodium theme={theme} entries={standings.podium} you={null} showFoot={false} />
+            <StandingsList
+              theme={theme}
+              rows={standings.list}
+              youOutside={standings.youOutside}
+              ghost={!you}
+            />
           </Pressable>
-          <View style={styles.springSmall} />
-        </View>
+        </ScrollView>
 
         {/* the swipe-to-play GRAB ZONE is the dock area only (owner call) —
             a generous reach above the chevron, not the whole screen */}
@@ -378,9 +399,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    flex: 1,
     paddingHorizontal: 18,
     paddingTop: 16,
+    paddingBottom: 12,
     gap: 22,
     alignItems: 'center',
   },
