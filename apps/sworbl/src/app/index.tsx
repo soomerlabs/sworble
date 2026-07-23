@@ -548,16 +548,20 @@ export default function HomeScreen() {
   // first 40px of travel and unmounts entirely past 80px.
   const [parkBlurLive, setParkBlurLive] = useState(true);
   useAnimatedReaction(
-    () => sheetY.value > closedY - 80,
+    () => sheetY.value > closedY * 0.2,
     (near, prev) => {
       if (near !== prev) runOnJS(setParkBlurLive)(near);
     },
     [closedY]
   );
   const parkBlurStyle = useAnimatedStyle(() => ({
+    // THE FROST DISSOLVE (owner: "the blur transition... fade out on the
+    // gameboard — that was pretty good"): the frost rides the whole pull,
+    // melting away as the board fades in beneath — full at park, gone by
+    // ~3/4 of the travel
     opacity:
       bootWindow(sBoot.value, 0.45, 0.55) *
-      interpolate(sheetY.value, [closedY - 44, closedY - 6], [0, 1], Extrapolation.CLAMP),
+      interpolate(sheetY.value, [closedY * 0.25, closedY - 20], [0, 1], Extrapolation.CLAMP),
   }), [closedY]);
   // (the pending beacon strips were owner-removed — "weird spaced out
   // ovals" once the invisible park exposed them; the free-floating aurora
@@ -705,19 +709,21 @@ export default function HomeScreen() {
             </Animated.View>
             {/* (the flat color wash was owner-removed — the aurora crest now
                 STRETCHES over the board itself: one weather, one system) */}
-            {/* the COLLAPSED FACE: swipe-to-play/countdown */}
-            <Animated.View
-              pointerEvents="none"
-              style={[styles.peekFace, { height: peekH }, faceStyle]}>
               {/* PARKED FROST, PROGRESSIVE (owner: no visible top edge,
                   "gradually get blurry"): platform-split — native uses
                   gradient-masked BlurViews, web uses CSS backdrop-filter +
                   mask-image. Both dissolve sharp → haze → frost, no line. */}
               {parkBlurLive && (
-                <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, parkBlurStyle]}>
+                <Animated.View
+                  pointerEvents="none"
+                  style={[styles.frostBand, { height: peekH }, parkBlurStyle]}>
                   <ParkFrost mode={theme.mode === 'dark' ? 'dark' : 'light'} />
                 </Animated.View>
               )}
+            {/* the COLLAPSED FACE: swipe-to-play/countdown */}
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.peekFace, { height: peekH }, faceStyle]}>
               <View
                 style={[
                   styles.dockInner,
@@ -799,6 +805,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+  },
+  // the frost's own layer: band-height at the sheet's top, riding the
+  // whole pull (inside the face it died with the face's 90px fade)
+  frostBand: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
   },
   peekFace: {
     position: 'absolute',
