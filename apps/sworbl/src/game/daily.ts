@@ -4,6 +4,7 @@
 import engine from '@sworbl/engine';
 import { COLS, ROWS, CLUE_COUNT, TileT } from './types';
 import { tileColorFor } from './palette';
+import { loadRemoteEntry } from '@/net/dailies-remote';
 
 // content ships with the repo (root dailies.json — same file the frozen web app
 // and the authoring pipeline use; Metro resolves across the workspace)
@@ -74,7 +75,11 @@ export function activeClues(core: string[], extras: string[], found: string[]): 
 
 export function dealDaily(now = new Date()): DailyDeal | null {
   const dayKey = getDevDay() ?? engine.core.dayKey(now);
-  const entry = engine.daily.parseEntry(dailies, dayKey);
+  // SERVER-DRIVEN DAILIES (owner): a cached remote spec WINS for its day;
+  // the bundle is the offline fallback — parseEntry sees one merged map
+  const remote = loadRemoteEntry(dayKey);
+  const source = remote ? { ...dailies, [dayKey]: remote } : dailies;
+  const entry = engine.daily.parseEntry(source, dayKey);
   if (!entry) return null;
 
   // two-pass clue seed, seeded from the day (web newGame's exact call)

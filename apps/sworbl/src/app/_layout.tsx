@@ -57,6 +57,21 @@ if (IS_REAL_CLIENT) setTimeout(() => {
   const { getPlayerName } = require('@/game/player');
   ensurePlayer(getPlayerName()).then(() => drainOutbox());
 }, 2000);
+// FOREGROUND drain (owner networking audit): a round finished offline used
+// to wait for the NEXT cold boot — now returning to the app delivers it
+if (IS_REAL_CLIENT) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { AppState } = require('react-native');
+  let last = AppState.currentState;
+  AppState.addEventListener('change', (next: string) => {
+    if (last !== 'active' && next === 'active') {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { drainOutbox } = require('@/net/standings-remote');
+      setTimeout(() => drainOutbox(), 800);
+    }
+    last = next;
+  });
+}
 
 export default function RootLayout() {
   const scheme = useColorScheme(); // light mode is real now (owner call)

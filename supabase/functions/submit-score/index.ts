@@ -1,21 +1,25 @@
 // SUBMIT-SCORE — the leaderboard's honesty gate (Deno edge function).
 // Clients lost direct INSERT on submissions (schema v2); every result comes
-// through here, where the words are RE-SCORED with the engine's own math:
-//   word points = round(sum(letterVal) * 10 * lenMult(len))   [sworbl-core]
+// through here, where the words are RE-SCORED with the engine ITSELF —
+// the generated engine-core.js IS packages/engine/sworbl-core.js:
+//   word points = round(sum(letterVal) * 10 * lenMult(len))
 //   legal score = sum(word pts) + solve bonus in {0,75,200,350,500}
 // Per-word slack ×8 covers streak (≤2×) and boost-stack tiles; the total
 // must reconcile EXACTLY against the reward table.
 // Deploy: npx supabase functions deploy submit-score
 import { createClient } from "jsr:@supabase/supabase-js@2";
+// THE REAL ENGINE (owner: game and backend score with the SAME code) —
+// engine-core.js is a GENERATED copy of packages/engine/sworbl-core.js
+// (see supabase/functions/deploy.sh); it attaches globalThis.SworblCore.
+import "./engine-core.js";
 
-// verbatim from packages/engine/sworbl-core.js — keep in sync
-const VALUES: Record<string, number> = {
-  a: 1, b: 3, c: 3, d: 2, e: 1, f: 4, g: 2, h: 4, i: 1, j: 8, k: 5, l: 1, m: 3,
-  n: 1, o: 1, p: 3, q: 10, r: 1, s: 1, t: 1, u: 1, v: 4, w: 4, x: 8, y: 4, z: 10,
+// deno-lint-ignore no-explicit-any
+const CORE = (globalThis as any).SworblCore as {
+  letterVal: (letter: string, boost?: number) => number;
+  lenMult: (n: number) => number;
 };
-const lenMult = (n: number) => (n >= 7 ? 6 : n === 6 ? 4 : n === 5 ? 2.5 : n === 4 ? 1.5 : 1);
 const scoreWord = (w: string) =>
-  Math.round([...w].reduce((s, ch) => s + (VALUES[ch] ?? 1), 0) * 10 * lenMult(w.length));
+  Math.round([...w].reduce((s, ch) => s + CORE.letterVal(ch), 0) * 10 * CORE.lenMult(w.length));
 
 // engine REWARD table (sworbl-daily.js) — the only legal solve bonuses
 const BONUSES = [0, 75, 200, 350, 500];

@@ -8,7 +8,7 @@
 // swipe dock over the storm. Light + dark via the theme tokens.
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Share, Platform, useWindowDimensions,
+  View, Text, StyleSheet, ScrollView, Share, Platform, useWindowDimensions, RefreshControl,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -51,6 +51,7 @@ import { getDiagnostics } from '@/game/dev-flags';
 import { loadDay, saveSheetOpen, wasSheetOpen, getResetNonce, loadDayWords, type DayState } from '@/game/persist';
 import { standingsStub, rankFor, type LbEntry } from '@/game/standings';
 import { fetchDaily, readCachedField, type RemoteField } from '@/net/standings-remote';
+import { fetchRemoteEntry } from '@/net/dailies-remote';
 import { loadStats, streakDays } from '@/game/stats';
 import { buildShareText } from '@/game/share';
 import { type StandingRow } from '@/components/home/standings-list';
@@ -77,7 +78,10 @@ export default function HomeScreen() {
     nonce: getResetNonce(),
     diag: getDiagnostics(),
   }));
-  const deal = useMemo(() => dealDaily(), [activeDayKey, devSnap.devDay]);
+  // contentNonce: bumped when the SERVER's day spec changes — re-deals an
+  // UNSTARTED day only (the never-re-deal-mid-round law holds)
+  const [contentNonce, setContentNonce] = useState(0);
+  const deal = useMemo(() => dealDaily(), [activeDayKey, devSnap.devDay, contentNonce]);
 
   // (rollover gate lives below the sheet state — it must see sheetOpen)
 
@@ -108,11 +112,34 @@ export default function HomeScreen() {
       fetchDaily(deal.dayKey).then((r) => {
         if (live && r && r.entries.length) setRemote(r);
       });
+      // server-driven day spec (owner: swap tester content rapidly) — a
+      // changed spec re-deals ONLY an untouched day with the sheet parked
+      fetchRemoteEntry(deal.dayKey).then((changed) => {
+        if (!live || !changed) return;
+        const d = loadDay(deal.dayKey);
+        if (d.route === 'fresh') setContentNonce((n) => n + 1);
+      });
     }
     return () => {
       live = false;
     };
   }, [deal, day]);
+  // HOME PULL-TO-REFRESH (owner networking audit): standings + day spec
+  const [homeRefreshing, setHomeRefreshing] = useState(false);
+  const homeRefresh = useCallback(async () => {
+    if (!deal) return;
+    setHomeRefreshing(true);
+    try {
+      const [field, changed] = await Promise.all([
+        fetchDaily(deal.dayKey),
+        fetchRemoteEntry(deal.dayKey),
+      ]);
+      if (field?.entries.length) setRemote(field);
+      if (changed && loadDay(deal.dayKey).route === 'fresh') setContentNonce((n) => n + 1);
+    } finally {
+      setHomeRefreshing(false);
+    }
+  }, [deal]);
   const entries = useMemo(
     () => remote?.entries ?? (deal ? standingsStub(deal.dayKey) : []),
     [remote, deal]
@@ -669,7 +696,14 @@ export default function HomeScreen() {
 
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: DOCK_H + insets.bottom + 10 }]}
-          showsVerticalScrollIndicator={false}>
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={homeRefreshing}
+              onRefresh={homeRefresh}
+              tintColor="#8971FF"
+            />
+          }>
           {deal && (
             <DateHeader
               theme={theme}
