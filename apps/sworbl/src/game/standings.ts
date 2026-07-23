@@ -1,0 +1,44 @@
+// STANDINGS STUB — direct port of the fossil's lbStub (index.html:4762):
+// deterministic day-seeded field (same engine hash + mulberry32 stream, same
+// name pool, same score curve) so the podium is stable across renders and
+// matches what the web build would show. Swapped for Supabase when it lands.
+import engine from '@sworbl/engine';
+
+export interface LbEntry {
+  name: string;
+  score: number;
+  solved: boolean;
+}
+
+const POOL = [
+  'ORDA', 'MILO', 'JUNO', 'PIXL', 'NOVA', 'ZEKE', 'FINN', 'REMY', 'ODIE', 'WREN',
+  'QUILL', 'TOVA', 'KAII', 'BIRD', 'SAGE', 'ELIO', 'MARLO', 'POPPY', 'DASH', 'LUMA',
+  'OTTO', 'MAVE', 'CLEO', 'IGGY', 'ROON', 'VESP', 'BODE', 'NELL',
+];
+
+export function standingsStub(dayKey: string): LbEntry[] {
+  const seed = engine.core.hashSeed('lb' + dayKey);
+  const rnd = engine.core.mulberry32(seed >>> 0);
+  const pool = [...POOL];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    const t = pool[i];
+    pool[i] = pool[j];
+    pool[j] = t;
+  }
+  const n = Math.min(pool.length, 16 + Math.floor(rnd() * 12));
+  const entries: LbEntry[] = [];
+  for (let i = 0; i < n; i++) {
+    entries.push({
+      name: pool[i],
+      score: Math.round(1200 + Math.pow(rnd(), 1.7) * 3200),
+      solved: rnd() < 0.6,
+    });
+  }
+  return entries.sort((a, b) => b.score - a.score);
+}
+
+// your rank in the field (1-based); ties break in your favor
+export function rankFor(entries: LbEntry[], myScore: number): number {
+  return entries.filter((e) => e.score > myScore).length + 1;
+}

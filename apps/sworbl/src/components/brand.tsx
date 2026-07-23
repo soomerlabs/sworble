@@ -4,7 +4,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-export function Brand({ scale = 1 }: { scale?: number }) {
+export function Brand({ scale = 1, ink }: { scale?: number; ink?: string }) {
   const s = 32 * scale;
   const inset = 4 * scale;
   const block = {
@@ -54,7 +54,7 @@ export function Brand({ scale = 1 }: { scale?: number }) {
           <Text style={[styles.chipS, { fontSize: 18 * scale }]}>s</Text>
         </View>
       </View>
-      <Text style={[styles.word, { fontSize: 22 * scale }]}>sworbl</Text>
+      <Text style={[styles.word, { fontSize: 22 * scale }, ink ? { color: ink } : null]}>sworbl</Text>
     </View>
   );
 }

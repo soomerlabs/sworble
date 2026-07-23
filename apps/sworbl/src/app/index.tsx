@@ -1,11 +1,13 @@
 // HOME + THE PLAY SHEET. The board is not a page — it's a sheet you PULL UP
-// over home (web parity): it follows the finger both directions, home blurs
-// in proportion to how far the sheet has risen, release springs it open or
-// back down, and closing pauses the round first. v18 home underneath:
-// date + score, hero word (candy when done), ghost clue fan, superlatives,
-// countdown dock over the brewing/resting storm, floaters.
+// over home (web parity): it follows the finger both directions, release
+// springs it open or back down, and closing pauses the round first.
+// Home is the HANDOFF REDESIGN (design_handoff_sworbl_screens 3, turns
+// 20a/6a/6b): app bar (person · wordmark · settings) → date header → word
+// tiles (dashed pre-play, candy after) → hint slots (blank pre-play; folded
+// into the superlatives pager after) → floating stepped podium + you-block →
+// swipe dock over the storm. Light + dark via the theme tokens.
 import React, { useMemo, useRef, useState, useCallback } from 'react';
-import { View, Text, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect } from 'expo-router';
@@ -21,25 +23,29 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 
-// native-feel blur: animate the INTENSITY (what iOS itself does), never the
-// layer's opacity — a fading frosted overlay is the "doesn't look native" tell
-
 import Storm from '@/components/game/storm';
-import { ClueFan } from '@/components/game/clue-fan';
 import { Floaters } from '@/components/home/floaters';
 import { CountdownDock } from '@/components/home/countdown-dock';
-import { Superlatives } from '@/components/home/superlatives';
+import { AppBar } from '@/components/home/app-bar';
+import { DateHeader } from '@/components/home/date-header';
+import { FloatingPodium } from '@/components/home/floating-podium';
+import { SuperlativesPager } from '@/components/home/superlatives-pager';
 import { PlaySheet, type PlaySheetHandle } from '@/components/play-sheet';
-import { Brand } from '@/components/brand';
-import { BG_DARK, PALETTE, INK, tileColorFor } from '@/game/palette';
+import { PALETTE, INK, tileColorFor } from '@/game/palette';
+import { useTheme } from '@/game/theme';
 import { dealDaily } from '@/game/daily';
 import { loadDay, type DayState } from '@/game/persist';
+import { standingsStub, rankFor } from '@/game/standings';
 import { haptic } from '@/game/haptics';
 
 const SHEET_SPRING = { mass: 0.7, damping: 20, stiffness: 180 };
 
+// the six blank hint slots (20a): staggered widths, NO letter-count leak
+const HINT_SLOT_W = [62, 58, 64, 60, 58, 62];
+
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
+  const theme = useTheme();
   const deal = useMemo(() => dealDaily(), []);
 
   // ---- day state (re-read on focus AND on sheet close) ----
@@ -51,17 +57,20 @@ export default function HomeScreen() {
 
   const played = day?.route === 'consumed';
   const solved = played && !!day?.sworb?.solved;
+  const inProgress = day?.route === 'resume' || day?.route === 'finale';
 
-  // ---- THE SHEET: position rides the finger; blur rides the position ----
+  // standings: deterministic day-seeded stub until Supabase lands
+  const entries = useMemo(() => (deal ? standingsStub(deal.dayKey) : []), [deal]);
+  const myScore = played ? (day?.score ?? 0) : inProgress ? (day?.run?.score ?? 0) : 0;
+  const you = played || (inProgress && myScore > 0)
+    ? { score: myScore, rank: rankFor(entries, myScore) }
+    : null;
+
+  // ---- THE SHEET: position rides the finger ----
   const sheetY = useSharedValue(height); // height = closed, 0 = open
   const [sheetOpen, setSheetOpen] = useState(false); // fully open → home drag off, round armed
   const sheetRef = useRef<PlaySheetHandle>(null);
 
-  const openSheet = useCallback(() => {
-    setSheetOpen(true);
-    haptic.soft(); // a light thud as the game arrives
-    sheetY.value = withSpring(0, SHEET_SPRING);
-  }, []);
   const finishClose = useCallback(() => setSheetOpen(false), []);
   const closeSheet = useCallback(() => {
     sheetRef.current?.pauseForClose();
@@ -111,14 +120,11 @@ export default function HomeScreen() {
   // COMMITS (owner: an aborted swipe-down must not restart the count-in —
   // the round simply never stopped). A mid-drag glimpse can't be traced, so
   // fairness holds.
-  // commit-close: settle the round AGAIN at the moment of commit — the arm
-  // effect can legally re-arm a count-in during the drag (abort = restart at
-  // 3), so the commit must disarm whatever re-armed (owner bug: count-in
-  // finishing behind a closed sheet, round going live invisibly)
   const commitClose = useCallback(() => {
     sheetRef.current?.pauseForClose();
     finishClose();
-  }, [finishClose]);
+    setTimeout(refreshDay, 300);
+  }, [finishClose, refreshDay]);
   const closeDrag = useMemo(
     () =>
       Gesture.Pan()
@@ -154,45 +160,40 @@ export default function HomeScreen() {
     opacity: interpolate(sheetY.value, [0, height], [0.55, 0], Extrapolation.CLAMP),
   }));
 
-  const dateLine = new Date()
-    .toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
-    .toUpperCase();
-
-  const bs = deal ? Math.min(52, Math.floor(280 / deal.sworb.length)) : 48;
+  const wordLen = deal?.sworb.length ?? 5;
+  const tileW = Math.min(46, Math.floor((Math.min(width, 480) - 36 - (wordLen - 1) * 8) / wordLen));
+  const tileH = Math.round(tileW * (50 / 46));
+  const tileR = Math.round(tileW * (13 / 46));
 
   return (
-      <View style={styles.root}>
-        <StatusBar style="light" />
-        {/* fully occluded at dock — stop paying for goo + floaters under an
-            opaque sheet */}
-        {!sheetOpen && <Floaters width={width} height={height} />}
-        {!sheetOpen && (
-          <View style={played ? styles.stormRest : undefined}>
-            <Storm width={width} height={Math.min(280, height * 0.32)} />
-          </View>
-        )}
+    <View style={[styles.root, { backgroundColor: theme.bg }]}>
+      <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
+      {/* fully occluded at dock — stop paying for goo + floaters under an
+          opaque sheet */}
+      {!sheetOpen && <Floaters width={width} height={height} />}
+      {!sheetOpen && (
+        <View style={[styles.stormWrap, played && styles.stormRest]}>
+          <Storm width={width} height={Math.min(280, height * 0.32)} />
+        </View>
+      )}
 
-        <SafeAreaView style={styles.safe}>
-          <View style={styles.top}>
-            {__DEV__ && (
-              <Pressable onPress={() => router.push('/dev')} style={styles.gear} hitSlop={10}>
-                <Text style={styles.gearText}>⚙</Text>
-              </Pressable>
-            )}
-            <Brand />
-            <Text style={styles.date}>{dateLine}</Text>
-            <View style={styles.scoreCard}>
-              <Text style={styles.scoreLabel}>{played ? 'TODAY' : 'SWORBL OF THE DAY'}</Text>
-              <Text style={[styles.score, !played && styles.scoreGhost]}>
-                {played ? (day?.score ?? 0).toLocaleString() : '0'}
-              </Text>
-            </View>
-          </View>
+      <SafeAreaView style={styles.safe}>
+        <AppBar
+          theme={theme}
+          onSettings={__DEV__ ? () => router.push('/dev') : undefined}
+        />
 
-          <View style={styles.middle}>
-            {played && deal ? (
-              <View style={styles.heroRow}>
-                {[...deal.sworb].map((ch, i) => {
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}>
+          {deal && <DateHeader theme={theme} dayKey={deal.dayKey} />}
+
+          {/* word of the day: candy bloom when the day is done, dashed
+              blanks before (the answer is hidden — no spoilers) */}
+          <View style={styles.heroRow}>
+            {played && deal
+              ? [...deal.sworb].map((ch, i) => {
                   const pal = PALETTE[tileColorFor(ch, i)];
                   return (
                     <Animated.View
@@ -201,87 +202,114 @@ export default function HomeScreen() {
                       style={[
                         styles.heroBlock,
                         {
-                          width: bs, height: bs * 1.14, borderRadius: Math.round(bs * 0.25),
-                          backgroundColor: pal.bg, boxShadow: `0 3px 0 ${pal.edge}`,
+                          width: tileW, height: tileH, borderRadius: tileR,
+                          backgroundColor: pal.bg,
+                          boxShadow: `inset 0 -5px 0 ${pal.edge}, 0 2px 3px rgba(0,0,0,0.3)`,
                         },
                       ]}>
-                      <Text style={[styles.heroText, { fontSize: Math.round(bs * 0.52) }]}>
+                      <Text style={[styles.heroText, { fontSize: Math.round(tileW * 0.57) }]}>
                         {ch.toUpperCase()}
                       </Text>
                     </Animated.View>
                   );
-                })}
-              </View>
-            ) : (
-              <View style={styles.heroRow}>
-                {Array.from({ length: deal?.sworb.length ?? 5 }, (_, i) => (
+                })
+              : Array.from({ length: wordLen }, (_, i) => (
                   <View
                     key={i}
                     style={[
-                      styles.heroBlock, styles.heroGhost,
-                      { width: bs, height: bs * 1.14, borderRadius: Math.round(bs * 0.25) },
+                      styles.heroBlock,
+                      {
+                        width: tileW, height: tileH, borderRadius: tileR,
+                        borderWidth: 2, borderStyle: 'dashed', borderColor: theme.dashed,
+                      },
                     ]}
                   />
                 ))}
-              </View>
-            )}
-            {played && !solved && (
-              <Text style={styles.missLine}>not cracked — tomorrow's another sworbl</Text>
-            )}
-
-            {deal && <ClueFan clues={deal.clues} found={day?.found ?? []} />}
-
-            <View style={styles.supWrap}>
-              <Superlatives words={day?.bestWords ?? []} />
-            </View>
-
-            {/* no PLAY button — the swipe IS the way in (word-light, owner call);
-                the dock's chevron + "swipe to play" is the whole affordance */}
-            {played && (
-              <Pressable onPress={openSheet} style={styles.resultLink}>
-                <Text style={styles.resultLinkText}>see result ›</Text>
-              </Pressable>
-            )}
           </View>
+          {played && !solved && (
+            <Text style={[styles.missLine, { color: theme.sub }]}>
+              not cracked — tomorrow's another sworbl
+            </Text>
+          )}
 
-          {/* the swipe-to-play GRAB ZONE is the dock area only (owner call) —
-              a generous reach above the chevron, not the whole screen */}
-          <GestureDetector gesture={openDrag}>
-            <View style={styles.dockZone}>
-              <CountdownDock played={played} />
+          {/* pre-play: six BLANK hint slots (no letter counts, no spoilers).
+              post-play the clue intel lives inside the superlatives pager. */}
+          {!played && (
+            <View style={styles.hintRow}>
+              {HINT_SLOT_W.map((w, i) => (
+                <View
+                  key={i}
+                  style={[styles.hintSlot, { width: w, borderColor: theme.dashed }]}
+                />
+              ))}
             </View>
-          </GestureDetector>
-        </SafeAreaView>
+          )}
 
-        {/* dark scrim under the rising sheet (blur deleted — owner call) */}
-        <Animated.View
-          pointerEvents="none"
-          style={[StyleSheet.absoluteFill, styles.scrim, scrimStyle]}
-        />
+          {played && deal && (
+            <SuperlativesPager
+              theme={theme}
+              bestWords={day?.bestWords ?? []}
+              foundClues={day?.found ?? []}
+              clues={deal.clues}
+            />
+          )}
 
-        {/* THE SHEET — pre-mounted hidden below the screen; drags are pure transform */}
-        {deal && (
-          <Animated.View style={[styles.sheet, sheetStyle]}>
-            <PlaySheet ref={sheetRef} onClose={closeSheet} active={sheetOpen} closeGesture={closeDrag} />
-          </Animated.View>
-        )}
-      </View>
+          <FloatingPodium theme={theme} entries={entries} you={you} />
+        </ScrollView>
+
+        {/* the swipe-to-play GRAB ZONE is the dock area only (owner call) —
+            a generous reach above the chevron, not the whole screen */}
+        <GestureDetector gesture={openDrag}>
+          <View style={styles.dockZone}>
+            <CountdownDock played={played} />
+          </View>
+        </GestureDetector>
+      </SafeAreaView>
+
+      {/* dark scrim under the rising sheet (blur deleted — owner call) */}
+      <Animated.View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, styles.scrim, scrimStyle]}
+      />
+
+      {/* THE SHEET — pre-mounted hidden below the screen; drags are pure transform */}
+      {deal && (
+        <Animated.View style={[styles.sheet, sheetStyle]}>
+          <PlaySheet ref={sheetRef} onClose={closeSheet} active={sheetOpen} closeGesture={closeDrag} />
+        </Animated.View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: BG_DARK,
   },
   scrim: {
     backgroundColor: '#000000',
   },
+  stormWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
   stormRest: {
-    opacity: 0.4, // v18 resting storm after the day is played
+    opacity: 0.4, // resting storm after the day is played
   },
   safe: {
     flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 24,
+    gap: 16,
+    alignItems: 'center',
   },
   dockZone: {
     paddingTop: 90, // generous grab reach above the chevron
@@ -293,77 +321,20 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: BG_DARK,
+    backgroundColor: '#101014',
     overflow: 'hidden',
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     zIndex: 20,
   },
-  top: {
-    alignItems: 'center',
-    gap: 10,
-    paddingTop: 12, // same brand offset as the sheet — logos unite at dock
-    paddingHorizontal: 20,
-  },
-  date: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 11.5,
-    letterSpacing: 1.4,
-    color: '#5A5A66',
-  },
-  gear: {
-    position: 'absolute',
-    right: 18,
-    top: 10,
-    zIndex: 5,
-  },
-  gearText: {
-    fontSize: 18,
-    color: '#5A5A66',
-  },
-  scoreCard: {
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    backgroundColor: 'rgba(137,113,255,0.12)',
-    borderRadius: 18,
-    paddingVertical: 14,
-    gap: 2,
-  },
-  scoreLabel: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 10.5,
-    letterSpacing: 1.2,
-    color: '#9DA2B3',
-  },
-  score: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 42,
-    lineHeight: 46,
-    color: '#8971FF',
-    fontVariant: ['tabular-nums'],
-  },
-  scoreGhost: {
-    color: '#33333E',
-  },
-  middle: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 18,
-    paddingHorizontal: 16,
-  },
   heroRow: {
     flexDirection: 'row',
-    gap: 6,
+    justifyContent: 'center',
+    gap: 8,
   },
   heroBlock: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  heroGhost: {
-    borderWidth: 2.5,
-    borderStyle: 'dashed',
-    borderColor: '#2E2E38',
   },
   heroText: {
     fontFamily: 'Fredoka_600SemiBold',
@@ -373,18 +344,18 @@ const styles = StyleSheet.create({
   missLine: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 12.5,
-    color: '#9DA2B3',
+    marginTop: -6,
   },
-  supWrap: {
-    marginTop: 4,
+  hintRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
   },
-  resultLink: {
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-  },
-  resultLinkText: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 13.5,
-    color: '#8971FF',
+  hintSlot: {
+    height: 33,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderStyle: 'dashed',
   },
 });

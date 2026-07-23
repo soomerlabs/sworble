@@ -10,4 +10,5 @@ export const TUNING = {
   PAR_TARGET: 3500, // scoring-header crown STUB — becomes today's #1 when Supabase standings land
   PAR_SECOND: 2400, // 2nd-place track mark STUB — same Supabase swap
   PAR_THIRD: 1500, // 3rd-place track mark STUB — "what's needed to get on the board"
+  PUZZLE_EPOCH: '2026-07-01', // Nº 1 — the date header's puzzle counter
 };
