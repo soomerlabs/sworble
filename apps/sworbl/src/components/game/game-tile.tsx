@@ -83,12 +83,9 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, flight, nope, nope
     if (clearingSeq === undefined) return;
     const d = clearingSeq * 40;
     if (flight) {
-      const FLY = { duration: 300, easing: Easing.bezier(0.5, 0, 0.8, 0.5) };
-      const chipScale = Math.max(0.35, Math.min(0.6, 28 / size));
-      flyX.value = withDelay(d, withTiming(flight.dx, FLY));
-      flyY.value = withDelay(d, withTiming(flight.dy, FLY));
-      scale.value = withDelay(d, withTiming(chipScale, FLY));
-      opacity.value = withDelay(d + 220, withTiming(0, { duration: 100 }));
+      // the GHOST flies the visible route (unclipped layer) — the real tile
+      // just vanishes at its launch beat
+      opacity.value = withDelay(d, withTiming(0, { duration: 40 }));
     } else {
       // no vector (merge twin, edge cases): the fossil's snappy pop fallback
       scale.value = withDelay(d, withTiming(0.1, { duration: 200, easing: Easing.bezier(0.55, 0, 0.8, 0.4) }));

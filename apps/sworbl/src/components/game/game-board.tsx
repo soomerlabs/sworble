@@ -25,6 +25,7 @@ import { BoardKeyboard } from './board-keyboard';
 import { applyGuess } from '@/game/finale-logic';
 import { getClueAudit } from '@/game/dev-flags';
 import { loadSwaps, saveSwaps, applySwaps, STARVE_REFILLS, type SwapMap } from '@/game/clue-swaps';
+import { FlightGhosts, type FlightGhostT } from './flight-ghosts';
 import { DevClueAudit, DevFlash } from './dev-clue-audit';
 import type { FinaleRestore } from './finale';
 
@@ -68,6 +69,8 @@ export function GameBoard({
   // id → position-in-swipe (pop stagger rides the seq; web clearSeq)
   const [clearingIds, setClearingIds] = useState<Map<number, number>>(new Map());
   const [flights, setFlights] = useState<Map<number, { dx: number; dy: number }>>(new Map());
+  const [ghosts, setGhosts] = useState<FlightGhostT[]>([]);
+  const ghostKeyRef = useRef(0);
   const [verdict, setVerdict] = useState<{ word: string; pts?: number; ok: boolean; clue?: string; mult?: number } | null>(null);
   const [trace, setTrace] = useState({ word: '', ci: 0 });
   const [jsPath, setJsPath] = useState<TraceTile[]>([]); // web connector mirror
@@ -593,6 +596,32 @@ export function GameBoard({
         })
       );
       setFlights((cur) => new Map([...cur, ...flights]));
+      // GHOST launch: the visible flight happens OUTSIDE the clip (the mask
+      // was decapitating letters at its edge — owner). Real tiles hide at
+      // launch (the flight prop drives that); ghosts fly the full route.
+      const batch: FlightGhostT[] = ids
+        .map((id, i) => {
+          const t = tilesMirror.current.find((x) => x.id === id);
+          if (!t) return null;
+          const v = flights.get(id)!;
+          return {
+            key: ++ghostKeyRef.current,
+            letter: t.letter,
+            seq: i,
+            x: t.col * cell,
+            y: t.row * cell,
+            dx: v.dx,
+            dy: v.dy,
+            size,
+          };
+        })
+        .filter(Boolean) as FlightGhostT[];
+      setGhosts((cur) => [...cur, ...batch]);
+      const lastKey = ghostKeyRef.current;
+      setTimeout(
+        () => setGhosts((cur) => cur.filter((g) => g.key > lastKey)),
+        ids.length * 40 + 450
+      );
       // additive/subtractive ops (audit weakness #4b): overlapping commits must
       // not wipe each other's clearing state
       setClearingIds((cur) => new Map([...cur, ...gone]));
@@ -793,6 +822,7 @@ export function GameBoard({
         </View>
         </GestureDetector>
         </View>
+          <FlightGhosts ghosts={ghosts} />
         </Animated.View>
 
       <ClueFan clues={act} found={found} nudged={ladder.nudged} gs={gs} />
