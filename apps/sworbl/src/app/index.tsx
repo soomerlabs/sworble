@@ -19,6 +19,8 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withTiming,
+  withSequence,
   interpolate,
   interpolateColor,
   Extrapolation,
@@ -167,6 +169,8 @@ export default function HomeScreen() {
   const peekH = DOCK_H + insets.bottom;
   const closedY = height - peekH; // rest position: only the peek visible
   const sheetY = useSharedValue(bootOpen ? 0 : closedY); // closedY = peek, 0 = open
+  const sSquash = useSharedValue(1); // candy squash when the sheet docks at full
+  const sDetent = useSharedValue(0); // 1 once the pull crosses the commit line
   const [sheetOpen, setSheetOpen] = useState(bootOpen); // fully open → home drag off, round armed
   const sheetRef = useRef<PlaySheetHandle>(null);
 
@@ -209,6 +213,11 @@ export default function HomeScreen() {
     if (deal) saveSheetOpen(deal.dayKey); // reclaim-proof: the sheet remembers
     haptic.soft(); // the dock beat — launching the game from the bottom
   }, [deal]);
+  // the DETENT: a tick the instant the pull crosses the commit threshold —
+  // the hand learns "release now and it opens" without reading anything
+  const detentIn = useCallback(() => haptic.tick(3), []);
+  const detentOut = useCallback(() => haptic.tick(1), []);
+
   // a CONSUMED day is closed for business (owner): the dock is just the
   // countdown — the swipe doesn't react, the sheet never opens again
   const openDrag = useMemo(
@@ -221,18 +230,34 @@ export default function HomeScreen() {
           // the sheet's TOP EDGE rides the finger itself (absoluteY), not the
           // translation — otherwise the sheet trails far below the thumb
           sheetY.value = Math.min(closedY, Math.max(0, e.absoluteY));
+          const past = closedY - sheetY.value > height * 0.22 ? 1 : 0;
+          if (past !== sDetent.value) {
+            sDetent.value = past;
+            if (past) runOnJS(detentIn)();
+            else runOnJS(detentOut)();
+          }
         })
         .onEnd((e) => {
           'worklet';
+          sDetent.value = 0;
           const risen = closedY - sheetY.value;
           if (risen > height * 0.22 || e.velocityY < -900) {
-            sheetY.value = withSpring(0, { ...OPEN_SPRING, velocity: e.velocityY });
+            sheetY.value = withSpring(0, { ...OPEN_SPRING, velocity: e.velocityY }, (fin) => {
+              'worklet';
+              if (fin) {
+                // the DOCK SQUASH: candy physicality — the sheet lands like a tile
+                sSquash.value = withSequence(
+                  withTiming(0.994, { duration: 70 }),
+                  withTiming(1, { duration: 170 })
+                );
+              }
+            });
             runOnJS(markOpen)();
           } else {
             sheetY.value = withSpring(closedY, { ...PARK_SPRING, velocity: e.velocityY });
           }
         }),
-    [height, closedY, sheetOpen, played, markOpen]
+    [height, closedY, sheetOpen, played, markOpen, detentIn, detentOut]
   );
 
   // close drag (home owns sheetY): the round pauses ONLY when the close
@@ -255,9 +280,16 @@ export default function HomeScreen() {
         .onUpdate((e) => {
           'worklet';
           sheetY.value = Math.min(closedY, Math.max(0, e.translationY));
+          const past = e.translationY > height * 0.25 ? 1 : 0;
+          if (past !== sDetent.value) {
+            sDetent.value = past;
+            if (past) runOnJS(detentIn)();
+            else runOnJS(detentOut)();
+          }
         })
         .onEnd((e) => {
           'worklet';
+          sDetent.value = 0;
           if (e.translationY > height * 0.25 || e.velocityY > 900) {
             // commit: deactivate NOW (blocker #1 — never let the arm effect
             // re-fire while the sheet slides away)
@@ -271,19 +303,31 @@ export default function HomeScreen() {
             sheetY.value = withSpring(0, { ...OPEN_SPRING, velocity: e.velocityY });
           }
         }),
-    [height, closedY, sheetOpen, commitClose]
+    [height, closedY, sheetOpen, commitClose, detentIn, detentOut]
   );
 
   // PERF: transform ONLY — animating border radius on a clipped full-screen
   // view re-clips the whole game subtree every frame (the pull jank). The
   // radius is a constant 22: invisible at dock (dark-on-dark, notch region).
   const sheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: sheetY.value }],
+    transform: [
+      // scaleY is center-origin — the translate compensation anchors the
+      // squash to the BOTTOM edge so the top visibly dips, tile-style
+      { translateY: sheetY.value + (height * (1 - sSquash.value)) / 2 },
+      { scaleY: sSquash.value },
+    ],
   }));
   // NO BLUR (owner: drag jank — "just delete it"). A plain dark scrim fades
   // with the pull instead: one opacity on one solid view, compositing-only.
   const scrimStyle = useAnimatedStyle(() => ({
     opacity: interpolate(sheetY.value, [0, closedY], [0.55, 0], Extrapolation.CLAMP),
+  }));
+  // PARALLAX RECEDE (owner trio): home scales back as the sheet rises — the
+  // sheet reads as physically ABOVE the screen (App Store card idiom)
+  const homeStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: interpolate(sheetY.value, [0, closedY], [0.94, 1], Extrapolation.CLAMP) },
+    ],
   }));
   // the collapsed FACE (frost + swipe-to-play) and the GAME crossfade as the
   // sheet travels — single-layer opacities, compositing-cheap
@@ -350,6 +394,7 @@ export default function HomeScreen() {
         </View>
       )}
 
+      <Animated.View style={[styles.safe, homeStyle]}>
       <SafeAreaView edges={['top']} style={styles.safe}>
         <AppBar
           theme={theme}
@@ -465,6 +510,7 @@ export default function HomeScreen() {
         </ScrollView>
 
       </SafeAreaView>
+      </Animated.View>
 
       {/* dark scrim under the rising sheet (blur deleted — owner call) */}
       <Animated.View
