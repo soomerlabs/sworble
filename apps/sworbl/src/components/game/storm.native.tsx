@@ -51,9 +51,13 @@ function useDrift(dur: number) {
 function Curtain({ i, width, height }: { i: number; width: number; height: number }) {
   const c = CURTAINS[i];
   const t = useDrift(c.dur);
+  // THE WANDER (owner: "make it look alive"): the veil's anchor roams
+  // ±17% of the screen on its own long period — incommensurate with the
+  // sway, so veils cross and colors visit the center and trade places
+  const wander = useDrift(Math.round(c.dur * 2.6) + i * 1700);
   const w = width * 0.17;
   const transform = useDerivedValue(() => [
-    { translateX: width * c.x + t.value * c.sway },
+    { translateX: width * c.x + t.value * c.sway + (wander.value - 0.5) * width * 0.34 },
     // the veil breathes taller and shorter as it sways
     { scaleY: 0.92 + t.value * 0.16 },
   ]);

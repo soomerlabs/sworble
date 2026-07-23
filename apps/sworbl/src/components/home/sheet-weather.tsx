@@ -32,21 +32,24 @@ export function StormCrest({ sheetY, sGlow, sBoot, sReveal, closedY, width, peek
   // the stretch target: at full open the SAME canvas must cover the whole
   // sheet face — home's aurora and the board's takeover are ONE THING
   // elongating (owner: the flat wash read as a second, mismatched system)
-  const stretchTo = (closedY + peekH * 0.9) / stormH;
+  // (full-sheet stretch retired — it taffy-pulled the veils; the frost
+  // dissolve + opacity handoff carry the transition now)
   const stormRideStyle = useAnimatedStyle(() => {
     const travel = interpolate(sheetY.value, [0, closedY], [1, 0], Extrapolation.CLAMP);
     const calm = 0.68 + sGlow.value * 0.32; // parked: PRESENT → armed: ignited (0.45 read washed out, owner)
     const burn = interpolate(travel, [0, 0.3], [calm, 1], Extrapolation.CLAMP);
+    // CLEAN HANDOFF (owner): the crest melts mostly out by the dock — a
+    // gentle swell, opacity easing to a quarter across the last stretch of
+    // travel, sReveal finishing the job after the dock (flicks stay safe)
+    const melt = interpolate(travel, [0.55, 0.92], [1, 0.25], Extrapolation.CLAMP);
     return {
-      opacity: bootWindow(sBoot.value, 0.45, 0.55) * burn * (1 - sReveal.value),
+      opacity: bootWindow(sBoot.value, 0.45, 0.55) * burn * melt * (1 - sReveal.value),
       transform: [
-        // anisotropic: the curtains DRAW OUT vertically over the board
-        // (northern lights stretching), barely widening
-        { scaleY: 1 + sGlow.value * 0.06 + travel * Math.max(0, stretchTo - 1) },
-        { scaleX: 1 + sGlow.value * 0.04 + travel * 0.12 },
+        { scaleY: 1 + sGlow.value * 0.06 + travel * 0.3 },
+        { scaleX: 1 + sGlow.value * 0.04 + travel * 0.1 },
       ],
     };
-  }, [closedY, stretchTo]);
+  }, [closedY]);
   return (
     <Animated.View
       pointerEvents="none"
