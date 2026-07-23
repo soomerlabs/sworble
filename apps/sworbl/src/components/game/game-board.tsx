@@ -691,7 +691,14 @@ export function GameBoard({
 
       <ClueFan clues={act} found={found} nudged={ladder.nudged} gs={gs} />
       {audit && (
-        <DevClueAudit clues={act} found={found} findableNow={devFindable} onTap={devProve} />
+        // UNSOLVED only (owner): the fan above already shows the caught ones
+        // in candy — the audit strip is for placement of what's still hiding
+        <DevClueAudit
+          clues={act.filter((c) => !found.includes(c))}
+          found={found}
+          findableNow={devFindable}
+          onTap={devProve}
+        />
       )}
     </View>
   );
