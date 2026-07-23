@@ -166,6 +166,12 @@ export default function HomeScreen() {
   // the assist-raised sheet SNAPPED to the finger on the first pull frame)
   const sArmed = useSharedValue(0); // PLAY traced → swipe unlocked
   const sGlow = useSharedValue(0); // aurora intensity: muted → FULL GLOW on arm (owner)
+  // THE REVEAL (owner: "it flashes and then it's over — wtf is that"): the
+  // color's exit is TIME-based, not position-based. A flick compressed the
+  // whole wash into ~150ms; now the color holds through the dock and lets
+  // go over a deliberate beat AFTER the sheet lands. Restoration boots at 1
+  // (board already revealed).
+  const sReveal = useSharedValue(bootOpen ? 1 : 0);
   // the boot MASTER CLOCK — declared with its siblings, ABOVE every style
   // that reads it (it briefly lived below homeStyle: instant render error)
   const sBoot = useSharedValue(0);
@@ -207,6 +213,7 @@ export default function HomeScreen() {
     sMode.value = 0;
     sArmed.value = 0;
     sGlow.value = 0;
+    sReveal.value = 0; // the color rearms for the next launch
     setArmed(false); // the door re-locks: fresh swipe next time
     if (armIdle.current) clearTimeout(armIdle.current);
   }, []);
@@ -238,6 +245,9 @@ export default function HomeScreen() {
     setSheetOpen(true);
     if (deal) saveSheetOpen(deal.dayKey); // reclaim-proof: the sheet remembers
     haptic.soft(); // the dock beat — launching the game from the bottom
+    // the color lets go AFTER the dock — the reveal is its own moment
+    sReveal.value = withDelay(240, withTiming(1, { duration: 650, easing: Easing.out(Easing.quad) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deal]);
   // the DETENT: a tick the instant the pull crosses the commit threshold —
   // the hand learns "release now and it opens" without reading anything.
@@ -610,7 +620,7 @@ export default function HomeScreen() {
               />
             </Animated.View>
             <SheetWeather
-              sheetY={sheetY} sGlow={sGlow} sBoot={sBoot}
+              sheetY={sheetY} sGlow={sGlow} sBoot={sBoot} sReveal={sReveal}
               closedY={closedY} width={width} peekH={peekH}
             />
             {/* the COLLAPSED FACE: swipe-to-play/countdown */}

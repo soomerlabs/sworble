@@ -22,12 +22,14 @@ interface Props {
   sheetY: SharedValue<number>;
   sGlow: SharedValue<number>; // aurora intensity: muted → FULL GLOW on arm
   sBoot: SharedValue<number>; // the boot master clock (band blooms late)
+  sReveal: SharedValue<number>; // TIME-based exit: 0 until the launch commits,
+  // then home runs it to 1 after the dock — a flick can't flash the color away
   closedY: number;
   width: number;
   peekH: number;
 }
 
-export function SheetWeather({ sheetY, sGlow, sBoot, closedY, width, peekH }: Props) {
+export function SheetWeather({ sheetY, sGlow, sBoot, sReveal, closedY, width, peekH }: Props) {
   // RIDE THE STORM UP: the crest is glued to the sheet's top edge, so the
   // pull literally drags the weather up the screen. Travel BRIGHTENS it to
   // full burn (a restrained swell — the big stretch smeared hues over the
@@ -36,11 +38,10 @@ export function SheetWeather({ sheetY, sGlow, sBoot, closedY, width, peekH }: Pr
     const travel = interpolate(sheetY.value, [0, closedY], [1, 0], Extrapolation.CLAMP);
     const calm = 0.45 + sGlow.value * 0.55; // parked: muted → armed: ignited
     const burn = interpolate(travel, [0, 0.3], [calm, 1], Extrapolation.CLAMP);
-    // dissolve EARLY — the crest hands the screen to the board while the
-    // pull still has momentum (owner: the late overlap smeared)
-    const settle = interpolate(travel, [0.55, 0.8], [1, 0], Extrapolation.CLAMP);
+    // the crest holds while the color holds and lets go WITH the reveal —
+    // position-based settling turned a flick into a 150ms flash (owner)
     return {
-      opacity: bootWindow(sBoot.value, 0.45, 0.55) * burn * settle,
+      opacity: bootWindow(sBoot.value, 0.45, 0.55) * burn * (1 - sReveal.value),
       transform: [{ scale: 1 + sGlow.value * 0.06 + travel * 0.35 }],
     };
   }, [closedY]);
@@ -52,20 +53,21 @@ export function SheetWeather({ sheetY, sGlow, sBoot, closedY, width, peekH }: Pr
   const washStyle = useAnimatedStyle(() => {
     const travel = interpolate(sheetY.value, [0, closedY], [1, 0], Extrapolation.CLAMP);
     const build = interpolate(travel, [0.06, 0.32], [0, 1], Extrapolation.CLAMP);
-    // hand the surface back BEFORE the animation ends (owner) — the board's
-    // real colors are already standing when the sheet docks
-    const reveal = interpolate(travel, [0.68, 0.9], [1, 0], Extrapolation.CLAMP);
     // TINT, not paint (owner: "such hard lines looks bad") — at 55% the
-    // hues glow through the dark surface instead of reading as bands
-    return { opacity: build * reveal * 0.55 };
+    // hues glow through the dark surface instead of reading as bands. The
+    // exit is sReveal (time-based, after the dock) — never a mid-flick flash.
+    return { opacity: build * (1 - sReveal.value) * 0.55 };
   }, [closedY]);
   const gs = gameSurface(useTheme().mode);
 
   return (
     <>
+      {/* wash spans from the sheet's TOP now — the surface-melt gradient
+          blends board-color into hue, so there's no bare near-black strip
+          reading as a separation between home and the color (owner) */}
       <Animated.View
         pointerEvents="none"
-        style={[styles.washWrap, { top: Math.round(peekH * 0.7) }, washStyle]}>
+        style={[styles.washWrap, { top: 0 }, washStyle]}>
         <LinearGradient
           colors={[...WASH_HUES]}
           start={{ x: 0.1, y: 0 }}
