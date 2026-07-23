@@ -123,10 +123,15 @@ export default function HomeScreen() {
   // finishes honestly against yesterday's keys), then the new day arrives.
   const dayKey = useDayKey();
   const [activeDayKey, setActiveDayKey] = useState(dayKey);
-  // devDay: __DEV__ playtest override — reading it during render means the
-  // focus-refresh after returning from /dev picks up a changed override
-  const devDay = getDevDay();
-  const deal = useMemo(() => dealDaily(), [activeDayKey, devDay]);
+  // devDay/nonce/diag as STATE snapshots (house rule: module reads in render
+  // are invisible to the React Compiler — it caches the JSX; the dev screen's
+  // frozen toggles were this exact bug). Refreshed on every focus.
+  const [devSnap, setDevSnap] = useState(() => ({
+    devDay: getDevDay(),
+    nonce: getResetNonce(),
+    diag: getDiagnostics(),
+  }));
+  const deal = useMemo(() => dealDaily(), [activeDayKey, devSnap.devDay]);
 
   // (rollover gate lives below the sheet state — it must see sheetOpen)
 
@@ -134,6 +139,7 @@ export default function HomeScreen() {
   const [day, setDay] = useState<DayState | null>(null);
   const refreshDay = useCallback(() => {
     if (deal) setDay(loadDay(deal.dayKey));
+    if (__DEV__) setDevSnap({ devDay: getDevDay(), nonce: getResetNonce(), diag: getDiagnostics() });
   }, [deal]);
   useFocusEffect(refreshDay);
 
@@ -674,7 +680,7 @@ export default function HomeScreen() {
             <View style={styles.standingsHead}>
               <Text style={[styles.standingsTitle, { color: theme.sub }]}>
                 standings
-                {__DEV__ && getDiagnostics() ? `  ·  ${entries.length} in field` : ''}
+                {__DEV__ && devSnap.diag ? `  ·  ${entries.length} in field` : ''}
               </Text>
               <Pressable
                 onPress={() => router.push('/leaderboard')}
@@ -738,7 +744,7 @@ export default function HomeScreen() {
             <Animated.View
               style={[styles.gameLayer, { backgroundColor: gameSurface(theme.mode).bg }, gameStyle]}>
               <PlaySheet
-                key={`${deal.dayKey}:${getResetNonce()}`}
+                key={`${deal.dayKey}:${devSnap.nonce}`}
                 ref={sheetRef}
                 onClose={closeSheet}
                 active={sheetOpen}
@@ -757,10 +763,10 @@ export default function HomeScreen() {
                 ]}>
                 <CountdownDock played={played} sLit={sLit} armed={armed} tile={pm.tile} gap={pm.gap} />
               </View>
-              {__DEV__ && getDiagnostics() && (
+              {__DEV__ && devSnap.diag && (
                 <Text style={styles.devBand}>
                   {deal?.dayKey ?? 'no-deal'}·{day?.route ?? 'no-day'}·{played ? 'played' : 'open'}
-                  {getDevDay() ? '·OVERRIDE' : ''}
+                  {devSnap.devDay ? '·OVERRIDE' : ''}
                 </Text>
               )}
             </Animated.View>
