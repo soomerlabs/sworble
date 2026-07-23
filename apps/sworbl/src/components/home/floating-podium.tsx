@@ -33,13 +33,14 @@ function useFloatA() {
   }, []);
   return useAnimatedStyle(() => {
     const p = t.value;
-    // 0/25/50/75/100% → (0,0,0) (-3.5,-2,-2°) (0,-4,0) (3.5,-2,2°) (0,0,0)
+    // web amplitudes ×1.6 (owner: the float was too subtle to see) —
+    // 0/25/50/75/100% → (0,0,0) (-5.5,-3,-3°) (0,-6.5,0) (5.5,-3,3°) (0,0,0)
     const seg = p * 4;
     let x = 0, y = 0, r = 0;
-    if (seg < 1) { x = lerp(0, -3.5, seg); y = lerp(0, -2, seg); r = lerp(0, -2, seg); }
-    else if (seg < 2) { x = lerp(-3.5, 0, seg - 1); y = lerp(-2, -4, seg - 1); r = lerp(-2, 0, seg - 1); }
-    else if (seg < 3) { x = lerp(0, 3.5, seg - 2); y = lerp(-4, -2, seg - 2); r = lerp(0, 2, seg - 2); }
-    else { x = lerp(3.5, 0, seg - 3); y = lerp(-2, 0, seg - 3); r = lerp(2, 0, seg - 3); }
+    if (seg < 1) { x = lerp(0, -5.5, seg); y = lerp(0, -3, seg); r = lerp(0, -3, seg); }
+    else if (seg < 2) { x = lerp(-5.5, 0, seg - 1); y = lerp(-3, -6.5, seg - 1); r = lerp(-3, 0, seg - 1); }
+    else if (seg < 3) { x = lerp(0, 5.5, seg - 2); y = lerp(-6.5, -3, seg - 2); r = lerp(0, 3, seg - 2); }
+    else { x = lerp(5.5, 0, seg - 3); y = lerp(-3, 0, seg - 3); r = lerp(3, 0, seg - 3); }
     return { transform: [{ translateX: x }, { translateY: y }, { rotate: `${r}deg` }] };
   });
 }
@@ -50,9 +51,10 @@ function useFloatB() {
   useEffect(() => {
     y.value = withDelay(350, withRepeat(
       withSequence(
-        withTiming(-10, { duration: 1428, easing: EASE }), // 42%
-        withTiming(-5, { duration: 544, easing: EASE }), // 58%
-        withTiming(-8, { duration: 544, easing: EASE }), // 74%
+        // web amplitudes ×1.5 (owner: more pronounced, not overwhelming)
+        withTiming(-15, { duration: 1428, easing: EASE }), // 42%
+        withTiming(-8, { duration: 544, easing: EASE }), // 58%
+        withTiming(-12, { duration: 544, easing: EASE }), // 74%
         withTiming(0, { duration: 884, easing: EASE })
       ),
       -1
@@ -76,10 +78,11 @@ function useFloatC() {
   }, []);
   return useAnimatedStyle(() => {
     const p = t.value;
+    // web amplitudes ×1.6 (owner: more pronounced, not overwhelming)
     let r = 0, y = 0;
-    if (p < 1) { r = lerp(0, 3.5, p); y = lerp(0, -2, p); }
-    else if (p < 2) { r = lerp(3.5, -3.5, p - 1); y = lerp(-2, -3, p - 1); }
-    else { r = lerp(-3.5, 0, p - 2); y = lerp(-3, 0, p - 2); }
+    if (p < 1) { r = lerp(0, 5.5, p); y = lerp(0, -3, p); }
+    else if (p < 2) { r = lerp(5.5, -5.5, p - 1); y = lerp(-3, -5, p - 1); }
+    else { r = lerp(-5.5, 0, p - 2); y = lerp(-5, 0, p - 2); }
     return { transform: [{ rotate: `${r}deg` }, { translateY: y }] };
   });
 }
@@ -351,17 +354,18 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     zIndex: 2,
   },
+  // owner: "WAY too much hue radiating" — a whisper of gold, not a sunrise
   aura: {
     position: 'absolute',
-    width: 116,
-    height: 116,
+    width: 96,
+    height: 96,
     borderRadius: 999,
     left: '50%',
     top: '50%',
-    marginLeft: -58,
-    marginTop: -58,
-    backgroundColor: 'rgba(245,184,74,0.14)',
-    boxShadow: '0 0 34px 22px rgba(245,184,74,0.16)',
+    marginLeft: -48,
+    marginTop: -48,
+    backgroundColor: 'rgba(245,184,74,0.07)',
+    boxShadow: '0 0 22px 10px rgba(245,184,74,0.08)',
   },
   confWrap: {
     position: 'absolute',

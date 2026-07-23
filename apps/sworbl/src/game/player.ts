@@ -5,11 +5,22 @@
 import engine from '@sworbl/engine';
 
 const NAME_KEY = 'sworbl_rn_name';
-export const DEFAULT_NAME = 'PLAYER';
+
+// first launch MINTS a handle (PLAYER + 4 digits) instead of everyone
+// landing as 'PLAYER' — names aren't unique on the server (identity is the
+// anonymous auth uuid), but the standings read far better when testers
+// don't all collide on one word. Persisted immediately so it's stable.
+function mintName(): string {
+  const digits = Math.floor(1000 + Math.random() * 9000);
+  return `PLAYER${digits}`;
+}
 
 export function getPlayerName(): string {
   const v = engine.store.getJSON(NAME_KEY, null) as string | null;
-  return v && typeof v === 'string' ? v : DEFAULT_NAME;
+  if (v && typeof v === 'string') return v;
+  const minted = mintName();
+  engine.store.setJSON(NAME_KEY, minted);
+  return minted;
 }
 
 // returns the SAVED name (normalized) — callers re-read instead of trusting input

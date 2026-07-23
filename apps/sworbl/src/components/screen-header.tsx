@@ -12,10 +12,11 @@ interface Props {
   eyebrow: string;
   title: string;
   titleAccent?: string; // optional second segment in indigo
+  titleAdornment?: React.ReactNode; // small tail after the title (e.g. edit pencil)
   right?: React.ReactNode;
 }
 
-export function ScreenHeader({ theme, eyebrow, title, titleAccent, right }: Props) {
+export function ScreenHeader({ theme, eyebrow, title, titleAccent, titleAdornment, right }: Props) {
   return (
     <View style={styles.wrap}>
       <Text style={[styles.eyebrow, { color: theme.faint }]}>{eyebrow}</Text>
@@ -23,6 +24,7 @@ export function ScreenHeader({ theme, eyebrow, title, titleAccent, right }: Prop
         <View style={styles.titleRow}>
           <Text style={[styles.big, { color: theme.ink }]}>{title}</Text>
           {!!titleAccent && <Text style={[styles.big, { color: ACCENT }]}>{titleAccent}</Text>}
+          {titleAdornment}
         </View>
       </View>
       <View style={[styles.hairline, { backgroundColor: theme.hairline }]} />

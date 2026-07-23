@@ -3,9 +3,13 @@
 // as candy letter blocks with its pay badge, runner-up word pills, and the
 // 9-week PLAY HISTORY heat grid. All device-local stats (stats.ts).
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, useWindowDimensions } from 'react-native';
+import {
+  View, Text, StyleSheet, ScrollView, TextInput, useWindowDimensions, Modal, Pressable, Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { SymbolView } from 'expo-symbols';
+import { router } from 'expo-router';
 
 import { ScreenBar } from '@/components/screen-bar';
 import { ScreenHeader } from '@/components/screen-header';
@@ -33,10 +37,18 @@ export default function ProfileScreen() {
   const { width } = useWindowDimensions();
   const stats = useMemo(() => loadStats(), []);
   const [name, setName] = useState(getPlayerName());
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(name);
   const collected = useMemo(() => lexiconCount(), []);
+  const openEdit = () => {
+    setDraft(name);
+    setEditing(true);
+    haptic.soft();
+  };
   const commitName = () => {
+    setEditing(false);
     const before = getPlayerName();
-    const saved = setPlayerName(name);
+    const saved = setPlayerName(draft);
     setName(saved);
     if (saved !== before) {
       void ensurePlayer(saved); // standings rename on next fetch
@@ -54,7 +66,6 @@ export default function ProfileScreen() {
     { label: 'BEST SCORE', value: stats.best, dot: PALETTE[2], accent: CLUE_GREEN },
     { label: 'AVG SCORE', value: stats.games ? Math.round(stats.total / stats.games) : 0, dot: PALETTE[0] },
     { label: 'GAMES', value: stats.games, dot: PALETTE[1] },
-    { label: 'WORDS COLLECTED', value: collected, dot: PALETTE[4] },
   ];
 
   return (
@@ -67,6 +78,15 @@ export default function ProfileScreen() {
             theme={theme}
             eyebrow={`${titleFor(collected).toUpperCase()} · ${sinceLine(stats.firstDay).toUpperCase()}`}
             title={name.toLowerCase()}
+            titleAdornment={
+              <Pressable onPress={openEdit} hitSlop={12} style={styles.pencilBtn}>
+                {Platform.OS === 'ios' ? (
+                  <SymbolView name={'pencil' as never} size={15} tintColor={theme.faint} />
+                ) : (
+                  <Text style={[styles.pencilGlyph, { color: theme.faint }]}>✎</Text>
+                )}
+              </Pressable>
+            }
             right={
               <View
                 style={[
@@ -80,22 +100,6 @@ export default function ProfileScreen() {
               </View>
             }
           />
-
-          {/* identity edit — the name lives where the identity lives */}
-          <View style={[styles.nameRow, { backgroundColor: theme.card }]}>
-            <Text style={[styles.nameLabel, { color: theme.faint }]}>NAME</Text>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              onBlur={commitName}
-              onSubmitEditing={commitName}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              maxLength={10}
-              returnKeyType="done"
-              style={[styles.nameInput, { color: theme.ink }]}
-            />
-          </View>
 
           {/* 2×2 stat cards */}
           <View style={styles.cards}>
@@ -120,12 +124,25 @@ export default function ProfileScreen() {
           {/* YOUR BEST — the lifetime word in candy blocks + its pay */}
           <View style={styles.section}>
             <View style={styles.bestHead}>
-              <Text style={[styles.sectionLabel, { color: theme.faint }]}>YOUR BEST</Text>
-              {stats.bestWord && (
-                <View style={[styles.payBadge, { backgroundColor: theme.card, borderColor: theme.hairline }]}>
-                  <Text style={styles.payPts}>+{stats.bestWord.pts}</Text>
-                </View>
-              )}
+              <View style={styles.bestHeadLeft}>
+                <Text style={[styles.sectionLabel, { color: theme.faint }]}>YOUR BEST</Text>
+                {stats.bestWord && (
+                  <View style={[styles.payBadge, { backgroundColor: theme.card, borderColor: theme.hairline }]}>
+                    <Text style={styles.payPts}>+{stats.bestWord.pts}</Text>
+                  </View>
+                )}
+              </View>
+              {/* the collection lives HERE now (owner: card removed) — the
+                  count is the door into the word explorer */}
+              <Pressable
+                onPress={() => router.push('/words')}
+                hitSlop={8}
+                style={[styles.wordsChip, { backgroundColor: theme.card }]}>
+                <Text style={[styles.wordsChipCount, { color: theme.ink }]}>
+                  {collected.toLocaleString()}
+                </Text>
+                <Text style={[styles.wordsChipLabel, { color: theme.faint }]}>WORDS ›</Text>
+              </Pressable>
             </View>
             {stats.bestWord ? (
               <View style={styles.bestRow}>
@@ -191,6 +208,39 @@ export default function ProfileScreen() {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {/* NAME EDIT — pencil opens this (owner: modal, not an inline row) */}
+      <Modal visible={editing} transparent animationType="fade" onRequestClose={() => setEditing(false)}>
+        <Pressable style={styles.modalScrim} onPress={() => setEditing(false)}>
+          <Pressable style={[styles.modalCard, { backgroundColor: theme.card }]} onPress={() => {}}>
+            <Text style={[styles.modalLabel, { color: theme.faint }]}>YOUR NAME</Text>
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              autoFocus
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={10}
+              returnKeyType="done"
+              onSubmitEditing={commitName}
+              style={[styles.modalInput, { color: theme.ink, borderColor: theme.hairline }]}
+            />
+            <Text style={[styles.modalHint, { color: theme.faint }]}>
+              2–10 letters or numbers · shows on standings
+            </Text>
+            <View style={styles.modalRow}>
+              <Pressable
+                onPress={() => setEditing(false)}
+                style={[styles.modalBtn, { backgroundColor: theme.bg }]}>
+                <Text style={[styles.modalBtnText, { color: theme.sub }]}>CANCEL</Text>
+              </Pressable>
+              <Pressable onPress={commitName} style={[styles.modalBtn, styles.modalSave]}>
+                <Text style={[styles.modalBtnText, { color: '#FFFFFF' }]}>SAVE</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -219,25 +269,81 @@ const styles = StyleSheet.create({
     color: '#1F1442',
     includeFontPadding: false,
   },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 14,
-    paddingVertical: 11,
-    paddingHorizontal: 14,
+  pencilBtn: {
+    alignSelf: 'center',
+    paddingBottom: 4, // optically centers against the title's baseline
   },
-  nameLabel: {
+  pencilGlyph: {
+    fontSize: 15,
+  },
+  modalScrim: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  modalCard: {
+    borderRadius: 20,
+    padding: 20,
+    gap: 10,
+  },
+  modalLabel: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 8.5,
     letterSpacing: 1.3,
   },
-  nameInput: {
+  modalInput: {
     fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 15,
-    textAlign: 'right',
-    minWidth: 140,
+    fontSize: 22,
+    borderBottomWidth: 1.5,
+    paddingVertical: 6,
     padding: 0,
+  },
+  modalHint: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 10.5,
+  },
+  modalRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
+  modalBtn: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 11,
+    alignItems: 'center',
+  },
+  modalSave: {
+    backgroundColor: '#8971FF',
+  },
+  modalBtnText: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 13,
+    letterSpacing: 0.8,
+  },
+  wordsChip: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 5,
+    borderRadius: 9,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+  },
+  wordsChipCount: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 13,
+    fontVariant: ['tabular-nums'],
+  },
+  wordsChipLabel: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 9,
+    letterSpacing: 1,
+  },
+  bestHeadLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   cards: {
     flexDirection: 'row',

@@ -22,6 +22,7 @@ import Animated, {
   withTiming,
   withSequence,
   withDelay,
+  withRepeat,
   interpolate,
   Extrapolation,
   Easing,
@@ -136,7 +137,23 @@ const ASSIST_RISE = 0; // assist rise retired (owner) — constant kept for the 
 // all") — a hand-flipped constant is deterministic.
 const USE_MASKED_FROST = false;
 
+// APPLE LIQUID GLASS (owner ask): iOS 26's real UIGlassEffect for the band —
+// checked ONCE at module load (native availability can't change mid-run).
+// Anywhere it's absent (older iOS, Android, web) the BlurView frost stands.
+let GlassViewT: React.ComponentType<{ style?: object; glassEffectStyle?: string }> | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const glass = require('expo-glass-effect');
+  if (glass.isLiquidGlassAvailable?.()) GlassViewT = glass.GlassView;
+} catch {
+  GlassViewT = null;
+}
+
 function DockFrost({ tint }: { tint: 'dark' | 'light' }) {
+  if (GlassViewT) {
+    const Glass = GlassViewT;
+    return <Glass style={StyleSheet.absoluteFill} glassEffectStyle="regular" />;
+  }
   if (!USE_MASKED_FROST) {
     return <BlurView intensity={40} tint={tint} style={StyleSheet.absoluteFill} />;
   }
@@ -264,6 +281,7 @@ export default function HomeScreen() {
   const sGrab = useSharedValue(0); // finger-to-sheet-top gap at touch (owner:
   // the assist-raised sheet SNAPPED to the finger on the first pull frame)
   const sArmed = useSharedValue(0); // PLAY traced → swipe unlocked
+  const sGlow = useSharedValue(0); // aurora intensity: muted → FULL GLOW on arm (owner)
   const [armed, setArmed] = useState(false);
   const sSquash = useSharedValue(1); // candy squash when the sheet docks at full
   const sDetent = useSharedValue(0); // 1 once the pull crosses the commit line
@@ -296,6 +314,7 @@ export default function HomeScreen() {
     sLit.value = 0;
     sMode.value = 0;
     sArmed.value = 0;
+    sGlow.value = 0;
     setArmed(false); // the door re-locks: fresh swipe next time
     if (armIdle.current) clearTimeout(armIdle.current);
   }, []);
@@ -369,6 +388,7 @@ export default function HomeScreen() {
   const armIdle = useRef<ReturnType<typeof setTimeout> | null>(null);
   const disarm = useCallback(() => {
     sArmed.value = 0;
+    sGlow.value = withTiming(0, { duration: 420 }); // the weather calms back down
     setArmed(false);
     sLit.value = 0; // the tiles RAIN BACK IN gray (trace-play owns the fall)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -382,6 +402,9 @@ export default function HomeScreen() {
     if (traceIdle.current) clearTimeout(traceIdle.current);
     haptic.good();
     setArmed(true);
+    // the aurora IGNITES with the arm (owner: "turns on when you swipe to
+    // play and glows with intensity") — muted weather until the door opens
+    sGlow.value = withTiming(1, { duration: 620 });
     // (assist rise removed — owner: caused more issues than it was worth)
     if (armIdle.current) clearTimeout(armIdle.current);
     armIdle.current = setTimeout(disarm, 4000);
@@ -556,6 +579,35 @@ export default function HomeScreen() {
   const faceStyle = useAnimatedStyle(() => ({
     opacity: interpolate(sheetY.value, [closedY - 170, closedY - 50], [0, 1], Extrapolation.CLAMP),
   }));
+  // aurora weather: CALM at rest (dimmed under the frost), IGNITED when the
+  // door arms — brightness + a slow swell, nothing layout-touching
+  const stormGlowStyle = useAnimatedStyle(() => ({
+    opacity: 0.45 + sGlow.value * 0.55,
+    transform: [{ scale: 1 + sGlow.value * 0.08 }],
+  }));
+  // PENDING BEACON (owner: "peeps need to know something is pending — THE
+  // GAME"): while the round waits, colored light breathes off the band's
+  // lip; arming pushes it to full burn. Static shadow on a thin carrier,
+  // only its opacity animates — compositing-cheap.
+  const sBreath = useSharedValue(0);
+  useEffect(() => {
+    sBreath.value = withRepeat(
+      withTiming(1, { duration: 2400, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const beaconStyle = useAnimatedStyle(() => {
+    if (played) return { opacity: 0 }; // played day: the beacon rests
+    // beacon dies as the sheet leaves its park (no colored smear mid-pull)
+    const parked = interpolate(
+      sheetY.value, [closedY - 90, closedY], [0, 1], Extrapolation.CLAMP
+    );
+    return {
+      opacity: parked * Math.min(1, 0.4 + sBreath.value * 0.3 + sGlow.value * 0.6),
+    };
+  }, [played, closedY]);
   // the game SURFACE must exist from the FIRST pixel of travel — and the
   // fade window is deliberately SHORT: while it runs, the whole game subtree
   // pays for an offscreen alpha group (the pull-fluidity tax the owner felt).
@@ -772,11 +824,26 @@ export default function HomeScreen() {
               style={[
                 styles.shadowStrip,
                 {
+                  // owner: the band must read DEFINITIVELY on top of home —
+                  // deeper throw + a tight contact line under the lip
                   boxShadow:
                     theme.mode === 'dark'
-                      ? '0 -12px 40px rgba(0,0,0,0.55)'
-                      : '0 -12px 36px rgba(31,20,66,0.28)',
+                      ? '0 -18px 56px rgba(0,0,0,0.72), 0 -2px 10px rgba(0,0,0,0.5)'
+                      : '0 -18px 48px rgba(31,20,66,0.4), 0 -2px 10px rgba(31,20,66,0.22)',
                 },
+              ]}
+            />
+            {/* the beacon rides ABOVE the dark throw: aurora-colored light
+                spilling over the lip while the day is unplayed */}
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.shadowStrip,
+                {
+                  boxShadow:
+                    '0 -10px 48px rgba(137,113,255,0.55), 0 -4px 24px rgba(91,200,245,0.28)',
+                },
+                beaconStyle,
               ]}
             />
             <View style={styles.sheetClip}>
@@ -799,10 +866,22 @@ export default function HomeScreen() {
               {/* the aurora IS the band's backdrop now (owner: 'make it the
                   background of the bottom sheet') — the frost above turns the
                   blobs into pure color weather */}
-              <View pointerEvents="none" style={styles.bandStorm}>
+              <Animated.View pointerEvents="none" style={[styles.bandStorm, stormGlowStyle]}>
                 <Storm width={width} height={peekH} zoom={2.2} />
-              </View>
+              </Animated.View>
               {frostLive && <DockFrost tint={theme.mode === 'dark' ? 'dark' : 'light'} />}
+              {/* the LIP: a light-catch hairline on the band's top edge —
+                  with the deep shadow it sells "this floats OVER home" */}
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.lipLight,
+                  {
+                    backgroundColor:
+                      theme.mode === 'dark' ? 'rgba(255,255,255,0.13)' : 'rgba(255,255,255,0.9)',
+                  },
+                ]}
+              />
               <View
                 style={[
                   styles.dockInner,
@@ -869,6 +948,15 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     zIndex: 20,
+  },
+  lipLight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1.5,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
   },
   shadowStrip: {
     position: 'absolute',
