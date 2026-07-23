@@ -210,7 +210,10 @@ export function GameBoard({
     () => {
       const p = sPath.value;
       let w = '';
-      for (let i = 0; i < p.length; i++) w += p[i].letter;
+      for (let i = 0; i < p.length; i++) {
+        const l = p[i].letter;
+        w += l === 'q' ? 'qu' : l;
+      }
       return { len: p.length, word: w, ci: p.length ? p[p.length - 1].ci : 0, p };
     },
     (cur, prev) => {
@@ -310,7 +313,8 @@ export function GameBoard({
           let word = '';
           for (let i = 0; i < p.length; i++) {
             ids.push(p[i].id);
-            word += p[i].letter;
+            const l = p[i].letter;
+            word += l === 'q' ? 'qu' : l; // the q tile IS "qu"
           }
           if (ids.length) runOnJS(commitWord)(ids, word);
         })

@@ -150,6 +150,11 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
   const letterStyle = useAnimatedStyle(() => ({
     color: sRed.value > 0.5 ? '#FFFFFF' : sLit.value ? INK : MONO_INK,
   }));
+  // the lifted-candy GLOW (design doc: selected = same-color outer glow) — a
+  // static-shadow view whose opacity rides the lit state on the UI thread
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: sLit.value === 2 ? 0.6 : sLit.value === 1 ? 0.45 : 0,
+  }));
 
   // OUTER: layout exiting only — board→finale is a clean CROSS-FADE (owner:
   // keep the prototype loop simple; the fancy morph was janky)
@@ -157,17 +162,28 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
     <Animated.View exiting={FadeOut.duration(220)} style={styles.outer}>
       <Animated.View style={[inner, { width: size, height: size + lift + 2 }]}>
         <Animated.View
+          style={[
+            styles.glow,
+            glowStyle,
+            { width: size, height: size, borderRadius: rad, boxShadow: `0 0 ${Math.round(size * 0.22)}px ${Math.round(size * 0.05)}px ${pal.bg}` },
+          ]}
+        />
+        <Animated.View
           style={[styles.ledge, ledgeStyle, { width: size, height: size, borderRadius: rad }]}
         />
         <Animated.View
           style={[styles.face, faceStyle, { width: size, height: size, borderRadius: rad }]}>
+          <Animated.View style={styles.hiStrip} />
           <Animated.Text
             style={[
               styles.letter,
               letterStyle,
-              { fontSize: Math.round(size * 0.5), lineHeight: Math.round(size * 0.62) },
+              {
+                fontSize: Math.round(size * (tile.letter === 'q' ? 0.42 : 0.5)),
+                lineHeight: Math.round(size * 0.62),
+              },
             ]}>
-            {tile.letter.toUpperCase()}
+            {tile.letter === 'q' ? 'Qu' : tile.letter.toUpperCase()}
           </Animated.Text>
         </Animated.View>
       </Animated.View>
@@ -193,14 +209,26 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
   },
+  glow: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+  },
   face: {
     position: 'absolute',
     left: 0,
     top: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    borderTopWidth: 1.5,
-    borderTopColor: 'rgba(255,255,255,0.14)',
+  },
+  hiStrip: {
+    position: 'absolute',
+    top: 2,
+    left: 6,
+    right: 6,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.22)', // dark-theme take on the doc's strip
   },
   letter: {
     fontFamily: 'Fredoka_600SemiBold',

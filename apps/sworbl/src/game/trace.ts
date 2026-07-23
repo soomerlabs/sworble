@@ -169,7 +169,10 @@ export function moveW(nowPt: TracePoint, ctx: TraceCtx): void {
       if (!deep && plen > size * 0.3) {
         const hw = useH ? Math.min(0.5, 0.28 + hlen / 90) : 0;
         let cur = '';
-        for (let i = 0; i < path.length; i++) cur += path[i].letter;
+        for (let i = 0; i < path.length; i++) {
+          const l = path[i].letter;
+          cur += l === 'q' ? 'qu' : l; // the q tile IS "qu" (web dispLetter rule)
+        }
         const score = (tile: TraceTile) => {
           const cdx = tile.col - last.col, cdy = tile.row - last.row;
           const clen = Math.hypot(cdx, cdy);
