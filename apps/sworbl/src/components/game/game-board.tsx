@@ -10,7 +10,7 @@ import TraceConnector from './trace-connector';
 import { ClueFan } from './clue-fan';
 import { COLS, ROWS, type TileT, type TraceTile } from '@/game/types';
 import { PALETTE } from '@/game/palette';
-import { settle, landsInMs, type DailyDeal } from '@/game/daily';
+import { settle, restampBroken, landsInMs, type DailyDeal } from '@/game/daily';
 import { dict, prefixMap, scoreWord } from '@/game/dict';
 import { beginW, moveW, type TraceCtx } from '@/game/trace';
 import { haptic } from '@/game/haptics';
@@ -46,6 +46,9 @@ export function GameBoard({
   const foundRef = useRef(found);
   foundRef.current = found;
   const scoreRef = useRef(initialScore ?? 0);
+  // every word spelled this run — the re-stamp's roundWords guard (a clue you
+  // JUST spelled must never rain back onto the board)
+  const playedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     onClues && onClues(found);
   }, [found]);
@@ -230,11 +233,19 @@ export function GameBoard({
       haptic.good();
       scoreRef.current += pts;
       onScore && onScore(scoreRef.current);
+      playedRef.current.add(word);
       const gone = new Set(ids);
       setClearingIds(gone);
       setTimeout(() => {
         setClearingIds(new Set());
-        setTiles((cur) => settle(cur.filter((t) => !gone.has(t.id)), deal.nextLetter));
+        setTiles((cur) => {
+          const { tiles: settled, added } = settle(cur.filter((t) => !gone.has(t.id)), deal.nextLetter);
+          // web parity: broken un-found clues ride back in on the refill
+          const unfound = deal.clues.filter(
+            (c) => !foundRef.current.includes(c) && !playedRef.current.has(c)
+          );
+          return restampBroken({ deal, tiles: settled, added, unfound });
+        });
       }, 240);
     },
     [deal, onScore]

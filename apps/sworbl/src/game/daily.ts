@@ -75,14 +75,25 @@ export function makeTile(letter: string, col: number, row: number, spawnDrop: nu
   return { id, letter, col, row, ci: tileColorFor(letter, id), spawnDrop, bornAt: Date.now() };
 }
 
+// a restored run carries tile ids from a previous process — the fresh counter
+// must clear them or new refills collide with restored ids (React keys, trace identity)
+export function bumpNextId(minExclusive: number): void {
+  if (nextId <= minExclusive) nextId = minExclusive + 1;
+}
+
 // airborne window for a spawned tile (GameTile: spawnDrop*40ms stagger + spring)
 export function landsInMs(t: TileT): number {
   return t.spawnDrop ? t.spawnDrop * 40 + 380 : 0;
 }
 
-// collapse columns and rain in refills from the queue — returns a NEW array
-export function settle(tiles: TileT[], nextLetter: () => string): TileT[] {
+// collapse columns and rain in refills from the queue — returns NEW arrays;
+// `added` is the incoming rain (the only tiles a clue re-stamp may touch)
+export function settle(
+  tiles: TileT[],
+  nextLetter: () => string
+): { tiles: TileT[]; added: TileT[] } {
   const out: TileT[] = [];
+  const added: TileT[] = [];
   for (let c = 0; c < COLS; c++) {
     const colTiles = tiles.filter((t) => t.col === c).sort((a, b) => b.row - a.row);
     let row = ROWS - 1;
@@ -92,10 +103,50 @@ export function settle(tiles: TileT[], nextLetter: () => string): TileT[] {
     }
     let drop = 1;
     while (row >= 0) {
-      out.push(makeTile(nextLetter(), c, row, drop));
+      const nt = makeTile(nextLetter(), c, row, drop);
+      out.push(nt);
+      added.push(nt);
       row--;
       drop++;
     }
   }
-  return out;
+  return { tiles: out, added };
+}
+
+// RE-STAMP (web _placeCluesInRefill, ported): as the board refills, place any
+// un-found clue that play has BROKEN into the incoming tiles — never touching
+// settled tiles. Deterministic per (day, refill position); re-stamped tiles are
+// recolored to their letter's own family (no color "tell"). A clue that doesn't
+// fit this refill is restored on a later one. Returns the tiles array with the
+// changes applied (new objects — no mutation).
+export function restampBroken(args: {
+  deal: DailyDeal;
+  tiles: TileT[]; // post-settle full board
+  added: TileT[]; // this refill's incoming tiles
+  unfound: string[]; // clues minus found minus playedThisRun (the roundWords guard)
+}): TileT[] {
+  const { deal, tiles, added, unfound } = args;
+  if (!unfound.length || !added.length) return tiles;
+  const addedIds = new Set(added.map((t) => t.id));
+  const survivors = tiles.filter((t) => !addedIds.has(t.id));
+  const isFindable = (w: string) =>
+    !!engine.solver.findWord(survivors, { word: w, expand: engine.core.expandLetter, diag: true });
+  const rng = engine.core.mulberry32(
+    (engine.core.hashSeed(deal.dayKey + '|refill') ^ (deal.getQueueIdx() * 2654435761)) >>> 0
+  );
+  const changes: { r: number; c: number; letter: string }[] = engine.seed.reseedBroken({
+    tiles: added,
+    unfound,
+    isFindable,
+    rng,
+    reserve: new Set(),
+  });
+  if (!changes.length) return tiles;
+  const byCell = new Map(changes.map((ch) => [ch.r + ',' + ch.c, ch.letter]));
+  return tiles.map((t) => {
+    if (!addedIds.has(t.id)) return t;
+    const letter = byCell.get(t.row + ',' + t.col);
+    if (!letter) return t;
+    return { ...t, letter, ci: tileColorFor(letter, t.id) };
+  });
 }

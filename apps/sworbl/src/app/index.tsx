@@ -17,7 +17,7 @@ import { ResultView } from '@/components/game/result-view';
 import { PauseCover } from '@/components/game/pause-cover';
 import Storm from '@/components/game/storm';
 import { BG_DARK } from '@/game/palette';
-import { dealDaily } from '@/game/daily';
+import { dealDaily, bumpNextId } from '@/game/daily';
 import { CLUE_COUNT, type TileT } from '@/game/types';
 import { loadDay, saveProgress, finishDay, saveRun, type RunSnap } from '@/game/persist';
 
@@ -53,6 +53,8 @@ export default function PlayScreen() {
   const initialTiles = useMemo<TileT[] | undefined>(() => {
     if (!boot?.run || boot.run.phase !== 'live') return undefined;
     if (deal) deal.setQueueIdx(boot.run.queueIdx); // the SAME letter stream continues
+    // restored ids must never collide with the fresh process's tile counter
+    bumpNextId(Math.max(...boot.run.tiles.map((t) => t.id)));
     return boot.run.tiles.map((t) => ({ ...t, spawnDrop: 0, bornAt: Date.now() }));
   }, [boot, deal]);
 
