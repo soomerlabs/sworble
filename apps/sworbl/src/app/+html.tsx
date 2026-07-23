@@ -20,6 +20,13 @@ export default function Root({ children }: { children: React.ReactNode }) {
               html, body { height: 100%; }
               body { overflow: hidden; overscroll-behavior: none; }
               #root { display: flex; height: 100%; flex: 1; }
+              /* the document behind the app matches the theme — a sub-pixel
+                 width rounding otherwise shows a white sliver at the edge
+                 (owner: "white line on the right" in the phone frame) */
+              body { background-color: #EDEFF7; }
+              @media (prefers-color-scheme: dark) {
+                body { background-color: #101014; }
+              }
             `,
           }}
         />
