@@ -285,9 +285,13 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
           wordsRef.current
         );
       }
+      // owner loop: solved or failed, the sheet CLOSES — home is the reveal
+      // (candy answer, score, superlatives). The in-sheet 'done' view remains
+      // only for consumed-day boots ("see result ›").
       setPhase('done');
+      onClose();
     },
-    [deal, score, found]
+    [deal, score, found, onClose]
   );
 
   const tile = Math.min(64, Math.floor((Math.min(width, 480) - 32) / (5 + 4 * 0.16)));
