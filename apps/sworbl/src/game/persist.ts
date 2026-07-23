@@ -153,6 +153,20 @@ export function wasSheetOpen(dayKey: string): boolean {
   return true;
 }
 
+// RESET NONCE: bumped whenever dev tooling wipes day data — the mounted
+// PlaySheet keys on it, so a wiped day can never leave a ZOMBIE sheet living
+// in its old in-memory phase (owner hit: restart-today → board still in
+// keyboard/finale mode from the pre-wipe run)
+const RESET_NONCE_KEY = 'sworbl_rn_reset_nonce';
+
+export function getResetNonce(): number {
+  return Number(engine.store.getJSON(RESET_NONCE_KEY, 0)) || 0;
+}
+
+export function bumpResetNonce(): void {
+  engine.store.setJSON(RESET_NONCE_KEY, getResetNonce() + 1);
+}
+
 // DEV: wipe every per-day key for a day — "restart today's contest" without
 // reinstalling. The K registry is the single source of per-day prefixes.
 export function resetDay(dayKey: string): void {
@@ -161,4 +175,5 @@ export function resetDay(dayKey: string): void {
     K.HINT_TOKENS_PREFIX, K.SEVEN_PREFIX, K.THEME_PREFIX, K.TIME_PREFIX, K.ATT_PREFIX,
   ].filter(Boolean);
   for (const p of prefixes) engine.store.remove(p + dayKey);
+  bumpResetNonce(); // the mounted sheet must remount — no zombie phases
 }

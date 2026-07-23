@@ -39,7 +39,7 @@ import { ARCHETYPE_LABEL } from '@/components/game/result-view';
 import { PALETTE, INK, tileColorFor, gameSurface } from '@/game/palette';
 import { useTheme } from '@/game/theme';
 import { dealDaily, getDevDay } from '@/game/daily';
-import { loadDay, saveSheetOpen, wasSheetOpen, type DayState } from '@/game/persist';
+import { loadDay, saveSheetOpen, wasSheetOpen, getResetNonce, type DayState } from '@/game/persist';
 import { standingsStub, rankFor, type LbEntry } from '@/game/standings';
 import { StandingsList, type StandingRow } from '@/components/home/standings-list';
 import { getPlayerName } from '@/game/player';
@@ -540,7 +540,7 @@ export default function HomeScreen() {
             <Animated.View
               style={[styles.gameLayer, { backgroundColor: gameSurface(theme.mode).bg }, gameStyle]}>
               <PlaySheet
-                key={deal.dayKey}
+                key={`${deal.dayKey}:${getResetNonce()}`}
                 ref={sheetRef}
                 onClose={closeSheet}
                 active={sheetOpen}

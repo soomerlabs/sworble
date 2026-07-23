@@ -15,7 +15,7 @@ import { ScreenBar } from '@/components/screen-bar';
 import { useTheme, ACCENT, CLUE_GREEN } from '@/game/theme';
 import { PALETTE } from '@/game/palette';
 import { dealDaily, getDevDay, setDevDay, authoredDays } from '@/game/daily';
-import { loadDay, resetDay } from '@/game/persist';
+import { loadDay, resetDay, getResetNonce, bumpResetNonce } from '@/game/persist';
 import { isFullDictionary, dict } from '@/game/dict';
 import { getLbFieldMode, setLbFieldMode, type LbFieldMode } from '@/game/standings';
 import { getClueAudit, setClueAudit } from '@/game/dev-flags';
@@ -56,7 +56,11 @@ export default function DevScreen() {
       setMsg('tap again to wipe EVERYTHING');
       return;
     }
+    // the wipe also deletes the reset nonce — re-seed it ABOVE its pre-wipe
+    // value so the mounted sheet still remounts (no zombie phases)
+    const n = getResetNonce();
     for (const k of engine.store.keys()) engine.store.remove(k);
+    engine.store.setJSON('sworbl_rn_reset_nonce', n + 1);
     setArmWipe(false);
     refresh('all storage wiped');
     haptic.bad();
