@@ -124,7 +124,7 @@ export default function WordsScreen() {
                         top: t.row * cell,
                         width: miniTile,
                         height: miniTile,
-                        borderRadius: Math.round(miniTile * 0.2),
+                        borderRadius: Math.round(miniTile * 0.26), borderCurve: 'continuous',
                         backgroundColor: gs.mono.bg,
                         boxShadow: `0 2px 0 ${gs.mono.edge}`,
                       },

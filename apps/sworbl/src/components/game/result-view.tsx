@@ -41,7 +41,7 @@ export function ResultView({ word, definition, archetype, solved, guessesUsed, s
               entering={ZoomIn.delay(120 + i * 90).springify().mass(0.6)}
               style={[
                 styles.block,
-                { width: bs, height: bs * 1.14, borderRadius: Math.round(bs * 0.25) },
+                { width: bs, height: bs * 1.14, borderRadius: Math.round(bs * 0.25), borderCurve: 'continuous' },
                 pal
                   ? { backgroundColor: pal.bg, boxShadow: `0 3px 0 ${pal.edge}` }
                   : styles.grayBlock,

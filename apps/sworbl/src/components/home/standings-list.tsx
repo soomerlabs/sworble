@@ -89,6 +89,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 10,
     borderRadius: 11,
+    borderCurve: 'continuous',
   },
   ghostRow: {
     backgroundColor: 'transparent',

@@ -69,7 +69,7 @@ function Key({
           <View
             style={[
               styles.flatKey,
-              { width: w, height: h, borderRadius: rad },
+              { width: w, height: h, borderRadius: rad, borderCurve: 'continuous' },
               pressed && { transform: [{ translateY: 2 }], backgroundColor: MONO_DARK.hi },
             ]}>
             <Text style={[styles.keyText, { fontSize: Math.min(23, h * 0.44), color: MONO_INK }]}>
@@ -87,7 +87,7 @@ function Key({
           <View
             style={[
               styles.keyLedge,
-              { width: w, height: h, borderRadius: rad, backgroundColor: blockKey.edge },
+              { width: w, height: h, borderRadius: rad, borderCurve: 'continuous', backgroundColor: blockKey.edge },
             ]}
           />
           <View

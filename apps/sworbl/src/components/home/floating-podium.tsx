@@ -356,6 +356,7 @@ const styles = StyleSheet.create({
   },
   block: {
     borderRadius: 14,
+    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -409,6 +410,7 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 15,
+    borderCurve: 'continuous',
     backgroundColor: ACCENT,
   },
   rankBadge: {

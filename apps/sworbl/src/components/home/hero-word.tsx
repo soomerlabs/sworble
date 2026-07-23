@@ -48,7 +48,7 @@ function FlipTile({ ch, i, w, h, r, palBg, palEdge, monoBg, monoEdge }: {
   return (
     <Animated.View
       style={[
-        { width: w, height: h, borderRadius: r, alignItems: 'center', justifyContent: 'center' },
+        { width: w, height: h, borderRadius: r, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center' },
         pose,
       ]}>
       <Animated.Text
@@ -107,7 +107,7 @@ export function HeroWord({ theme, deal, played, solved, width }: Props) {
                 style={[
                   styles.heroBlock,
                   {
-                    width: tileW, height: tileH, borderRadius: tileR,
+                    width: tileW, height: tileH, borderRadius: tileR, borderCurve: 'continuous',
                     borderWidth: 2, borderStyle: 'dashed', borderColor: theme.dashed,
                   },
                 ]}

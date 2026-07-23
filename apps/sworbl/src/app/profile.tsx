@@ -259,6 +259,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 11,
+    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -307,6 +308,7 @@ const styles = StyleSheet.create({
   modalBtn: {
     flex: 1,
     borderRadius: 12,
+    borderCurve: 'continuous',
     paddingVertical: 11,
     alignItems: 'center',
   },
@@ -406,6 +408,7 @@ const styles = StyleSheet.create({
     width: 25,
     height: 25,
     borderRadius: 6,
+    borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -459,5 +462,6 @@ const styles = StyleSheet.create({
   },
   gridCell: {
     borderRadius: 5,
+    borderCurve: 'continuous',
   },
 });

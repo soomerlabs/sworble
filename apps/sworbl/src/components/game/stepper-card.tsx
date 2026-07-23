@@ -140,7 +140,7 @@ function ConfettiBit({ c }: { c: (typeof CONFETTI)[number] }) {
         st,
         {
           position: 'absolute', left: '50%', top: '46%',
-          width: c.s, height: c.s, borderRadius: Math.max(1, Math.round(c.s * 0.26)),
+          width: c.s, height: c.s, borderRadius: Math.max(1, Math.round(c.s * 0.26)), borderCurve: 'continuous',
           backgroundColor: pal.bg, boxShadow: `0 1px 0 ${pal.edge}`,
         },
       ]}
@@ -170,7 +170,7 @@ function Chips({ word, red, fly }: { word: string; red?: boolean; fly?: boolean 
               {
                 width: hs,
                 height: hs,
-                borderRadius: Math.round(hs * 0.27),
+                borderRadius: Math.round(hs * 0.27), borderCurve: 'continuous',
                 backgroundColor: red ? '#E5484D' : pal.bg,
                 boxShadow: `0 2px 0 ${red ? '#8C2328' : pal.edge}`,
               },
@@ -241,7 +241,7 @@ export function StepperCard({ width, traceWord, verdict, sworb, countIn, gs = GA
                 key={i}
                 style={[
                   styles.slot,
-                  { width: bs, height: bs * 1.14, borderRadius: Math.round(bs * 0.22) },
+                  { width: bs, height: bs * 1.14, borderRadius: Math.round(bs * 0.22), borderCurve: 'continuous' },
                   pal && !isHint
                     ? { backgroundColor: pal.bg, boxShadow: `0 3px 0 ${pal.edge}` }
                     : isHint
