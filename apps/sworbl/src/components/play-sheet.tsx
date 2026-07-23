@@ -381,7 +381,13 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
               onLongPress={__DEV__ ? () => setPhase('finale') : undefined}
               delayLongPress={600}>
               <View style={styles.clockWrap}>
-                <Text style={[styles.clock, remaining <= 30 && styles.clockLow]}>{clock}</Text>
+                <Text
+                  style={[
+                    styles.clock,
+                    { color: remaining <= 30 ? gs.timerLow : gs.timer },
+                  ]}>
+                  {clock}
+                </Text>
                 {timePop && (
                   <Animated.Text
                     key={timePop.key}

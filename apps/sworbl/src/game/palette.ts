@@ -39,6 +39,8 @@ export interface GameSurface {
   line: string; // dashed ghosts, tracks, knobs (web --line)
   ink: string; // primary text on the game layer
   sub: string; // secondary text
+  timer: string; // the round clock (mint family, per-scheme contrast)
+  timerLow: string; // ≤30s warning
   overlay: string; // count-in / paused dim
 }
 
@@ -52,6 +54,8 @@ export const GAME_DARK: GameSurface = {
   line: '#3A3A44',
   ink: '#EDEFF7',
   sub: '#9DA2B3',
+  timer: '#5FD6A8',
+  timerLow: '#FF8A8E',
   overlay: 'rgba(16,16,20,0.55)',
 };
 
@@ -65,6 +69,8 @@ export const GAME_LIGHT: GameSurface = {
   line: '#D3D6E0',
   ink: '#1F1442',
   sub: '#6E7180',
+  timer: '#1E8A62', // mint family, dark enough to read on #EDEFF7
+  timerLow: '#C43B44',
   overlay: 'rgba(237,239,247,0.6)',
 };
 
