@@ -459,10 +459,13 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   center: {
+    // WEB-PARITY LAYOUT: top-anchored stack (header → score bar → stepper →
+    // board → fan) with a fixed rhythm — never a centered island. Leftover
+    // space collects at the BOTTOM, where the storm lives.
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingBottom: 64, // bias the board ABOVE dead-center (owner: felt low)
+    paddingTop: 6,
   },
   doneWrap: {
     alignItems: 'center',
