@@ -24,6 +24,7 @@ import { StepperCard, type SworbFace } from './stepper-card';
 import { BoardKeyboard } from './board-keyboard';
 import { applyGuess } from '@/game/finale-logic';
 import { getClueAudit } from '@/game/dev-flags';
+import { loadSwaps, saveSwaps, applySwaps, STARVE_REFILLS, type SwapMap } from '@/game/clue-swaps';
 import { DevClueAudit, DevFlash } from './dev-clue-audit';
 import type { FinaleRestore } from './finale';
 
@@ -84,10 +85,26 @@ export function GameBoard({
     onTiles && onTiles(tiles, deal.getQueueIdx());
   }, [tiles]);
 
+  // ---- CLUE SWAPS: the availability guarantee. Starved clues (unfindable
+  // for STARVE_REFILLS consecutive refills) swap for pool extras — blank
+  // pills make the change invisible. Persisted per day; resumes keep it.
+  const [swaps, setSwaps] = useState<SwapMap>(() => loadSwaps(deal.dayKey));
+  const swapsRef = useRef(swaps);
+  swapsRef.current = swaps;
+  const starveRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    saveSwaps(deal.dayKey, swaps);
+  }, [deal.dayKey, swaps]);
+  const core = applySwaps(deal.clues, swaps);
+  // extras: authored pool minus everything already in play or already used
+  const freeExtras = deal.poolExtras.filter(
+    (w) => !core.includes(w) && !Object.values(swaps).includes(w)
+  );
+
   // ---- BONUS WAVES (owner): all current clues caught + time left → 3 more
   // from the authored pool join the hunt. Pure function of `found` — resumes
   // and kills re-derive the same set. The fan grows; catches still pay fuel.
-  const act = activeClues(deal.clues, deal.poolExtras, found);
+  const act = activeClues(core, freeExtras, found);
   const actRef = useRef(act);
   actRef.current = act;
   const prevActLen = useRef(act.length);
@@ -115,6 +132,39 @@ export function GameBoard({
   useEffect(() => {
     saveLadder(deal.dayKey, ladder);
   }, [deal.dayKey, ladder]);
+
+  // after every refill settles: count consecutive-broken refills per unfound
+  // clue; at the threshold, swap it for a pool extra (owner availability rule)
+  const auditStarvation = useCallback(
+    (board: TileT[]) => {
+      const activeNow = applySwaps(deal.clues, swapsRef.current);
+      for (const clue of activeNow) {
+        if (foundRef.current.includes(clue) || playedRef.current.has(clue)) continue;
+        const findable = !!engine.solver.findWord(board, {
+          word: clue, expand: engine.core.expandLetter, diag: true,
+        });
+        if (findable) {
+          starveRef.current[clue] = 0;
+          continue;
+        }
+        const n = (starveRef.current[clue] = (starveRef.current[clue] ?? 0) + 1);
+        if (n >= STARVE_REFILLS) {
+          const replacement = deal.poolExtras.find(
+            (w) =>
+              !activeNow.includes(w) &&
+              !Object.values(swapsRef.current).includes(w) &&
+              !foundRef.current.includes(w) &&
+              !playedRef.current.has(w)
+          );
+          if (replacement) {
+            starveRef.current[clue] = 0;
+            setSwaps((cur) => ({ ...cur, [clue]: replacement }));
+          }
+        }
+      }
+    },
+    [deal]
+  );
 
   // fire the ping at a clue's STARTING tile (compass, not answer).
   // VALIDATED AT GIVE-TIME (owner bug catch): a clue's path can be temporarily
@@ -146,7 +196,7 @@ export function GameBoard({
   // a clue is grantable only if the solver proves it on the LIVE board
   const findableUnfound = useCallback((): string | null => {
     const live = tilesMirror.current.filter((t: TileT) => !clearingMirror.current.has(t.id));
-    for (const clue of deal.clues) {
+    for (const clue of applySwaps(deal.clues, swapsRef.current)) {
       if (foundRef.current.includes(clue)) continue;
       if (engine.solver.findWord(live, { word: clue, expand: engine.core.expandLetter, diag: true }))
         return clue;
@@ -159,7 +209,7 @@ export function GameBoard({
     const clue = findableUnfound();
     if (!clue) return false;
     setFound((cur) => (cur.includes(clue) ? cur : [...cur, clue]));
-    firePing(clue, deal.clues.indexOf(clue));
+    firePing(clue, Math.max(0, applySwaps(deal.clues, swapsRef.current).indexOf(clue)));
     setVerdict({ word: clue.toUpperCase(), ok: true, clue });
     setTimeout(() => setVerdict(null), 1400);
     haptic.good();
@@ -233,7 +283,9 @@ export function GameBoard({
     setLadder((l) => ({ ...l, floorGiven: true }));
     const need = FINALE_FLOOR - foundRef.current.length;
     if (need <= 0) return;
-    const grants = deal.clues.filter((c) => !foundRef.current.includes(c)).slice(0, need);
+    const grants = applySwaps(deal.clues, swapsRef.current)
+      .filter((c) => !foundRef.current.includes(c))
+      .slice(0, need);
     if (grants.length) {
       setFound((cur) => [...cur, ...grants.filter((c) => !cur.includes(c))]);
       haptic.good();
@@ -357,7 +409,9 @@ export function GameBoard({
     // the 3rd-miss FREEBIE (owner): another clue releases mid-guessing —
     // banked as intel (no location claim, so no findability requirement)
     if (out.usedNow === 3 && !ladder.guess3Given) {
-      const clue = deal.clues.find((c) => !foundRef.current.includes(c));
+      const clue = applySwaps(deal.clues, swapsRef.current).find(
+        (c) => !foundRef.current.includes(c)
+      );
       if (clue) {
         setFound((cur) => (cur.includes(clue) ? cur : [...cur, clue]));
         setLadder((l) => ({ ...l, guess3Given: true }));
@@ -444,10 +498,15 @@ export function GameBoard({
             });
             setTiles((cur) => {
               const { tiles: settled, added } = settle(cur.filter((t) => t.id !== a.id), deal.nextLetter);
-              const unfound = deal.clues.filter(
+              const unfound = actRef.current.filter(
                 (c) => !foundRef.current.includes(c) && !playedRef.current.has(c)
               );
-              return restampBroken({ deal, tiles: settled, added, unfound });
+              const caught = actRef.current.filter(
+                (c) => foundRef.current.includes(c) || playedRef.current.has(c)
+              );
+              const out = restampBroken({ deal, tiles: settled, added, unfound, caught });
+              auditStarvation(out);
+              return out;
             });
           }, 285);
         } else if (a && b) {
@@ -496,7 +555,7 @@ export function GameBoard({
           const clue = findableUnfound();
           if (clue) {
             next = { ...next, nudged: clue };
-            firePing(clue, deal.clues.indexOf(clue));
+            firePing(clue, Math.max(0, applySwaps(deal.clues, swapsRef.current).indexOf(clue)));
           }
         }
         // the 7-word free clue: full intel for the guess round
@@ -558,7 +617,9 @@ export function GameBoard({
           const caught = actRef.current.filter(
             (c) => foundRef.current.includes(c) || playedRef.current.has(c)
           );
-          return restampBroken({ deal, tiles: settled, added, unfound, caught });
+          const out = restampBroken({ deal, tiles: settled, added, unfound, caught });
+          auditStarvation(out);
+          return out;
         });
       }, 240 + ids.length * 45);
     },
