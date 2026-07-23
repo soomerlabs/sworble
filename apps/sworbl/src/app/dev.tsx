@@ -239,6 +239,31 @@ export default function DevScreen() {
             </Text>
           </Pressable>
 
+          {/* ---- STORAGE ---- */}
+          <Text style={sectionLabel}>STORAGE</Text>
+          <Pressable
+            onPress={() => {
+              // live round-trip probe: write → read → remove → read → keys()
+              const k = 'sworbl_rn_probe';
+              const stamp = `probe-${Date.now()}`;
+              engine.store.setJSON(k, stamp);
+              const r1 = engine.store.getJSON(k, null);
+              engine.store.remove(k);
+              const r2 = engine.store.getJSON(k, null);
+              const n = engine.store.keys().length;
+              const ok = r1 === stamp && r2 === null;
+              refresh(
+                ok
+                  ? `storage OK — round-trip ✓, ${n} keys, boot #${engine.store.getInt('sworbl_rn_boots', 0)}`
+                  : `STORAGE BROKEN — wrote "${stamp}", read "${String(r1)}", after remove "${String(r2)}"`
+              );
+              if (!ok) haptic.bad();
+            }}
+            style={[styles.actionRow, { backgroundColor: theme.card }]}>
+            <Text style={[styles.actionText, { color: theme.ink }]}>run storage probe</Text>
+            <Text style={[styles.actionGlyph, { color: theme.faint }]}>⚗</Text>
+          </Pressable>
+
           {/* ---- ACTIONS ---- */}
           <Text style={sectionLabel}>ACTIONS</Text>
           <Pressable onPress={restartToday} style={[styles.actionRow, { backgroundColor: theme.card }]}>

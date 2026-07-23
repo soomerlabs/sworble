@@ -13,6 +13,15 @@ SplashScreen.preventAutoHideAsync();
 // storage backing FIRST — everything downstream reads through the engine store
 // (MMKV on native via setBacking; localStorage on web needs no injection)
 initStorage();
+// dev: cross-launch persistence canary — if this number ever fails to climb
+// across cold starts, MMKV is not persisting on this install
+if (__DEV__) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const engine = require('@sworbl/engine').default;
+    engine.store.set('sworbl_rn_boots', (engine.store.getInt('sworbl_rn_boots', 0) || 0) + 1);
+  } catch {}
+}
 // full 135k dictionary swaps in behind the starter — fire-and-forget, off the
 // boot path; validation generosity upgrades within seconds of launch
 setTimeout(() => {
