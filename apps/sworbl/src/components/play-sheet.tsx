@@ -275,7 +275,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
       {phase !== 'idle' && <Storm width={width} height={Math.min(280, height * 0.32)} />}
       <View style={[styles.safe, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.top}>
-          {onBoard && (
+          {onBoard && remaining > 0 && (
             // tap = pause · DEV-ONLY shortcut: long-press → straight to the finale
             // (__DEV__ fence — audit weakness #4: a skip in a one-shot daily is
             // a player-facing integrity hole in release builds)
