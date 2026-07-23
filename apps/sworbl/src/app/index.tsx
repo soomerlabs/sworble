@@ -384,10 +384,25 @@ export default function HomeScreen() {
       {!sheetOpen && (
         <GestureDetector gesture={openDrag}>
           <View style={[styles.dockBand, { height: DOCK_H + insets.bottom }]}>
+            {/* GRADIENT FROST (owner): no native mask packages — thin static
+                slices at rising intensity melt content into the full blur.
+                Every slice is fixed-intensity (the no-animated-blur rule). */}
+            {[
+              { top: 0, h: 14, i: 8 },
+              { top: 14, h: 14, i: 18 },
+              { top: 28, h: 14, i: 28 },
+            ].map((sl) => (
+              <BlurView
+                key={sl.top}
+                intensity={sl.i}
+                tint={theme.mode === 'dark' ? 'dark' : 'light'}
+                style={[styles.dockSlice, { top: sl.top, height: sl.h }]}
+              />
+            ))}
             <BlurView
               intensity={40}
               tint={theme.mode === 'dark' ? 'dark' : 'light'}
-              style={StyleSheet.absoluteFill}
+              style={[styles.dockSlice, { top: 42, bottom: 0 }]}
             />
             <View style={[styles.dockInner, { paddingBottom: Math.max(insets.bottom - 6, 8) }]}>
               <CountdownDock played={played} />
@@ -455,6 +470,11 @@ const styles = StyleSheet.create({
   dockInner: {
     flex: 1,
     justifyContent: 'flex-end',
+  },
+  dockSlice: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
   },
   sheet: {
     position: 'absolute',
