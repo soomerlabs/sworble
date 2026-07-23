@@ -130,17 +130,18 @@ function BootRise({ i, style, children }: {
 }) {
   const p = useSharedValue(0);
   useEffect(() => {
-    // a FAST ripple (owner: the first cut "seemed hesitated") — the whole
-    // cascade lands inside ~half a second
+    // GRACEFUL, not hesitant (owner, twice): starts almost immediately,
+    // sections overlap heavily, and the quint-out curve spends most of its
+    // time easing to rest — silk, but the cascade still lands in ~600ms
     p.value = withDelay(
-      30 + i * 70,
-      withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic) })
+      20 + i * 60,
+      withTiming(1, { duration: 440, easing: Easing.bezier(0.22, 1, 0.36, 1) })
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const pose = useAnimatedStyle(() => ({
     opacity: p.value,
-    transform: [{ translateY: (1 - p.value) * 10 }],
+    transform: [{ translateY: (1 - p.value) * 8 }],
   }));
   return <Animated.View style={[style, pose]}>{children}</Animated.View>;
 }
@@ -576,9 +577,11 @@ export default function HomeScreen() {
   const sStormIn = useSharedValue(0);
   useEffect(() => {
     // the band is the FINALE of the boot choreography (owner): PLAY tiles
-    // and the glow fade in TOGETHER right as the last section lands
-    // (last section starts at 240ms and runs 300ms)
-    sStormIn.value = withDelay(420, withTiming(1, { duration: 380 }));
+    // and the glow fade in TOGETHER, overlapping the last section's landing
+    sStormIn.value = withDelay(340, withTiming(1, {
+      duration: 520,
+      easing: Easing.bezier(0.22, 1, 0.36, 1),
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // RIDE THE STORM UP (owner pick): the aurora is glued to the sheet's top
@@ -591,13 +594,15 @@ export default function HomeScreen() {
     const travel = interpolate(sheetY.value, [0, closedY], [1, 0], Extrapolation.CLAMP);
     const calm = 0.45 + sGlow.value * 0.55; // parked: muted → armed: ignited
     const burn = interpolate(travel, [0, 0.3], [calm, 1], Extrapolation.CLAMP);
-    const settle = interpolate(travel, [0.72, 0.94], [1, 0], Extrapolation.CLAMP);
+    // dissolve EARLIER — the crest hands the screen to the board while the
+    // pull still has momentum (owner: the late overlap smeared)
+    const settle = interpolate(travel, [0.55, 0.8], [1, 0], Extrapolation.CLAMP);
     return {
       opacity: sStormIn.value * burn * settle,
       transform: [
-        // restrained swell for the GLOW field (the 3.2× blob swell would
-        // blow a gradient out) — it stretches down over the emerging board
-        { scale: 1 + sGlow.value * 0.06 + travel * 1.1 },
+        // a crest of light riding the leading edge — brightness carries the
+        // drama; the big stretch smeared hues over the board (owner)
+        { scale: 1 + sGlow.value * 0.06 + travel * 0.35 },
       ],
     };
   }, [closedY]);
@@ -625,7 +630,10 @@ export default function HomeScreen() {
   const gameStyle = useAnimatedStyle(() => ({
     opacity: Math.max(
       sWarm.value * 0.012,
-      interpolate(sheetY.value, [closedY - 60, closedY - 8], [1, 0], Extrapolation.CLAMP)
+      // a LONGER arrival than the frost era's 52px (no blur to pay for now):
+      // the board breathes in under the glow crest instead of popping solid
+      // behind it (owner: the bleed into the gameboard looked bad)
+      interpolate(sheetY.value, [closedY - 140, closedY - 24], [1, 0], Extrapolation.CLAMP)
     ),
   }));
   // (the matched-geometry grabber pill was owner-removed — the ✕ button and
@@ -834,8 +842,11 @@ export default function HomeScreen() {
                 swelling and burning over the emerging board, then settles */}
             <Animated.View
               pointerEvents="none"
-              style={[styles.stormRide, { height: peekH }, stormRideStyle]}>
-              <Storm width={width} height={peekH} zoom={2.2} />
+              style={[styles.stormRide, { height: Math.round(peekH * 1.6) }, stormRideStyle]}>
+              {/* 1.6× the band: the canvas's bottom-melt zone hangs BELOW the
+                  screen at park (lip stays full) and dissolves the glow into
+                  the board mid-pull — no hard stop line (owner) */}
+              <Storm width={width} height={Math.round(peekH * 1.6)} zoom={2.2} />
             </Animated.View>
             {/* the COLLAPSED FACE: swipe-to-play/countdown */}
             <Animated.View

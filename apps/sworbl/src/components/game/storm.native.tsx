@@ -86,14 +86,23 @@ export default function Storm({ width, height = 260 }: {
               </Circle>
             </Group>
           </Group>
-          {/* vertical feather: nothing at the top, full at the bottom edge —
-              the glow BELONGS to the screen's lip, Apple-style */}
+          {/* vertical feather, BOTH edges: nothing at the top, full through
+              the body, melting again at the very bottom. Home mounts the
+              canvas TALLER than the band so the bottom melt sits off-screen
+              at park (the lip stays full) — mid-pull it's what dissolves
+              the glow into the board instead of a hard stop line (owner) */}
           <Rect x={0} y={0} width={width} height={height} blendMode="dstIn">
             <LinearGradient
               start={vec(0, 0)}
               end={vec(0, height)}
-              colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,1)']}
-              positions={[0.06, 0.52, 0.94]}
+              colors={[
+                'rgba(0,0,0,0)',
+                'rgba(0,0,0,0.5)',
+                'rgba(0,0,0,1)',
+                'rgba(0,0,0,1)',
+                'rgba(0,0,0,0)',
+              ]}
+              positions={[0.04, 0.3, 0.5, 0.74, 0.98]}
             />
           </Rect>
         </Group>
