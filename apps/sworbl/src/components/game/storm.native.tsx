@@ -193,7 +193,7 @@ export default function Storm({ width, height = 260 }: {
                 'rgba(0,0,0,1)',
                 'rgba(0,0,0,0)',
               ]}
-              positions={[0.02, 0.34, 0.56, 0.78, 0.99]}
+              positions={[0.02, 0.3, 0.5, 0.86, 0.99]}
             />
           </Rect>
         </Group>

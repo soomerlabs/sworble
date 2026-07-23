@@ -93,19 +93,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
   },
+  // stretched: with BOTH poses absolute, an auto-width face collapses to
+  // zero and takes the children's geometry with it
   face: {
+    alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
   },
-  // left/right pinned: WEB shrinks an absolute view to content width
-  // (native gives it the parent's) — "swipe up to start" wrapped into a
-  // three-line crunch (owner)
+  // pinned on BOTH axes — absolute placement without full insets diverges
+  // between yoga-native and web (the chevron face vanished / the label
+  // crunched); fully determinate = identical everywhere
   pose: {
     position: 'absolute',
+    top: 0,
+    bottom: 0,
     left: 0,
     right: 0,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 2,
   },
   chev: {
