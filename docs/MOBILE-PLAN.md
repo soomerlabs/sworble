@@ -23,6 +23,36 @@ SUCCESS CRITERIA (measurable): 60fps tile cascade on owner's iPhone; swipe-trace
 board is playable in-browser; bundle weight understood (Skia WASM cost known if used).
 FAIL → revisit (RN-shell-around-WebView remains the fallback; nothing lost but 2 days).
 
+### ✅ SPIKE VERDICT: PASSED (2026-07-22, owner-judged on device)
+Built same-day in `~/Developer/Soomer/sworbl-spike-rn` (outside the repo; disposable).
+- Engine transferred BYTE-FOR-BYTE (sworble-core.js + words.js unmodified under Metro);
+  determinism visibly held — dev server and static web export dealt identical boards+refills.
+- Trace: owner verdict "feels good" — after porting the web's FULL tuned system (boardMove +
+  backtrack magnet + predictive defer + transit fix + commit-to-select, constants verbatim,
+  5/5 headless tests) and then WORKLET-IZING it (tier 2: whole hot path on the UI thread,
+  JS only hears haptics/label/commit).
+- Haptics: crescendo ramp (Soft→Heavy with chain length, owner-designed live) — the native itch, scratched.
+- Storm: Skia matched the web recipe 1:1 (goo blur11 + alpha 30/-14 + feBlend + wrap blur12 +
+  haze + radial mask, exact blob geometry/orbits) after plain SVG gradients FAILED the eye test.
+- Web export: 381 KB gz JS + 260 KB fonts, NO WASM (SVG storm on web via .native.js split), ~90 ms local load.
+
+PHASE-2 REQUIREMENTS extracted from the spike (binding):
+1. TIER-2 INPUT ARCHITECTURE: trace/gesture hot path runs as UI-thread worklets writing shared
+   values; Skia/Reanimated render from them; JS thread only receives discrete events. (RN's
+   ceiling beats web's single thread — but only on this architecture.)
+2. Heading math must consume GH velocity normalized to px-per-60Hz-frame — web constants assume
+   60Hz pointer events; raw 120Hz deltas silently halve hlen (this WAS the "feels off").
+3. Never capture big objects in worklet closures (15k-key prefix map froze the board at mount —
+   pass shared-value handles, populate after first paint).
+4. Springs fire from reactions on state CHANGE, never inside per-frame animated-style bodies.
+5. Mid-air tiles are not selectable (web rule; grid admits tiles only after landing).
+6. Commit on onEnd, cleanup on onFinalize (pointercancel parity — stolen touches must not submit).
+7. Platform-split rich visuals via .native.js (Skia) / .js (DOM-CSS or SVG) — zero WASM on web.
+8. Storage: MMKV (native) / localStorage (web) behind the injectable store backing.
+9. Dev builds via Xcode/`expo run:ios` from day one — Expo Go is SDK-version roulette and can't
+   load custom native modules anyway (owner hit this; store Expo Go lagged SDK 57).
+10. Judge boot speed only on Release builds (Debug+Metro is worst-case by construction).
+
 ## Phase 1 — monorepo + engine extraction (~week)
 packages/engine (sworble-core/seed/daily/status/flow/run/solver/store/net + tests, moved) ·
 apps/web (current game, FROZEN — stays deployed as the public validator during the rebuild) ·
