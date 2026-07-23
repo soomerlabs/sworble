@@ -441,13 +441,14 @@ const styles = StyleSheet.create({
   podiumTap: {
     alignSelf: 'stretch',
   },
-  // gentle float: a THIRD of the leftover above the standings, the rest
-  // below (owner round 2: full split was "too much space")
+  // EQUAL springs: the standings sit dead-center of whatever space is left
+  // between the content group and the dock — same breath above and below
+  // (owner round 3: centered beats floated)
   spring: {
-    flexGrow: 0.3,
+    flexGrow: 1,
   },
   springSmall: {
-    flexGrow: 0.7,
+    flexGrow: 1,
   },
   hintSlot: {
     height: 33,
