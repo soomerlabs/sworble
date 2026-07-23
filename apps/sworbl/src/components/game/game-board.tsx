@@ -16,6 +16,7 @@ import { beginW, moveW, type TraceCtx } from '@/game/trace';
 import { haptic } from '@/game/haptics';
 import { loadTokens, saveTokens, type TokenState } from '@/game/hints';
 import { PingRings } from './ping-rings';
+import { StepperCard } from './stepper-card';
 
 interface Props {
   deal: DailyDeal; // the screen owns the deal — resume injects restored state
@@ -304,22 +305,10 @@ export function GameBoard({
     );
   }
 
-  const tracePal = PALETTE[trace.ci] || PALETTE[0];
-
   return (
     <View style={{ alignItems: 'center' }}>
-      <View style={styles.readout}>
-        {verdict ? (
-          <Text style={[styles.readoutText, { color: verdict.ok ? '#5FD6A8' : '#FF8A8E' }]}>
-            {verdict.ok ? `${verdict.word}  +${verdict.pts}` : verdict.word}
-            {verdict.clue ? '  ✦ CLUE' : ''}
-          </Text>
-        ) : trace.word ? (
-          <Text style={[styles.readoutText, { color: tracePal.bg }]}>{trace.word.toUpperCase()}</Text>
-        ) : (
-          <Text style={[styles.readoutText, { color: '#3A3A44' }]}>swipe to spell</Text>
-        )}
-      </View>
+      {/* THE STEPPER (web hopperCard): the strip the traced word builds on */}
+      <StepperCard width={boardW + 24} traceWord={trace.word} verdict={verdict} />
 
       {/* THE BOARD CARD (web boardCardStyle): tiles live ON a card with sunken
           cell wells — not floating on the screen background */}
@@ -389,16 +378,6 @@ export function GameBoard({
 }
 
 const styles = StyleSheet.create({
-  readout: {
-    height: 44,
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  readoutText: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 26,
-    letterSpacing: 2,
-  },
   card: {
     backgroundColor: CARD.bg,
     borderRadius: 20,

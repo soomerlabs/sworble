@@ -4,7 +4,7 @@
 // machine: greens LOCK in place, yellows become dashed amber hints, type-over
 // clears). This component renders slots and forwards keys.
 import React, { useState, useCallback } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
 import Animated, { ZoomIn, FadeIn, SlideInDown } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 import { INK } from '@/game/palette';
@@ -48,8 +48,14 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone 
   const clueTotal = clues.length;
   const len = entry.sworb.length;
   const [rows, setRows] = useState<{ letters: string[]; colors: string[] }[]>(restore?.rows ?? []);
-  const [slots, setSlots] = useState<string[]>(restore?.slots ?? Array(len).fill(''));
-  const [colors, setColors] = useState<(string | null)[]>(restore?.colors ?? Array(len).fill(null));
+  // a restore's slot arrays are only trusted at the right length — the phase-entry
+  // snapshot legitimately carries empty ones (blank-slot bug caught in browser)
+  const [slots, setSlots] = useState<string[]>(
+    restore?.slots?.length === len ? restore.slots : Array(len).fill('')
+  );
+  const [colors, setColors] = useState<(string | null)[]>(
+    restore?.colors?.length === len ? restore.colors : Array(len).fill(null)
+  );
   const [guessesUsed, setGuessesUsed] = useState(restore?.guessesUsed ?? 0);
   const [locked, setLocked] = useState(false);
 
@@ -139,9 +145,12 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone 
   // skips the theater — you're resuming a moment, not re-living the morph.
   const theater = !restore;
   const D = (ms: number) => (theater ? ms : 0);
+  // Reanimated's springified/slide entering animations are incomplete on WEB —
+  // elements strand invisible at their initial state. Native keeps the theater.
+  const E = <T,>(a: T): T | undefined => (Platform.OS === 'web' ? undefined : a);
 
   return (
-    <Animated.View entering={FadeIn.duration(250).delay(D(150))} style={styles.wrap}>
+    <Animated.View entering={E(FadeIn.duration(250).delay(D(150)))} style={styles.wrap}>
       {/* committed rows */}
       {rows.map((r, ri) => (
         <View key={ri} style={styles.row}>
@@ -151,20 +160,20 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone 
       {/* active row (hidden once locked) */}
       {!locked && (
         <Animated.View
-          entering={ZoomIn.springify().mass(0.6).delay(D(380))}
+          entering={E(ZoomIn.springify().mass(0.6).delay(D(380)))}
           style={[styles.row, styles.activeRow]}>
           {slots.map((l, i) => block(l, colors[i], i, true))}
         </Animated.View>
       )}
       {/* guess pips */}
-      <Animated.View entering={FadeIn.delay(D(600))} style={styles.pips}>
+      <Animated.View entering={E(FadeIn.delay(D(600)))} style={styles.pips}>
         {Array.from({ length: 6 }, (_, i) => (
           <View key={i} style={[styles.pip, i < guessesUsed && styles.pipUsed]} />
         ))}
       </Animated.View>
       {/* your intel: the clue fan rides into the finale (candy = found,
           ghosts = the first-letter nudges you didn't catch) */}
-      <Animated.View entering={FadeIn.delay(D(700))}>
+      <Animated.View entering={E(FadeIn.delay(D(700)))}>
         <ClueFan clues={clues} found={found} />
       </Animated.View>
       {/* keyboard — rises row-by-row, keys staggered inside each row */}
@@ -172,12 +181,12 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone 
         {KEYS.map((krow, ki) => (
           <Animated.View
             key={ki}
-            entering={SlideInDown.springify().mass(0.55).damping(14).delay(D(430 + ki * 90))}
+            entering={E(SlideInDown.springify().mass(0.55).damping(14).delay(D(430 + ki * 90)))}
             style={styles.kbRow}>
             {[...krow].map((k, kj) => {
               const wide = k === '⌫' || k === '⏎';
               return (
-                <Animated.View key={k} entering={ZoomIn.delay(D(460 + ki * 90 + kj * 16))}>
+                <Animated.View key={k} entering={E(ZoomIn.delay(D(460 + ki * 90 + kj * 16)))}>
                   <Pressable
                     onPress={() =>
                       k === '⏎' ? submit() : keyIn(k === '⌫' ? engine.daily.BACKSPACE : k.toLowerCase())
