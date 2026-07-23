@@ -227,6 +227,7 @@ export default function HomeScreen() {
     // AUDIT BLOCKER #1: sheetOpen flips false SYNCHRONOUSLY at close-start;
     // closingRef keeps the self-heal's hands off the park spring
     closingRef.current = true;
+    setFrostLive(true); // pre-mount the frost — it must be WARM before landing
     finishClose();
     sheetY.value = withSpring(closedY, PARK_SPRING, () => {
       'worklet';
@@ -357,6 +358,7 @@ export default function HomeScreen() {
   const commitClose = useCallback(() => {
     sheetRef.current?.pauseForClose();
     closingRef.current = true;
+    setFrostLive(true); // pre-mount the frost before the descent lands
     finishClose();
     setTimeout(refreshDay, 300);
   }, [finishClose, refreshDay]);
