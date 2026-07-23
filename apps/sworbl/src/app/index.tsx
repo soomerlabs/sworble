@@ -433,16 +433,17 @@ export default function HomeScreen() {
             if (!sDetent.value) runOnJS(commitBeat)();
             sheetY.value = withSpring(0, { ...OPEN_SPRING, velocity: e.velocityY });
             runOnJS(markOpen)();
-          } else if (risen > 12) {
-            // a real pull that gave up → PLAY melts back NOW
+          } else {
+            // ALWAYS re-park (skipping this for tiny rises left the sheet
+            // frozen a few px off park — owner: "it keeps freezing").
             sheetY.value = withSpring(closedY, { ...PARK_SPRING, velocity: e.velocityY });
-            runOnJS(disarm)();
+            // …but only a REAL pull that gave up disarms. risen ≤ 12 is the
+            // finger lifting off the TRACE itself (a drag across P·L·A·Y
+            // activates the pan, so its lift fires onEnd) — the arm must
+            // survive that lift or the chevron lies over a dead gesture.
+            // The 4s idle timer still melts an unused arm.
+            if (risen > 12) runOnJS(disarm)();
           }
-          // risen ≤ 12: the finger lifting off the TRACE itself (a drag
-          // across P·L·A·Y activates the pan, so its lift fires onEnd) —
-          // the arm must SURVIVE that lift or the chevron lies ("swipe up
-          // to start" over a dead gesture, owner bug). The 4s idle timer
-          // still melts an unused arm.
         }),
     [width, height, closedY, sheetOpen, played, markOpen, traceBeat, nudgeBeat, commitBeat, armSoon, disarm]
   );
