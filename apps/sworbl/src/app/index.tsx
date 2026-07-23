@@ -36,6 +36,7 @@ import { useTheme } from '@/game/theme';
 import { dealDaily } from '@/game/daily';
 import { loadDay, saveSheetOpen, wasSheetOpen, type DayState } from '@/game/persist';
 import { standingsStub, rankFor } from '@/game/standings';
+import { useDayKey } from '@/game/use-day-key';
 import { haptic } from '@/game/haptics';
 
 const SHEET_SPRING = { mass: 0.7, damping: 20, stiffness: 180 };
@@ -46,7 +47,16 @@ const HINT_SLOT_W = [62, 58, 64, 60, 58, 62];
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
   const theme = useTheme();
-  const deal = useMemo(() => dealDaily(), []);
+
+  // DAY ROLLOVER (audit blocker fix): the deal follows the calendar, not the
+  // process lifetime. Policy: never re-deal mid-round — a day flip while the
+  // sheet is open HOLDS yesterday's board until the sheet closes (the round
+  // finishes honestly against yesterday's keys), then the new day arrives.
+  const dayKey = useDayKey();
+  const [activeDayKey, setActiveDayKey] = useState(dayKey);
+  const deal = useMemo(() => dealDaily(), [activeDayKey]);
+
+  // (rollover gate lives below the sheet state — it must see sheetOpen)
 
   // ---- day state (re-read on focus AND on sheet close) ----
   const [day, setDay] = useState<DayState | null>(null);
@@ -83,6 +93,11 @@ export default function HomeScreen() {
   const sheetY = useSharedValue(bootOpen ? 0 : height); // height = closed, 0 = open
   const [sheetOpen, setSheetOpen] = useState(bootOpen); // fully open → home drag off, round armed
   const sheetRef = useRef<PlaySheetHandle>(null);
+
+  // the rollover gate: adopt the new day only while no round is in flight
+  useEffect(() => {
+    if (dayKey !== activeDayKey && !sheetOpen) setActiveDayKey(dayKey);
+  }, [dayKey, activeDayKey, sheetOpen]);
 
   // SELF-HEAL (hot-reload stranding): Reanimated PRESERVES shared values
   // across Fast Refresh while React state resets — a refresh mid-open left
@@ -306,7 +321,13 @@ export default function HomeScreen() {
       {/* THE SHEET — pre-mounted hidden below the screen; drags are pure transform */}
       {deal && (
         <Animated.View style={[styles.sheet, sheetStyle]}>
-          <PlaySheet ref={sheetRef} onClose={closeSheet} active={sheetOpen} closeGesture={closeDrag} />
+          <PlaySheet
+            key={activeDayKey}
+            ref={sheetRef}
+            onClose={closeSheet}
+            active={sheetOpen}
+            closeGesture={closeDrag}
+          />
         </Animated.View>
       )}
     </View>
