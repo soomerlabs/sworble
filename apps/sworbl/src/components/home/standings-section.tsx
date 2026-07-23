@@ -3,9 +3,9 @@
 // empty-field line, wrapped in the data-arrival fade. Extracted from home
 // (the index god-file split); pure display.
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
-import { SymbolView } from 'expo-symbols';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { Icon } from '@/components/icon';
 
 import { Arrive } from '@/components/arrive';
 import { FloatingPodium } from '@/components/home/floating-podium';
@@ -33,11 +33,7 @@ export function StandingsSection({ theme, entries, standings, hasYou, devCount }
           onPress={() => router.push('/leaderboard')}
           hitSlop={10}
           style={[styles.chartBtn, { backgroundColor: theme.card }]}>
-          {Platform.OS === 'ios' ? (
-            <SymbolView name={'chart.line.uptrend.xyaxis' as never} size={16} tintColor="#8971FF" />
-          ) : (
-            <Text style={styles.chartGlyph}>↗</Text>
-          )}
+          <Icon name="chart" size={16} color="#8971FF" />
         </Pressable>
       </View>
       <Arrive ready={entries.length > 0} style={styles.arriveWrap}>
@@ -95,11 +91,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  chartGlyph: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 15,
-    color: '#8971FF',
   },
   fieldAwait: {
     fontFamily: 'Fredoka_600SemiBold',

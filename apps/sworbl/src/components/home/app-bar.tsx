@@ -2,17 +2,10 @@
 // Brand sits at the same offset as the sheet's — the "uniting logos" dock
 // animation is positional, keep them aligned when touching either.
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
-import { SymbolView } from 'expo-symbols';
+import { View, Pressable, StyleSheet } from 'react-native';
+import { Icon } from '@/components/icon';
 import { Brand } from '@/components/brand';
 import { type Theme } from '@/game/theme';
-
-function BarIcon({ name, fallback, color }: { name: string; fallback: string; color: string }) {
-  if (Platform.OS === 'ios') {
-    return <SymbolView name={name as never} size={23} tintColor={color} />;
-  }
-  return <Text style={{ fontSize: 20, color }}>{fallback}</Text>;
-}
 
 interface Props {
   theme: Theme;
@@ -24,11 +17,11 @@ export function AppBar({ theme, onPerson, onSettings }: Props) {
   return (
     <View style={styles.bar}>
       <Pressable onPress={onPerson} hitSlop={8} style={styles.side}>
-        <BarIcon name="person.fill" fallback="◍" color={theme.icon} />
+        <Icon name="person" size={23} color={theme.icon} />
       </Pressable>
       <Brand ink={theme.ink} />
       <Pressable onPress={onSettings} hitSlop={8} style={[styles.side, styles.right]}>
-        <BarIcon name="gearshape.fill" fallback="⚙" color={theme.icon} />
+        <Icon name="settings" size={23} color={theme.icon} />
       </Pressable>
     </View>
   );

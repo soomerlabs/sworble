@@ -2,8 +2,8 @@
 // the day is complete, the score docks at the title's right edge and IS the
 // share button (owner: "right edge, put the score... we need a way to share").
 import React from 'react';
-import { Text, Pressable, StyleSheet, Platform, View } from 'react-native';
-import { SymbolView } from 'expo-symbols';
+import { Text, Pressable, StyleSheet, View } from 'react-native';
+import { Icon } from '@/components/icon';
 import { ScreenHeader } from '@/components/screen-header';
 import { type Theme, ACCENT } from '@/game/theme';
 import { puzzleNo } from '@/game/share';
@@ -34,21 +34,13 @@ export function DateHeader({ theme, dayKey, score, streak, onShare, onInfo }: Pr
           <Pressable onPress={onShare} hitSlop={10} style={styles.scoreTap}>
             <Text style={[styles.score, { color: theme.ink }]}>{score.toLocaleString()}</Text>
             <View style={styles.shareRow}>
-              {Platform.OS === 'ios' ? (
-                <SymbolView name={'square.and.arrow.up' as never} size={11} tintColor={ACCENT} />
-              ) : (
-                <Text style={styles.shareGlyph}>↗</Text>
-              )}
+              <Icon name="share" size={11} color={ACCENT} />
               <Text style={styles.shareText}>share</Text>
             </View>
           </Pressable>
         ) : onInfo ? (
           <Pressable onPress={onInfo} hitSlop={12} style={[styles.infoChip, { backgroundColor: theme.card }]}>
-            {Platform.OS === 'ios' ? (
-              <SymbolView name={'info' as never} size={14} tintColor={ACCENT} />
-            ) : (
-              <Text style={styles.infoGlyph}>i</Text>
-            )}
+            <Icon name="info" size={14} color={ACCENT} />
           </Pressable>
         ) : undefined
       }
@@ -72,10 +64,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
   },
-  shareGlyph: {
-    fontSize: 11,
-    color: ACCENT,
-  },
   shareText: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 10.5,
@@ -87,10 +75,5 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  infoGlyph: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 14,
-    color: ACCENT,
   },
 });

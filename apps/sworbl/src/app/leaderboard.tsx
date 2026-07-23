@@ -131,7 +131,7 @@ export default function LeaderboardScreen() {
       {/* the home screen's drifting candy tiles — every screen breathes (owner) */}
       <Floaters width={dims.width} height={dims.height} />
       <SafeAreaView style={styles.safe}>
-        <ScreenBar theme={theme} action={{ symbol: 'square.and.arrow.up', fallback: '↗', onPress: share }} />
+        <ScreenBar theme={theme} action={{ icon: 'share', onPress: share }} />
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             <ScreenHeader
               theme={theme}

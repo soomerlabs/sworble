@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { SymbolView } from 'expo-symbols';
+import { Icon } from '@/components/icon';
 import { router } from 'expo-router';
 
 import { ScreenBar } from '@/components/screen-bar';
@@ -83,11 +83,7 @@ export default function ProfileScreen() {
             title={name.toLowerCase()}
             titleAdornment={
               <Pressable onPress={openEdit} hitSlop={12} style={styles.pencilBtn}>
-                {Platform.OS === 'ios' ? (
-                  <SymbolView name={'pencil' as never} size={15} tintColor={theme.faint} />
-                ) : (
-                  <Text style={[styles.pencilGlyph, { color: theme.faint }]}>✎</Text>
-                )}
+                <Icon name="pencil" size={15} color={theme.faint} />
               </Pressable>
             }
             right={
@@ -275,9 +271,6 @@ const styles = StyleSheet.create({
   pencilBtn: {
     alignSelf: 'center',
     paddingBottom: 4, // optically centers against the title's baseline
-  },
-  pencilGlyph: {
-    fontSize: 15,
   },
   modalScrim: {
     flex: 1,
