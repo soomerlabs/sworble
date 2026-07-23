@@ -28,8 +28,8 @@ export function CountdownDock({ played }: { played: boolean }) {
     bob.value = withRepeat(withTiming(1, { duration: 850, easing: Easing.inOut(Easing.sin) }), -1, true);
   }, []);
   const bobStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: bob.value * -7 }],
-    opacity: 0.55 + bob.value * 0.45,
+    transform: [{ translateY: bob.value * -4 }],
+    opacity: 0.6 + bob.value * 0.4,
   }));
 
   return (
@@ -41,8 +41,9 @@ export function CountdownDock({ played }: { played: boolean }) {
         </>
       ) : (
         <>
-          <Animated.Text style={[styles.chev, bobStyle]}>︿</Animated.Text>
-          <Text style={styles.swipeLabel}>swipe to play</Text>
+          {/* drag INDICATOR, not an arrow (owner) — the sheet idiom's pill */}
+          <Animated.View style={[styles.pill, bobStyle]} />
+          <Text style={styles.swipeLabel}>swipe up to play</Text>
         </>
       )}
     </View>
@@ -54,11 +55,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
   },
-  chev: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 26,
-    color: '#8971FF',
-    lineHeight: 30,
+  pill: {
+    width: 38,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#8971FF',
+    marginBottom: 7,
   },
   swipeLabel: {
     fontFamily: 'Fredoka_600SemiBold',

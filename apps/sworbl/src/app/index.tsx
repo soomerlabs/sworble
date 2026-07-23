@@ -44,7 +44,14 @@ import { getPlayerName } from '@/game/player';
 import { useDayKey } from '@/game/use-day-key';
 import { haptic } from '@/game/haptics';
 
-const SHEET_SPRING = { mass: 0.7, damping: 20, stiffness: 180 };
+// MOTION (owner: "as smooth as humanly possible"):
+// · OPEN spring: lively, finishes crisp — the game arriving
+// · PARK spring: overdamped — the sheet settles onto the peek with zero
+//   bounce (a bounce there fights the face crossfade and reads as jitter)
+// · every release INHERITS the finger's velocity — the spring continues the
+//   throw instead of restarting from rest (the dead-hand-off fix)
+const OPEN_SPRING = { mass: 0.8, damping: 24, stiffness: 210 };
+const PARK_SPRING = { mass: 0.9, damping: 32, stiffness: 200 };
 
 const twistLabel = (a: string) => ARCHETYPE_LABEL[a] ?? null;
 
@@ -187,7 +194,7 @@ export default function HomeScreen() {
     // if it waits for the animation, the arm effect re-fires and the count-in
     // restarts invisibly behind the closed sheet, burning the round
     setSheetOpen(false);
-    sheetY.value = withTiming(closedY, { duration: 260 }, (fin) => {
+    sheetY.value = withSpring(closedY, PARK_SPRING, (fin) => {
       'worklet';
       if (fin) runOnJS(finishClose)();
     });
@@ -219,10 +226,10 @@ export default function HomeScreen() {
           'worklet';
           const risen = closedY - sheetY.value;
           if (risen > height * 0.22 || e.velocityY < -900) {
-            sheetY.value = withSpring(0, SHEET_SPRING);
+            sheetY.value = withSpring(0, { ...OPEN_SPRING, velocity: e.velocityY });
             runOnJS(markOpen)();
           } else {
-            sheetY.value = withTiming(closedY, { duration: 200 });
+            sheetY.value = withSpring(closedY, { ...PARK_SPRING, velocity: e.velocityY });
           }
         }),
     [height, closedY, sheetOpen, played, markOpen]
@@ -232,6 +239,7 @@ export default function HomeScreen() {
   // COMMITS (owner: an aborted swipe-down must not restart the count-in —
   // the round simply never stopped). A mid-drag glimpse can't be traced, so
   // fairness holds.
+  const parkBeat = useCallback(() => haptic.soft(), []);
   const commitClose = useCallback(() => {
     sheetRef.current?.pauseForClose();
     finishClose();
@@ -254,10 +262,13 @@ export default function HomeScreen() {
             // commit: deactivate NOW (blocker #1 — never let the arm effect
             // re-fire while the sheet slides away)
             runOnJS(commitClose)();
-            sheetY.value = withTiming(closedY, { duration: 220 });
+            sheetY.value = withSpring(closedY, { ...PARK_SPRING, velocity: e.velocityY }, (fin) => {
+              'worklet';
+              if (fin) runOnJS(parkBeat)(); // the soft "docked at the peek" tap
+            });
           } else {
             // abort: the round never paused — the sheet just springs back
-            sheetY.value = withSpring(0, SHEET_SPRING);
+            sheetY.value = withSpring(0, { ...OPEN_SPRING, velocity: e.velocityY });
           }
         }),
     [height, closedY, sheetOpen, commitClose]
@@ -277,10 +288,10 @@ export default function HomeScreen() {
   // the collapsed FACE (frost + swipe-to-play) and the GAME crossfade as the
   // sheet travels — single-layer opacities, compositing-cheap
   const faceStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(sheetY.value, [closedY - 90, closedY - 10], [0, 1], Extrapolation.CLAMP),
+    opacity: interpolate(sheetY.value, [closedY - 160, closedY - 24], [0, 1], Extrapolation.CLAMP),
   }));
   const gameStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(sheetY.value, [closedY - 150, closedY - 40], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(sheetY.value, [closedY - 260, closedY - 90], [1, 0], Extrapolation.CLAMP),
   }));
 
   const wordLen = deal?.sworb.length ?? 5;
@@ -435,7 +446,18 @@ export default function HomeScreen() {
           peek face and the game crossfade during travel. */}
       {deal && (
         <GestureDetector gesture={openDrag}>
-          <Animated.View style={[styles.sheet, sheetStyle]}>
+          <Animated.View
+            style={[
+              styles.sheet,
+              sheetStyle,
+              {
+                boxShadow:
+                  theme.mode === 'dark'
+                    ? '0 -12px 40px rgba(0,0,0,0.55)'
+                    : '0 -12px 36px rgba(31,20,66,0.28)',
+              },
+            ]}>
+            <View style={styles.sheetClip}>
             {/* the GAME layer (opaque) — transparent at peek so the frost
                 below can sample home */}
             <Animated.View style={[styles.gameLayer, gameStyle]}>
@@ -456,6 +478,7 @@ export default function HomeScreen() {
                 <CountdownDock played={played} />
               </View>
             </Animated.View>
+            </View>
           </Animated.View>
         </GestureDetector>
       )}
@@ -493,16 +516,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
+  // shadow lives on the OUTER (unclipped) layer — overflow:hidden on the
+  // same node would swallow it; the inner sheetClip owns the radius mask
   sheet: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    overflow: 'hidden',
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     zIndex: 20,
+  },
+  sheetClip: {
+    flex: 1,
+    overflow: 'hidden',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
   },
   gameLayer: {
     ...{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
