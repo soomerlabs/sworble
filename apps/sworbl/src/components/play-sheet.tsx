@@ -189,6 +189,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
       tiles: boardTilesRef.current.map(({ id, letter, col, row, ci, boost }) => ({ id, letter, col, row, ci, boost })),
       queueIdx: queueIdxRef.current,
       score, found,
+      words: wordsRef.current,
       boardElapsedMs: clockElapsedMs(clockRef.current, Date.now()),
       earnedMs: clockRef.current.earnedMs,
       guessesUsed: 0, rows: [], slots: [], colors: [],
@@ -203,7 +204,13 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
 
   // every spelled word: superlatives feed + the TIME-FUEL grant (engine-decided,
   // cap-clipped so base + earned never exceeds the Seven)
-  const wordsRef = useRef<BestWord[]>([]);
+  const doneTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (doneTimer.current) clearTimeout(doneTimer.current); }, []);
+
+  // ================= BUG 1 fix: superlatives ride the snapshot =================
+  // every spelled word persists with the run — a kill mid-hunt must not
+  // amnesia the recap/stats word list (score kept it; the words vanished)
+  const wordsRef = useRef<BestWord[]>(boot?.run?.words ?? []);
   const onWordSpelled = useCallback((word: string, pts: number, caughtClue: boolean) => {
     wordsRef.current.push({ word, pts });
     const { clock, grantMs } = clockGrant(
@@ -235,6 +242,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
         tiles: boardTilesRef.current.map(({ id, letter, col, row, ci, boost }) => ({ id, letter, col, row, ci, boost })),
         queueIdx: queueIdxRef.current,
         score, found,
+        words: wordsRef.current,
         boardElapsedMs: clockEffSecs(clockRef.current, CT) * 1000,
         earnedMs: clockRef.current.earnedMs,
         guessesUsed: s.guessesUsed, rows: s.rows, slots: s.slots, colors: s.colors,
@@ -316,11 +324,15 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
           wordsRef.current
         );
       }
-      // owner loop: solved or failed, the sheet CLOSES — home is the reveal
-      // (candy answer, score, superlatives). The in-sheet 'done' view remains
-      // only for consumed-day boots ("see result ›").
-      setPhase('done');
-      onClose();
+      // owner loop: solved or failed, the sheet CLOSES — home is the reveal.
+      // The close WAITS for the celebration beat (confetti / quick fail exit),
+      // but the day above is already banked — a kill during the theater
+      // restores to a locked, finished day (kill-window fix #2).
+      const beat = r.solved ? 1600 : 800;
+      doneTimer.current = setTimeout(() => {
+        setPhase('done');
+        onClose();
+      }, beat);
     },
     [deal, score, found, onClose]
   );

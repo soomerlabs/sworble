@@ -305,10 +305,10 @@ export function GameBoard({
       } else {
         haptic.bad();
       }
-      setTimeout(
-        () => fin.onDone({ solved, guessesUsed: out.usedNow, bonus: solved ? out.bonus : 0 }),
-        solved ? 1500 : 700 // confetti beat vs a quick exit (owner: fail → just close)
-      );
+      // BANK IMMEDIATELY (kill-window fix): the result is committed the
+      // instant it's decided — the celebration that follows is pure theater
+      // over an already-locked day. The sheet owns the close delay.
+      fin.onDone({ solved, guessesUsed: out.usedNow, bonus: solved ? out.bonus : 0 });
       return;
     }
     setFSlots(out.slots);

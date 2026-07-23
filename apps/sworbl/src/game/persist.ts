@@ -107,6 +107,7 @@ export interface RunSnap {
   queueIdx: number;
   score: number;
   found: string[];
+  words?: BestWord[]; // spelled-word history — superlatives survive kills
   boardElapsedMs: number;
   earnedMs: number; // time-fuel bank — rides the snapshot so resumes keep it
   // finale-phase carry (empty while live):
@@ -125,7 +126,7 @@ export function loadRun(dayKey: string): RunSnap | null {
   if (!s || s.client !== 'rn' || s.v !== RN_RUN_V || s.day !== dayKey) return null;
   if (!Array.isArray(s.tiles) || !s.tiles.length) return null;
   if (s.phase !== 'live' && s.phase !== 'finale') return null;
-  return { ...s, earnedMs: Number(s.earnedMs) || 0 };
+  return { ...s, earnedMs: Number(s.earnedMs) || 0, words: Array.isArray(s.words) ? s.words : [] };
 }
 
 export function clearRun(dayKey: string): void {

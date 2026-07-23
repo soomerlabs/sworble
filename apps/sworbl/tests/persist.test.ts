@@ -60,6 +60,18 @@ assert.strictEqual(loadRun(day), null, 'foreign-client snapshot rejected');
 engine.store.setJSON(engine.store.K.RUN_PREFIX + day, snap({ tiles: [] }));
 assert.strictEqual(loadRun(day), null, 'tile-less snapshot rejected');
 
+// ---- kill-window fix #1: the spelled-word history rides the snapshot ----
+clearRun(day);
+saveRun(snap({ words: [{ word: 'quartz', pts: 110 }] }));
+assert.deepStrictEqual(
+  loadRun(day)?.words,
+  [{ word: 'quartz', pts: 110 }],
+  'superlatives survive a kill via the snapshot'
+);
+clearRun(day);
+saveRun(snap({}));
+assert.deepStrictEqual(loadRun(day)?.words, [], 'legacy snapshots (no words) load as empty history');
+
 // ---- sheet-open restoration flag: day-keyed, stale flags self-clean ----
 saveSheetOpen(day);
 assert.strictEqual(wasSheetOpen(day), true, 'same-day flag restores the sheet');
