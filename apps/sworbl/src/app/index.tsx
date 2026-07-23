@@ -101,10 +101,12 @@ export default function HomeScreen() {
     setSheetOpen(true);
     haptic.soft(); // the dock beat — launching the game from the bottom
   }, []);
+  // a CONSUMED day is closed for business (owner): the dock is just the
+  // countdown — the swipe doesn't react, the sheet never opens again
   const openDrag = useMemo(
     () =>
       Gesture.Pan()
-        .enabled(!sheetOpen)
+        .enabled(!sheetOpen && !played)
         .minDistance(12)
         .onUpdate((e) => {
           'worklet';
@@ -122,7 +124,7 @@ export default function HomeScreen() {
             sheetY.value = withTiming(height, { duration: 200 });
           }
         }),
-    [height, sheetOpen, markOpen]
+    [height, sheetOpen, played, markOpen]
   );
 
   // close drag (home owns sheetY): the round pauses ONLY when the close
