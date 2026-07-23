@@ -542,7 +542,10 @@ export default function HomeScreen() {
               (owner: not the whole section, "just that button haha") */}
           <View style={styles.standingsWrap}>
             <View style={styles.standingsHead}>
-              <Text style={[styles.standingsTitle, { color: theme.sub }]}>standings</Text>
+              <Text style={[styles.standingsTitle, { color: theme.sub }]}>
+                standings
+                {__DEV__ ? `  ·  ${entries.length} in field` : ''}
+              </Text>
               <Pressable
                 onPress={() => router.push('/leaderboard')}
                 hitSlop={10}
