@@ -37,8 +37,12 @@ create trigger submissions_bump_alltime
   after insert or update of score on public.submissions
   for each row execute function public.bump_alltime();
 
--- daily standings carry the mode so the boards can split
-create or replace view public.daily_standings as
+-- daily standings carry the mode so the boards can split.
+-- DROP first: CREATE OR REPLACE can only APPEND view columns — inserting
+-- mode before rank reads as a rename and errors (42P16). Views hold no
+-- data; dropping is free.
+drop view if exists public.daily_standings;
+create view public.daily_standings as
   select s.day, s.player_id, p.name, s.score, s.solved, s.mode,
          rank() over (partition by s.day, s.mode order by s.score desc) as rank
   from public.submissions s
