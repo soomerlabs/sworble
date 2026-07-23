@@ -7,6 +7,7 @@
 // here now. Swipe or tap the dots to flip.
 import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet, type LayoutChangeEvent } from 'react-native';
+import { router } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { type Theme, ACCENT, ACCENT_EDGE, CLUE_GREEN, CLUE_GREEN_EDGE } from '@/game/theme';
@@ -17,6 +18,7 @@ interface Props {
   bestWords: BestWord[]; // top-5 by pts (persisted superlatives)
   foundClues: string[]; // clue words the player caught
   clues: string[]; // the full clue set for the day
+  totalWords?: number; // full day count → the '+N more' door to /words
 }
 
 function Pill({
@@ -54,7 +56,7 @@ function Pill({
   );
 }
 
-export function SuperlativesPager({ theme, bestWords, foundClues, clues }: Props) {
+export function SuperlativesPager({ theme, bestWords, foundClues, clues, totalWords = 0 }: Props) {
   const [page, setPage] = useState(0);
   // BOTH pages stay mounted, absolutely stacked; the container holds the
   // TALLER page's measured height — cycling can never shift the layout
@@ -104,6 +106,13 @@ export function SuperlativesPager({ theme, bestWords, foundClues, clues }: Props
                 <Text style={[styles.emptyLine, { color: theme.sub }]}>
                   nothing landed today
                 </Text>
+              )}
+              {totalWords > bestWords.length && (
+                <Pressable onPress={() => router.push('/words')} hitSlop={8} style={styles.moreTap}>
+                  <Text style={styles.moreText}>
+                    +{totalWords - bestWords.length} more ›
+                  </Text>
+                </Pressable>
               )}
             </View>
           </Animated.View>
@@ -179,6 +188,15 @@ const styles = StyleSheet.create({
   pillPts: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 12,
+  },
+  moreTap: {
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  moreText: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 13.5,
+    color: ACCENT,
   },
   emptyLine: {
     fontFamily: 'Fredoka_600SemiBold',

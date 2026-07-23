@@ -41,7 +41,7 @@ import { PALETTE, INK, tileColorFor, gameSurface } from '@/game/palette';
 import { useTheme } from '@/game/theme';
 import { dealDaily, getDevDay } from '@/game/daily';
 import { getDiagnostics } from '@/game/dev-flags';
-import { loadDay, saveSheetOpen, wasSheetOpen, getResetNonce, type DayState } from '@/game/persist';
+import { loadDay, saveSheetOpen, wasSheetOpen, getResetNonce, loadDayWords, type DayState } from '@/game/persist';
 import { standingsStub, rankFor, type LbEntry } from '@/game/standings';
 import { loadStats, streakDays } from '@/game/stats';
 import { buildShareText } from '@/game/share';
@@ -646,6 +646,7 @@ export default function HomeScreen() {
               bestWords={day?.bestWords ?? []}
               foundClues={day?.found ?? []}
               clues={deal.clues}
+              totalWords={loadDayWords(deal.dayKey).length}
             />
             </View>
           )}
