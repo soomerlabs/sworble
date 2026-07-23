@@ -157,6 +157,7 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, flight, nope, nope
 
   // lit: 0 mono · 1 chain · 2 head; dimmed while a chain is lit elsewhere
   const sLit = useSharedValue(0);
+  const sLitBlend = useSharedValue(0); // 0 mono → 1 candy, 90ms (owner: soften the snap)
   const sDim = useSharedValue(1);
   const liftY = useSharedValue(0);
   const headScale = useSharedValue(1);
@@ -173,6 +174,7 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, flight, nope, nope
       if (cur === prev) return;
       const lit = cur === 1 || cur === 2 ? cur : 0;
       sLit.value = lit;
+      sLitBlend.value = withTiming(lit ? 1 : 0, { duration: 90 });
       // web: the recede is EASED (opacity 0.25s), never a snap
       sDim.value = withTiming(cur === 3 ? 0.9 : 1, { duration: 250 });
       liftY.value = withTiming(
@@ -197,7 +199,7 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, flight, nope, nope
   // the red BLENDS in and drains out (web rjArrive/rjDrainOut are color
   // transitions) — the old `> 0.5` test snapped mid-drain, the reported jank
   const ledgeStyle = useAnimatedStyle(() => {
-    const rest = sLit.value ? pal.edge : gs.mono.edge;
+    const rest = interpolateColor(sLitBlend.value, [0, 1], [gs.mono.edge, pal.edge]);
     const base =
       sRed.value > 0
         ? interpolateColor(sNopeBase.value, [0, 1], [pal.edge, gs.mono.edge])
@@ -209,7 +211,7 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, flight, nope, nope
     };
   });
   const faceStyle = useAnimatedStyle(() => {
-    const rest = sLit.value ? pal.bg : gs.mono.bg;
+    const rest = interpolateColor(sLitBlend.value, [0, 1], [gs.mono.bg, pal.bg]);
     const base =
       sRed.value > 0 ? interpolateColor(sNopeBase.value, [0, 1], [pal.bg, gs.mono.bg]) : rest;
     return {
@@ -218,7 +220,7 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, flight, nope, nope
     };
   });
   const letterStyle = useAnimatedStyle(() => {
-    const rest = sLit.value ? INK : gs.monoInk;
+    const rest = interpolateColor(sLitBlend.value, [0, 1], [gs.monoInk, INK]);
     const base =
       sRed.value > 0 ? interpolateColor(sNopeBase.value, [0, 1], [INK, gs.monoInk]) : rest;
     return {

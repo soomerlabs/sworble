@@ -6,7 +6,7 @@
 // fading tiles — the player never leaves the board.
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { PALETTE, INK, GAME_DARK, type GameSurface } from '@/game/palette';
 
 interface Props {
@@ -102,7 +102,11 @@ export function BoardKeyboard({ gs = GAME_DARK, size, gap, full, onKey, onBacksp
   );
 
   return (
-    <Animated.View entering={FadeIn.duration(280)} style={[StyleSheet.absoluteFill, styles.grid]}>
+    <Animated.View
+      // AFTER the letters have dimmed (owner: 00:00 slammed everything at
+      // once) — a beat, then the keys rise in
+      entering={FadeInDown.delay(260).duration(340)}
+      style={[StyleSheet.absoluteFill, styles.grid]}>
       {rows}
     </Animated.View>
   );

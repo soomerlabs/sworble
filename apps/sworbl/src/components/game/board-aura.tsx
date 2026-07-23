@@ -50,9 +50,11 @@ export function BoardAura({ w, h, state, boardBg }: {
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
+  // quieter than the handoff's web numbers (owner: "cool vibe... not
+  // distracting"): lower ceiling, shallower swell
   const breath = useAnimatedStyle(() => ({
-    opacity: 0.55 + t.value * 0.35,
-    transform: [{ scale: 0.98 + t.value * 0.12 }],
+    opacity: 0.35 + t.value * 0.25,
+    transform: [{ scale: 0.99 + t.value * 0.08 }],
   }));
 
   const spin = useSharedValue(0);

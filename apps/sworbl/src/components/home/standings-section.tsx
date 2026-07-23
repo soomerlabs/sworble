@@ -45,12 +45,9 @@ export function StandingsSection({ theme, entries, standings, hasYou, devCount }
           showFoot={false}
         />
         {standings.podium.length === 0 ? (
-          // TRULY EMPTY field (audit): the ghost podium already says it —
-          // piling dashed rows + a ghost-you underneath tripled the message
-          // and walled the screen in wireframe
-          <Text style={[styles.fieldAwait, { color: theme.faint }]}>
-            first scores land here today
-          </Text>
+          // TRULY EMPTY field: the ghost podium says it alone (owner cut
+          // the caption too)
+          null
         ) : (
           <StandingsList
             theme={theme}
