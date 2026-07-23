@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   content: {
     paddingHorizontal: 18,
-    paddingTop: 16,
+    paddingTop: 14, // IDENTICAL header position on every screen
     paddingBottom: 28,
     gap: 20,
   },

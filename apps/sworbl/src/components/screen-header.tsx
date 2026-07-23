@@ -24,9 +24,11 @@ export function ScreenHeader({ theme, eyebrow, title, titleAccent, right }: Prop
           <Text style={[styles.big, { color: theme.ink }]}>{title}</Text>
           {!!titleAccent && <Text style={[styles.big, { color: ACCENT }]}>{titleAccent}</Text>}
         </View>
-        {right && <View style={styles.right}>{right}</View>}
       </View>
       <View style={[styles.hairline, { backgroundColor: theme.hairline }]} />
+      {/* the right slot floats ABSOLUTE — its content can NEVER move the
+          hairline (owner: headers must be IDENTICAL across screens) */}
+      {right && <View style={styles.right}>{right}</View>}
     </View>
   );
 }
@@ -42,10 +44,9 @@ const styles = StyleSheet.create({
     letterSpacing: 2.5,
   },
   line: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: 10,
+    minHeight: 36, // the ONE line height — every screen's hairline lands
+    // at exactly eyebrow + 36 + 11, no exceptions
+    justifyContent: 'flex-end',
   },
   titleRow: {
     flexDirection: 'row',
@@ -53,6 +54,7 @@ const styles = StyleSheet.create({
     gap: 9,
     flexShrink: 1,
     flexWrap: 'wrap',
+    paddingRight: 96, // clears the floating right slot
   },
   big: {
     fontFamily: 'Fredoka_600SemiBold',
@@ -60,8 +62,10 @@ const styles = StyleSheet.create({
     lineHeight: 36,
   },
   right: {
+    position: 'absolute',
+    right: 0,
+    bottom: 15, // rides just above the hairline, outside the flow
     alignItems: 'flex-end',
-    paddingBottom: 2,
   },
   hairline: {
     height: 1.5,

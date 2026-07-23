@@ -55,7 +55,8 @@ import { haptic } from '@/game/haptics';
 //   bounce (a bounce there fights the face crossfade and reads as jitter)
 // · every release INHERITS the finger's velocity — the spring continues the
 //   throw instead of restarting from rest (the dead-hand-off fix)
-const OPEN_SPRING = { mass: 0.7, damping: 26, stiffness: 270 }; // snappier (owner)
+const OPEN_SPRING = { mass: 0.7, damping: 29, stiffness: 270 }; // overdamped —
+// the open lands DEAD FLAT (owner: no bounce), snap comes from stiffness
 // park got its bounce back (owner: "like it took the hit") — one soft
 // overshoot, plus the landing squash below
 const PARK_SPRING = { mass: 0.9, damping: 25, stiffness: 210 };
@@ -237,45 +238,59 @@ export default function HomeScreen() {
 
   // a CONSUMED day is closed for business (owner): the dock is just the
   // countdown — the swipe doesn't react, the sheet never opens again
+  const traceIdle = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const traceBeat = useCallback(
+    (n: number) => {
+      haptic.tick(n + 1);
+      // partial progress persists briefly (taps accumulate); idle melts it
+      if (traceIdle.current) clearTimeout(traceIdle.current);
+      if (n < 3) {
+        traceIdle.current = setTimeout(() => {
+          sLit.value = 0;
+        }, 1600);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+  const playRowLeft = (width - PLAY_ROW_W) / 2;
+  // TRACE TO PLAY is THE way in (owner: swipe disabled until you trace) —
+  // the band pan only lights P·L·A·Y under the finger; the fourth launches.
   const openDrag = useMemo(
     () =>
       Gesture.Pan()
         .enabled(!sheetOpen && !played)
-        .minDistance(12)
-        .onUpdate((e) => {
+        .minDistance(4)
+        .onBegin((e) => {
           'worklet';
-          // the sheet's TOP EDGE rides the finger itself (absoluteY), not the
-          // translation — otherwise the sheet trails far below the thumb
-          sheetY.value = Math.min(closedY, Math.max(0, e.absoluteY));
-          const past = closedY - sheetY.value > height * 0.22 ? 1 : 0;
-          if (past !== sDetent.value) {
-            sDetent.value = past;
-            if (past) runOnJS(detentIn)();
-            else runOnJS(detentOut)();
+          // touch-DOWN lights the tile under the finger (taps respond)
+          const idx = Math.floor((e.absoluteX - playRowLeft) / (PLAY_TILE + PLAY_GAP));
+          if (idx >= 0 && idx < 4 && idx + 1 > sLit.value && sMode.value !== 3) {
+            sLit.value = idx + 1;
+            runOnJS(traceBeat)(idx);
+            if (idx === 3) {
+              sMode.value = 3;
+              sheetY.value = withSpring(0, OPEN_SPRING);
+              runOnJS(markOpen)();
+            }
           }
         })
-        .onEnd((e) => {
+        .onUpdate((e) => {
           'worklet';
-          sDetent.value = 0;
-          const risen = closedY - sheetY.value;
-          if (risen > height * 0.22 || e.velocityY < -900) {
-            // OPEN lands CLEAN (owner: the hit belongs to the CLOSE) — no
-            // squash, no overshoot (clamped in sheetStyle); just arrival
-            sheetY.value = withSpring(0, { ...OPEN_SPRING, velocity: e.velocityY });
-            runOnJS(markOpen)();
-          } else {
-            sheetY.value = withSpring(closedY, { ...PARK_SPRING, velocity: e.velocityY }, (fin) => {
-              'worklet';
-              if (fin) {
-                sSquash.value = withSequence(
-                  withTiming(0.988, { duration: 80 }),
-                  withTiming(1, { duration: 190 })
-                );
-              }
-            });
+          if (sMode.value === 3) return;
+          const idx = Math.floor((e.absoluteX - playRowLeft) / (PLAY_TILE + PLAY_GAP));
+          if (idx >= 0 && idx < 4 && idx + 1 > sLit.value) {
+            sLit.value = idx + 1;
+            runOnJS(traceBeat)(idx);
+            if (idx === 3) {
+              // the fourth tile LAUNCHES — the first trace of the day wins
+              sMode.value = 3;
+              sheetY.value = withSpring(0, OPEN_SPRING);
+              runOnJS(markOpen)();
+            }
           }
         }),
-    [height, closedY, sheetOpen, played, markOpen, detentIn, detentOut]
+    [width, sheetOpen, played, markOpen, traceBeat]
   );
 
   // close drag (home owns sheetY): the round pauses ONLY when the close
@@ -649,7 +664,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 18,
-    paddingTop: 16,
+    paddingTop: 14, // IDENTICAL header position on every screen
     paddingBottom: 12,
     gap: 22,
     alignItems: 'center',
