@@ -26,7 +26,8 @@ const CLUE_COUNT = 6;      // realized theme words per day ("6 to find")
 const WORD_MIN = 4;        // theme-word minimum length (owner rule: no 3-letter words)
 const WORD_MAX = 7;        // theme-word maximum length (owner FINAL rule 2026-07-22: 4-7, sevens are rare "stretchers")
 const SEVEN_CAP = 2;       // at most 2 seven-letter theme words per day (soft rule made hard here)
-const SWORB_MIN = 5;       // sworb 5-7 (owner: 4s too slight for the daily climax; 7s encouraged — e.g. KITCHEN)
+const SWORB_MIN = 4;       // sworb 4-7 (owner 2026-07-24: the 5-floor is DEAD — the FIRE connector
+                           // day earned 4s their place; 7s still encouraged — e.g. KITCHEN)
 const SWORB_MAX = 7;
 const POOL_MIN = 10;       // candidate pool floor
 const POOL_MAX = 15;       // candidate pool ceiling
@@ -86,7 +87,7 @@ for (const day of Object.keys(dailies)) {
   assert.strictEqual(out.realized.length, CLUE_COUNT, day + ': realized theme set is exactly ' + CLUE_COUNT + ' (got ' + out.realized.length + ')');
   days++;
 }
-console.log('dailies-check: ' + days + ' days valid (sworb 5-7, hints 4-7 (≤2 sevens), pool 10-15, no prefix-pairs, each locking exactly ' + CLUE_COUNT + ' clues)');
+console.log('dailies-check: ' + days + ' days valid (sworb 4-7, hints 4-7 (≤2 sevens), pool 10-15, no prefix-pairs, each locking exactly ' + CLUE_COUNT + ' clues)');
 
 // CONTENT RUNWAY GUARD (audit 2026-07-23, weakness #2): CI fails when the feed
 // runs thin — an empty dailies.json renders a no-puzzle screen for every player,

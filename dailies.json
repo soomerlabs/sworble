@@ -331,5 +331,25 @@
       "oregano"
     ],
     "definition": "the rack is missing one more leaf \u2014 pesto knows which"
+  },
+  "2026-08-06": {
+    "archetype": "connector",
+    "sworb": "fire",
+    "themeWords": [
+      "camp",
+      "wild",
+      "wood",
+      "wall",
+      "cross",
+      "house",
+      "alarm",
+      "escape",
+      "cracker",
+      "side",
+      "ball",
+      "power",
+      "fight"
+    ],
+    "definition": "every word on this board is missing the same burning partner"
   }
 }
