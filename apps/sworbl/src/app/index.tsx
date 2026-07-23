@@ -9,7 +9,8 @@
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView, Platform, useWindowDimensions } from 'react-native';
 import { SymbolView } from 'expo-symbols';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -52,8 +53,13 @@ const twistLabel = (a: string) => ARCHETYPE_LABEL[a] ?? null;
 // out-measuring the word of the day — the hierarchy was upside down)
 const HINT_SLOT_W = [40, 36, 44, 38, 36, 42];
 
+// the frosted dock band: taller grab zone; home content scrolls UNDER it to
+// the screen's bottom edge and blurs out; "swipe to play" always rides on top
+const DOCK_H = 96;
+
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const theme = useTheme();
 
   // DAY ROLLOVER (audit blocker fix): the deal follows the calendar, not the
@@ -256,7 +262,7 @@ export default function HomeScreen() {
         </View>
       )}
 
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView edges={['top']} style={styles.safe}>
         <AppBar
           theme={theme}
           onPerson={() => router.push('/profile')}
@@ -264,7 +270,7 @@ export default function HomeScreen() {
         />
 
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: DOCK_H + insets.bottom + 10 }]}
           showsVerticalScrollIndicator={false}>
           {deal && <DateHeader theme={theme} dayKey={deal.dayKey} />}
 
@@ -370,14 +376,25 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
 
-        {/* the swipe-to-play GRAB ZONE is the dock area only (owner call) —
-            a generous reach above the chevron, not the whole screen */}
+      </SafeAreaView>
+
+      {/* the swipe-to-play DOCK BAND (owner): taller, frosted — the leaders
+          scroll under it to the bottom edge and blur out; the label always
+          rides on top. STATIC blur: intensity never animates (the jank rule) */}
+      {!sheetOpen && (
         <GestureDetector gesture={openDrag}>
-          <View style={styles.dockZone}>
-            <CountdownDock played={played} />
+          <View style={[styles.dockBand, { height: DOCK_H + insets.bottom }]}>
+            <BlurView
+              intensity={40}
+              tint={theme.mode === 'dark' ? 'dark' : 'light'}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={[styles.dockInner, { paddingBottom: Math.max(insets.bottom - 6, 8) }]}>
+              <CountdownDock played={played} />
+            </View>
           </View>
         </GestureDetector>
-      </SafeAreaView>
+      )}
 
       {/* dark scrim under the rising sheet (blur deleted — owner call) */}
       <Animated.View
@@ -427,9 +444,17 @@ const styles = StyleSheet.create({
     gap: 22,
     alignItems: 'center',
   },
-  dockZone: {
-    paddingTop: 90, // generous grab reach above the chevron
-    marginTop: -90,
+  dockBand: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 10,
+    overflow: 'hidden',
+  },
+  dockInner: {
+    flex: 1,
+    justifyContent: 'flex-end',
   },
   sheet: {
     position: 'absolute',
