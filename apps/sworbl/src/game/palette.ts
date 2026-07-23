@@ -39,6 +39,8 @@ export interface GameSurface {
   line: string; // dashed ghosts, tracks, knobs (web --line)
   ink: string; // primary text on the game layer
   sub: string; // secondary text
+  tileAmbient: string; // soft under-tile shadow ('' = none; light mode only —
+  // the hard ledge carries less depth on a bright ground)
   timer: string; // the round clock (mint family, per-scheme contrast)
   timerLow: string; // ≤30s warning
   overlay: string; // count-in / paused dim
@@ -54,6 +56,7 @@ export const GAME_DARK: GameSurface = {
   line: '#3A3A44',
   ink: '#EDEFF7',
   sub: '#9DA2B3',
+  tileAmbient: '', // dark reads deep off the ledge alone (web parity)
   timer: '#EDEFF7', // plain ink (owner: no green — white on dark, black on light)
   timerLow: '#FF8A8E',
   overlay: 'rgba(16,16,20,0.55)',
@@ -69,6 +72,7 @@ export const GAME_LIGHT: GameSurface = {
   line: '#D3D6E0',
   ink: '#1F1442',
   sub: '#6E7180',
+  tileAmbient: '0 2px 3px rgba(31,20,66,0.13)', // fossil recap-block ambient, dialed subtle
   timer: '#1F1442', // plain ink (owner: no green — white on dark, black on light)
   timerLow: '#C43B44',
   overlay: 'rgba(237,239,247,0.6)',

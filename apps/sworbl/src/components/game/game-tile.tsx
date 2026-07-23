@@ -230,7 +230,13 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
     <Animated.View style={styles.outer}>
       <Animated.View style={[inner, { width: size, height: size + lift + 2 }]}>
         <Animated.View
-          style={[styles.ledge, ledgeStyle, { width: size, height: size, borderRadius: rad }]}
+          style={[
+            styles.ledge,
+            ledgeStyle,
+            { width: size, height: size, borderRadius: rad },
+            // one static shadow property — never the old 30-glow-views mistake
+            gs.tileAmbient ? { boxShadow: gs.tileAmbient } : null,
+          ]}
         />
         <Animated.View
           style={[styles.face, faceStyle, { width: size, height: size, borderRadius: rad }]}>
