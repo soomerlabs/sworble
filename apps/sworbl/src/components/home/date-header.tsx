@@ -4,17 +4,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { type Theme, ACCENT } from '@/game/theme';
-import { TUNING } from '@/game/tuning';
-
-// puzzle number: days since the launch epoch, 1-based
-function puzzleNo(dayKey: string): number {
-  const [y, m, d] = dayKey.split('-').map(Number);
-  const [ey, em, ed] = TUNING.PUZZLE_EPOCH.split('-').map(Number);
-  const days = Math.round(
-    (Date.UTC(y, m - 1, d) - Date.UTC(ey, em - 1, ed)) / 86400000
-  );
-  return Math.max(1, days + 1);
-}
+import { puzzleNo } from '@/game/share';
 
 export function DateHeader({ theme, dayKey }: { theme: Theme; dayKey: string }) {
   const now = new Date();

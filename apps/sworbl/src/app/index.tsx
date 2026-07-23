@@ -7,7 +7,7 @@
 // into the superlatives pager after) → floating stepped podium + you-block →
 // swipe dock over the storm. Light + dark via the theme tokens.
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, Share, Platform, useWindowDimensions } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
@@ -43,6 +43,7 @@ import { useTheme } from '@/game/theme';
 import { dealDaily, getDevDay } from '@/game/daily';
 import { loadDay, saveSheetOpen, wasSheetOpen, getResetNonce, type DayState } from '@/game/persist';
 import { standingsStub, rankFor, type LbEntry } from '@/game/standings';
+import { buildShareText } from '@/game/share';
 import { StandingsList, type StandingRow } from '@/components/home/standings-list';
 import { getPlayerName } from '@/game/player';
 import { useDayKey } from '@/game/use-day-key';
@@ -446,6 +447,39 @@ export default function HomeScreen() {
                   />
                 ))}
           </View>
+          {/* THE DAY'S HEADLINE (owner: score was buried in the list) —
+              score + rank + the sworbl-style share card */}
+          {played && deal && you && (
+            <Animated.View entering={FadeIn.duration(260)} style={styles.scoreLine}>
+              <Text style={[styles.scoreBig, { color: theme.ink }]}>
+                {you.score.toLocaleString()}
+                <Text style={[styles.scoreUnit, { color: theme.sub }]}> pts</Text>
+              </Text>
+              <Text style={styles.scoreRank}>#{you.rank} today</Text>
+              <Pressable
+                onPress={() =>
+                  Share.share({
+                    message: buildShareText({
+                      dayKey: deal.dayKey,
+                      archetypeLabel: deal.archetype ? twistLabel(deal.archetype) : null,
+                      clues: deal.clues,
+                      found: day?.found ?? [],
+                      solved,
+                      guessesUsed: day?.sworb?.guessesUsed ?? 0,
+                      score: you.score,
+                    }),
+                  }).catch(() => {})
+                }
+                hitSlop={10}
+                style={[styles.shareChip, { backgroundColor: theme.card }]}>
+                {Platform.OS === 'ios' ? (
+                  <SymbolView name={'square.and.arrow.up' as never} size={15} tintColor="#8971FF" />
+                ) : (
+                  <Text style={styles.chartGlyph}>↗</Text>
+                )}
+              </Pressable>
+            </Animated.View>
+          )}
           {played && !solved && (
             <Animated.Text
               entering={FadeIn.duration(260)}
@@ -666,6 +700,32 @@ const styles = StyleSheet.create({
   },
   pagerWrap: {
     alignSelf: 'stretch',
+  },
+  scoreLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: -6,
+  },
+  scoreBig: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 22,
+    fontVariant: ['tabular-nums'],
+  },
+  scoreUnit: {
+    fontSize: 13,
+  },
+  scoreRank: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 13,
+    color: '#8971FF',
+  },
+  shareChip: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   twistPill: {
     borderRadius: 999,
