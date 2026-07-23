@@ -54,16 +54,18 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
   useEffect(() => {
     const dist = Math.abs(targetY - y.value);
     if (dist < 1) return;
-    const dur = Math.max(340, Math.min(620, (dist / 1100) * 1000));
-    const delay = tile.spawnDrop ? tile.spawnDrop * 55 : tile.col * 24;
+    // TIMED GAME (owner): smooth ≠ slow — the soft curve carries the polish,
+    // the numbers stay urgent
+    const dur = Math.max(300, Math.min(520, (dist / 1300) * 1000));
+    const delay = tile.spawnDrop ? tile.spawnDrop * 32 : tile.col * 14;
     y.value = withDelay(
       delay,
       withTiming(targetY, { duration: dur, easing: FALL_EASE }, (fin) => {
         'worklet';
         if (fin) {
           squashY.value = withSequence(
-            withTiming(0.88, { duration: 70 }),
-            withTiming(1, { duration: 130 })
+            withTiming(0.88, { duration: 60 }),
+            withTiming(1, { duration: 110 })
           );
         }
       })
