@@ -298,7 +298,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
             </Pressable>
           )}
           <View style={styles.brandCenter} pointerEvents="none">
-            <Brand scale={0.8} />
+            <Brand />
           </View>
           <Text style={styles.score}>{score.toLocaleString()}</Text>
         </View>
@@ -403,9 +403,10 @@ const styles = StyleSheet.create({
   top: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingTop: 12, // MATCHES home's brand offset — the sheet's logo lands
+    // exactly on home's at dock (the "uniting" is positional)
   },
   brand: {
     fontFamily: 'Fredoka_600SemiBold',

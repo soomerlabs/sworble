@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   top: {
     alignItems: 'center',
     gap: 10,
-    paddingTop: 14,
+    paddingTop: 12, // same brand offset as the sheet — logos unite at dock
     paddingHorizontal: 20,
   },
   date: {
