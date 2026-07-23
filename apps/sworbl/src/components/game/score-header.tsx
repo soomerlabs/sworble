@@ -92,6 +92,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 2, // flush with the track's inset edges
+    paddingTop: 12, // top padding ON the numbers row itself (owner ×3)
   },
   score: {
     fontFamily: 'Fredoka_600SemiBold',
