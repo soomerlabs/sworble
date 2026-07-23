@@ -39,17 +39,18 @@ export function CountIn({ onRelease, onUnmount, gs = GAME_DARK }: Props) {
     let released = false;
     const h = setInterval(() => {
       const el = Date.now() - t0;
-      if (el >= MS.GO + 400) {
-        clearInterval(h);
-        onUnmount();
-        return;
-      }
       if (el >= MS.GO) {
-        // the GO beat: no card — the overlay clears and the BOARD wakes
+        // RELEASE FIRST, ALWAYS (owner freeze): one late tick could land past
+        // the unmount deadline — the old order unmounted without ever
+        // releasing, stranding the round in count-in with a paused clock.
         if (!released) {
           released = true;
           setOut(true);
           onRelease();
+        }
+        if (el >= MS.GO + 400) {
+          clearInterval(h);
+          onUnmount();
         }
         return;
       }

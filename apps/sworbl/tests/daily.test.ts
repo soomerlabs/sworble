@@ -3,7 +3,7 @@
 // (a broken un-found clue rides back in on the refill).
 import assert from 'assert';
 import engine from '@sworbl/engine';
-import { dealDaily, settle, restampBroken } from '../src/game/daily';
+import { dealDaily, settle, restampBroken, activeClues } from '../src/game/daily';
 import { COLS, ROWS, CLUE_COUNT } from '../src/game/types';
 
 // use a date the content feed covers (dailies.json ships in-repo)
@@ -65,7 +65,6 @@ assert.strictEqual(untouched, settled, 'nothing unfound → identical reference,
 // BONUS WAVES: pure derivation from the found set — 3 at a time, only once
 // everything currently active is caught
 {
-  const { activeClues } = await import('../src/game/daily');
   const core = ['a1', 'a2'];
   const extras = ['b1', 'b2', 'b3', 'b4'];
   assert.deepStrictEqual(activeClues(core, extras, []), core, 'no wave before the core is done');
