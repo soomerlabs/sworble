@@ -773,7 +773,8 @@ export function GameBoard({
                 {
                   width: size,
                   height: size,
-                  borderRadius: Math.round(size * 0.2),
+                  borderRadius: Math.round(size * 0.26), // squircle (owner)
+                  borderCurve: 'continuous',
                   left: (i % COLS) * cell,
                   top: Math.floor(i / COLS) * cell,
                   backgroundColor: gs.well,

@@ -72,27 +72,23 @@ function DriftBlock({ b, width, height }: { b: (typeof DRIFT_BLOCKS)[number]; wi
 
 export default function Storm({ width, height = 260 }: {
   width: number; height?: number; zoom?: number; // zoom kept for API parity
-  focusW?: number; focusH?: number; // accepted for parity; the door owns its
-  // own halo now (play-halo) — the band is pure ambient weather
 }) {
   const spin = useSpin(42000); // the corona turns, glacially
   const flareSpin = useSpin(67000); // the off-axis bloom orbits slower
   const breath = useDrift(9000); // the whole eclipse breathes
 
-  // pure ambient: a wide soft corona breathing behind the whole band —
-  // the DOOR owns its own exact halo now (play-halo.tsx)
+  // the eclipse centers on the PLAY row's altitude in the visible band
+  // (canvas is 3 band-heights; the band occupies ~0.47..0.8 of it)
   const cx = width / 2;
-  const cy = height * 0.62;
-  const CORONA_R = height * 0.4;
+  const cy = height * 0.64;
+  const CORONA_R = height * 0.34; // the halo's reach
+  const BODY_R = height * 0.23; // the dark body under the tiles
 
   const glowOpacity = useDerivedValue(() => 0.8 + breath.value * 0.2);
-  const coronaSpin = useDerivedValue(() => [
-    { scaleX: Math.max(1.4, width / (CORONA_R * 2)) },
-    { rotate: spin.value * Math.PI * 2 },
-  ]);
+  const coronaSpin = useDerivedValue(() => [{ rotate: spin.value * Math.PI * 2 }]);
   const flareT = useDerivedValue(() => [
-    { translateX: cx + Math.cos(flareSpin.value * Math.PI * 2) * CORONA_R * 0.9 },
-    { translateY: cy + Math.sin(flareSpin.value * Math.PI * 2) * CORONA_R * 0.4 },
+    { translateX: cx + Math.cos(flareSpin.value * Math.PI * 2) * CORONA_R * 0.75 },
+    { translateY: cy + Math.sin(flareSpin.value * Math.PI * 2) * CORONA_R * 0.55 },
   ]);
 
   return (
@@ -109,15 +105,20 @@ export default function Storm({ width, height = 260 }: {
             </Group>
             {/* THE FLARE: a soft bloom orbiting off-axis */}
             <Group transform={flareT}>
-              <Circle cx={0} cy={0} r={CORONA_R * 0.55}>
+              <Circle cx={0} cy={0} r={CORONA_R * 0.7}>
                 <RadialGradient
                   c={vec(0, 0)}
-                  r={CORONA_R * 0.55}
+                  r={CORONA_R * 0.7}
                   colors={['rgba(245,184,74,0.5)', 'rgba(245,143,184,0.18)', 'rgba(0,0,0,0)']}
                   positions={[0, 0.5, 0.95]}
                 />
               </Circle>
             </Group>
+          </Group>
+          {/* THE BODY: the dark disc the tiles rest on — soft-edged so it
+              melts into the corona, never a hard rim */}
+          <Group layer={<Paint><Blur blur={5} /></Paint>}>
+            <Circle cx={cx} cy={cy} r={BODY_R} color="#0D0D12" />
           </Group>
           {/* OUR BLOCKS: sharp candy tiles adrift in the light */}
           {DRIFT_BLOCKS.map((b, i) => (

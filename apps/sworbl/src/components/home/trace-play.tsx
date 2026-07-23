@@ -11,7 +11,6 @@ import Animated, {
   Easing, type SharedValue,
 } from 'react-native-reanimated';
 import { PALETTE, INK, tileColorFor, gameSurface } from '@/game/palette';
-import { PlayHalo } from './play-halo';
 import { type Theme } from '@/game/theme';
 
 export const PLAY_WORD = ['p', 'l', 'a', 'y'] as const;
@@ -36,7 +35,7 @@ function PlayTile({ ch, i, sLit, sPoke, theme, tile, armed }: {
   const pal = PALETTE[tileColorFor(ch, i)];
   const gs = gameSurface(theme.mode);
   const LIFT = Math.max(3, Math.round(tile * 0.08));
-  const RAD = Math.round(tile * 0.2);
+  const RAD = Math.round(tile * 0.26); // squircle territory (owner)
 
   // ARM: the lit word FLIES upward in swipe order (the game's own commit
   // move). DISARM: gray tiles RAIN BACK IN like a refill.
@@ -133,14 +132,9 @@ export function TracePlay({ sLit, sPoke, theme, tile, gap, armed = false }: {
   sLit: SharedValue<number>; sPoke?: SharedValue<number>; theme: Theme;
   tile: number; gap: number; armed?: boolean;
 }) {
-  const rowW = tile * 4 + gap * 3;
   return (
     <View style={styles.wrap}>
       <View style={[styles.row, { gap }]}>
-        {/* THE ECLIPSE, owned by the door: a spinning spectrum disc behind
-            the row — exact geometry, so the light rings the tiles and shows
-            through the gaps between them (owner) */}
-        <PlayHalo rowW={rowW} rowH={tile + Math.max(3, Math.round(tile * 0.08)) + 1} />
         {PLAY_WORD.map((ch, i) => (
           <PlayTile
             key={ch} ch={ch} i={i} sLit={sLit} sPoke={sPoke} theme={theme} tile={tile} armed={armed}
@@ -161,9 +155,11 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
   },
+  // borderCurve continuous = Apple's real superellipse on iOS (squircle)
   ledge: {
     position: 'absolute',
     left: 0,
+    borderCurve: 'continuous',
   },
   face: {
     position: 'absolute',
@@ -171,6 +167,7 @@ const styles = StyleSheet.create({
     top: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    borderCurve: 'continuous',
   },
   letter: {
     fontFamily: 'Fredoka_600SemiBold',
