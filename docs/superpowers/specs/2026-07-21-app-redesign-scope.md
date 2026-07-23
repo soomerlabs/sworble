@@ -104,11 +104,17 @@ amber-red-pink), and the color must **glide smooth-as-butter** on page switch (a
   enough to be a first-class screen).
 - Audit other modals for the same treatment.
 
-## HINT AIDS + MONETIZATION SEAM (owner-locked 2026-07-22)
+## HINT AIDS + MONETIZATION SEAM (owner-locked 2026-07-22; spend effect revised 2026-07-23)
 Chosen aids (all free): ghost pills show FIRST LETTER always; EARNED HINT — spell ~7 words while
-clues remain unfound → earn a hint token; tapping a ghost pill spends a token → that clue's path
-flashes on the board; MERCY PULSE — at 2:00 left with ≤2 clues found, one unfound clue pulses once
-(automatic, token-free). Declined: spend-score-for-hints.
+clues remain unfound → earn a hint token; tapping a ghost pill spends a token → **SONAR PING on
+the clue's STARTING TILE** (revised from full-path glow, owner call 2026-07-23: "a compass, not
+an answer" — the pill gives the first letter, the ping gives WHERE; the hunt survives). Ripple
+visual borrows the retired bomb system's detection aesthetic — no sonar numbers, no deduction
+homework. MERCY PULSE — at 2:00 left with ≤2 clues found, one auto-ping on the first unfound
+clue (automatic, token-free). Declined: spend-score-for-hints; full-path glow (over-rescued).
+BACKLOG (mode idea, owner 2026-07-23): full minesweeper deduction — hidden hint-tiles + sonar
+numbers, spell-through to activate — as an untimed practice/"spicy" MODE where deduction can
+breathe; the frozen web app preserves the complete dormant implementation (debugMine).
 MONETIZATION DIRECTION: never sell advantage in the daily (leaderboard trust is the product).
 Future paid surfaces: archive days, streak insurance, cosmetics (tile skins/storm palettes),
 practice packs. The hint-TOKEN seam is deliberately future-proof: today tokens are earned-only;
