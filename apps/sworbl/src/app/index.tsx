@@ -23,7 +23,6 @@ import Animated, {
   withTiming,
   withSequence,
   interpolate,
-  interpolateColor,
   Extrapolation,
   runOnJS,
 } from 'react-native-reanimated';
@@ -388,34 +387,8 @@ export default function HomeScreen() {
     },
     [closedY]
   );
-  // MATCHED-GEOMETRY grabber (owner round 2: face keeps the ^; the PILL is
-  // the sheet's grabber, materializing on the same travel path as you pull —
-  // it rises from the chevron's home to its perch and recolors on the way)
-  const pillPeekY = (peekH - Math.max(insets.bottom, 14)) / 2 - 14;
-  const grabberColor = theme.mode === 'dark' ? 'rgba(255,255,255,0.20)' : 'rgba(31,20,66,0.22)';
-  const pillStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateY: interpolate(
-          sheetY.value,
-          [0, closedY],
-          [insets.top + 8, pillPeekY],
-          Extrapolation.CLAMP
-        ),
-      },
-    ],
-    opacity: interpolate(
-      sheetY.value,
-      [closedY - 200, closedY - 30],
-      [1, 0],
-      Extrapolation.CLAMP
-    ),
-    backgroundColor: interpolateColor(
-      sheetY.value,
-      [0, closedY * 0.55, closedY],
-      [grabberColor, '#8971FF', '#8971FF']
-    ),
-  }));
+  // (the matched-geometry grabber pill was owner-removed — the ✕ button and
+  // the paused-cover tap are the explicit affordances now)
 
   const wordLen = deal?.sworb.length ?? 5;
   // 46 was the 300px design-mock cap — real phones earn bigger blocks; the
@@ -648,8 +621,6 @@ export default function HomeScreen() {
                 </Text>
               )}
             </Animated.View>
-            {/* the matched-geometry pill — rides ABOVE both layers */}
-            <Animated.View pointerEvents="none" style={[styles.morphPill, pillStyle]} />
             </View>
           </Animated.View>
         </GestureDetector>
@@ -728,15 +699,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Fredoka_600SemiBold',
     color: '#F5B84A',
     opacity: 0.7,
-  },
-  morphPill: {
-    position: 'absolute',
-    top: 0,
-    alignSelf: 'center',
-    width: 38,
-    height: 5,
-    borderRadius: 3,
-    zIndex: 6,
   },
   heroRow: {
     flexDirection: 'row',

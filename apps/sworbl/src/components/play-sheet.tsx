@@ -330,9 +330,10 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   }, [phase, arm, onRelease]);
   // the PAUSE BUTTON (owner: "pause to do something and come back"): stays ON
   // the gameboard — letters conceal (anti-stare), tap-to-resume re-arms 3·2·1
-  // a TOGGLE, and deliberately total (owner hit a dead board where nothing
-  // responded — this button must be an escape hatch from EVERY state):
-  // live→pause · countin→disarm · paused→instant resume · idle→ceremony
+  // owner design: LIVE/COUNTIN → pause (bars). PAUSED/IDLE → the button is
+  // an ✕ that CLOSES the sheet — the explicit exit for players who don't
+  // know the swipe yet. Resuming is the board tap (the paused cover).
+  // Still a total escape hatch: every state has a working action.
   const pauseInPlace = useCallback(() => {
     if (phase === 'live') {
       pause();
@@ -340,12 +341,10 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
       setCountInMounted(false);
       setCountStep(null);
       setPhase('idle');
-    } else if (phase === 'paused') {
-      onRelease();
-    } else if (phase === 'idle') {
-      arm();
+    } else {
+      onClose(); // paused/idle: ✕ parks the sheet
     }
-  }, [phase, pause, onRelease, arm]);
+  }, [phase, pause, onClose]);
   useImperativeHandle(handleRef, () => ({ pauseForClose, rearm }), [pauseForClose, rearm]);
 
   const onFinaleDone = useCallback(
@@ -441,8 +440,14 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
               onPress={pauseInPlace}
               hitSlop={12}
               style={[styles.pauseBtn, { backgroundColor: gs.mono.bg, boxShadow: `0 2px 0 ${gs.mono.edge}` }]}>
-              <View style={[styles.pauseBar, { backgroundColor: gs.sub }]} />
-              <View style={[styles.pauseBar, { backgroundColor: gs.sub }]} />
+              {phase === 'paused' || phase === 'idle' ? (
+                <Text style={[styles.closeX, { color: gs.sub }]}>✕</Text>
+              ) : (
+                <>
+                  <View style={[styles.pauseBar, { backgroundColor: gs.sub }]} />
+                  <View style={[styles.pauseBar, { backgroundColor: gs.sub }]} />
+                </>
+              )}
             </Pressable>
           ) : onBoard ? (
             <View style={styles.pauseGhost} />
@@ -617,6 +622,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: '0 2px 0 #141418',
+  },
+  closeX: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 15,
+    includeFontPadding: false,
   },
   pauseBar: {
     width: 4,
