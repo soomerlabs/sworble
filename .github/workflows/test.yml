@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22 # RN 0.86/Metro tooling floor
       - run: npm ci   # eslint is the repo's first devDependency (lint gates npm test)
       - run: npm test
       # Coverage over the 9 pure kernel modules only — index.html's inline DC script isn't
@@ -22,3 +22,7 @@ jobs:
       # Reports the real number every run; NOT a gate yet (`|| true` — Road-to-9 Sprint 1 #1:
       # publish honest numbers first, decide a threshold once the number is stable).
       - run: npm run coverage || true
+      # BUNDLE SMOKE (audit follow-up): a full web export of the RN app catches
+      # import/asset/metro breakage that logic tests can't — the closest thing
+      # to a boot test until a jest+RNTL render smoke earns its setup cost.
+      - run: cd apps/sworbl && npx expo export --platform web

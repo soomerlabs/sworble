@@ -8,7 +8,10 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { AppState, StyleSheet, Text, View, Pressable, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import engine from '@sworbl/engine';
+import {
+  mkClock, clockStart, clockPause, clockElapsedMs, clockEffSecs, clockRemaining, clockGrant,
+  type ClockState,
+} from '@/game/round-clock';
 
 import { GameBoard } from '@/components/game/game-board';
 import { CountIn } from '@/components/game/count-in';
@@ -61,26 +64,21 @@ export default function PlayScreen() {
     return boot.run.tiles.map((t) => ({ ...t, spawnDrop: 0, bornAt: Date.now() }));
   }, [boot, deal]);
 
-  // ---- clock: accumulated elapsed ms vs base + EARNED time (the fuel bank) ----
-  const elapsedBaseRef = useRef(boot?.run ? boot.run.boardElapsedMs : 0);
-  const earnedMsRef = useRef(boot?.run ? boot.run.earnedMs : 0);
-  const liveStartRef = useRef(0);
-  const elapsedNow = () =>
-    elapsedBaseRef.current + (liveStartRef.current ? Date.now() - liveStartRef.current : 0);
-  const effSecs = () => TUNING.BASE_SECS + earnedMsRef.current / 1000;
-  const [remaining, setRemaining] = useState(() =>
-    engine.run.remainingSecs(effSecs(), elapsedBaseRef.current)
-  );
+  // ---- clock: ONE ClockState ref; all accounting decided by round-clock.ts
+  // (pure, test-pinned) — this screen only schedules ticks and renders ----
+  const CT = { baseSecs: TUNING.BASE_SECS, capSecs: TUNING.CAP_SECS };
+  const clockRef = useRef<ClockState>(mkClock(boot?.run ?? undefined));
+  const [remaining, setRemaining] = useState(() => clockRemaining(clockRef.current, Date.now(), CT));
   const [timePop, setTimePop] = useState<{ key: number; secs: number } | null>(null);
   const popKeyRef = useRef(0);
 
   useEffect(() => {
     if (phase !== 'live') return;
     const h = setInterval(() => {
-      const left = engine.run.remainingSecs(effSecs(), elapsedNow());
+      const left = clockRemaining(clockRef.current, Date.now(), CT);
       setRemaining(left);
       if (left <= 0) {
-        liveStartRef.current = 0;
+        clockRef.current = clockPause(clockRef.current, Date.now());
         setPhase('finale');
       }
     }, 250);
@@ -96,7 +94,9 @@ export default function PlayScreen() {
       client: 'rn', v: 1, day: deal.dayKey, phase: 'live',
       tiles: boardTilesRef.current.map(({ id, letter, col, row, ci }) => ({ id, letter, col, row, ci })),
       queueIdx: queueIdxRef.current,
-      score, found, boardElapsedMs: elapsedNow(), earnedMs: earnedMsRef.current,
+      score, found,
+      boardElapsedMs: clockElapsedMs(clockRef.current, Date.now()),
+      earnedMs: clockRef.current.earnedMs,
       guessesUsed: 0, rows: [], slots: [], colors: [],
     };
     saveRun(snap);
@@ -112,17 +112,15 @@ export default function PlayScreen() {
   const wordsRef = useRef<BestWord[]>([]);
   const onWordSpelled = useCallback((word: string, pts: number, caughtClue: boolean) => {
     wordsRef.current.push({ word, pts });
-    const grant = engine.run.timeForWord({
-      len: word.length,
-      isClue: caughtClue,
-      earnedMs: earnedMsRef.current,
-      baseSecs: TUNING.BASE_SECS,
-      capSecs: TUNING.CAP_SECS,
-    });
-    if (grant > 0) {
-      earnedMsRef.current += grant;
-      setRemaining(engine.run.remainingSecs(effSecs(), elapsedNow()));
-      setTimePop({ key: ++popKeyRef.current, secs: Math.round(grant / 1000) });
+    const { clock, grantMs } = clockGrant(
+      clockRef.current,
+      { len: word.length, isClue: caughtClue },
+      CT
+    );
+    clockRef.current = clock;
+    if (grantMs > 0) {
+      setRemaining(clockRemaining(clockRef.current, Date.now(), CT));
+      setTimePop({ key: ++popKeyRef.current, secs: Math.round(grantMs / 1000) });
       setTimeout(() => setTimePop((p) => (p && p.key === popKeyRef.current ? null : p)), 1000);
     }
   }, []);
@@ -142,7 +140,9 @@ export default function PlayScreen() {
         client: 'rn', v: 1, day: deal.dayKey, phase: 'finale',
         tiles: boardTilesRef.current.map(({ id, letter, col, row, ci }) => ({ id, letter, col, row, ci })),
         queueIdx: queueIdxRef.current,
-        score, found, boardElapsedMs: effSecs() * 1000, earnedMs: earnedMsRef.current,
+        score, found,
+        boardElapsedMs: clockEffSecs(clockRef.current, CT) * 1000,
+        earnedMs: clockRef.current.earnedMs,
         guessesUsed: s.guessesUsed, rows: s.rows, slots: s.slots, colors: s.colors,
       };
       saveRun(snap);
@@ -162,8 +162,7 @@ export default function PlayScreen() {
   // ---- pause / resume (engine rule: resume re-arms the count-in) ----
   const pause = useCallback(() => {
     if (phase !== 'live') return;
-    elapsedBaseRef.current = elapsedNow();
-    liveStartRef.current = 0;
+    clockRef.current = clockPause(clockRef.current, Date.now());
     snapLive();
     setPhase('paused');
   }, [phase, snapLive]);
@@ -175,8 +174,8 @@ export default function PlayScreen() {
   }, []);
 
   const onRelease = useCallback(() => {
-    liveStartRef.current = Date.now();
-    setRemaining(engine.run.remainingSecs(effSecs(), elapsedBaseRef.current));
+    clockRef.current = clockStart(clockRef.current, Date.now());
+    setRemaining(clockRemaining(clockRef.current, Date.now(), CT));
     setPhase('live');
   }, []);
 

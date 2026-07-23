@@ -9,6 +9,7 @@ import Animated, { ZoomIn, FadeIn, SlideInDown } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 import { INK } from '@/game/palette';
 import { haptic } from '@/game/haptics';
+import { applyGuess } from '@/game/finale-logic';
 import { ClueFan } from './clue-fan';
 
 const C = {
@@ -64,50 +65,42 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone 
     [slots, colors, len, locked]
   );
 
+  // the transition itself is PURE (finale-logic.applyGuess, contract-pinned by
+  // tests) — this callback only performs the theater: state, haptics, timing
   const submit = useCallback(() => {
     if (locked) return;
-    const word = slots.join('');
-    if (word.length < len || slots.some((s) => !s)) {
+    const out = applyGuess({
+      slots, rows, guessesUsed, sworb: entry.sworb, foundCount, clueTotal,
+    });
+    if (out.kind === 'reject') {
       haptic.bad();
       return;
     }
-    const res = engine.daily.applySworbGuess({
-      entry,
-      input: word,
-      guessesUsed,
-      solved: false,
-      foundCount,
-      total: clueTotal,
-    });
-    if (!res.ok) return;
-    // narrow the engine's optional result fields once, use everywhere below
-    const usedNow = res.newGuessesUsed ?? guessesUsed + 1;
-    const nowSolved = !!res.nowSolved;
-    const lockedOut = !!res.lockedOut;
-    const bonus = res.bonus ?? 0;
-    const rowColors: string[] = engine.daily.scoreGuess(word, entry.sworb);
-    const newRows = [...rows, { letters: slots.slice(), colors: rowColors }];
-    setRows(newRows);
-    setGuessesUsed(usedNow);
-    if (nowSolved || lockedOut) {
+    setRows(out.rows);
+    setGuessesUsed(out.usedNow);
+    if (out.kind === 'solved' || out.kind === 'lockout') {
+      const solved = out.kind === 'solved';
       setLocked(true);
-      haptic[nowSolved ? 'good' : 'bad']();
+      haptic[solved ? 'good' : 'bad']();
       setTimeout(
-        () => onDone({ solved: nowSolved, guessesUsed: usedNow, bonus, rows: newRows }),
-        nowSolved ? 900 : 1600 // losers get the gray beat before the reveal
+        () =>
+          onDone({
+            solved,
+            guessesUsed: out.usedNow,
+            bonus: solved ? out.bonus : 0,
+            rows: out.rows,
+          }),
+        solved ? 900 : 1600 // losers get the gray beat before the reveal
       );
       return;
     }
-    // miss: greens LOCK in place, yellows persist as dashed hints, grays clear
-    // to empty NOW (mock case 6) — nextSlots expects exactly this shape
-    const nSlots = slots.map((l, i) => (rowColors[i] === 'gray' ? '' : l));
-    const nColors = rowColors.map((c) => (c === 'gray' ? null : c));
-    setSlots(nSlots);
-    setColors(nColors);
+    // miss: greens locked, yellows hinting, grays cleared (decided in applyGuess)
+    setSlots(out.slots);
+    setColors(out.colors);
     onProgress &&
-      onProgress({ rows: newRows, slots: nSlots, colors: nColors, guessesUsed: usedNow });
+      onProgress({ rows: out.rows, slots: out.slots, colors: out.colors, guessesUsed: out.usedNow });
     haptic.bad();
-  }, [slots, colors, rows, guessesUsed, locked, entry, foundCount, clueTotal, len, onDone]);
+  }, [slots, rows, guessesUsed, locked, entry, foundCount, clueTotal, onDone, onProgress]);
 
   const bs = Math.min(size, Math.floor(300 / len)); // block size fits the row
   const block = (letter: string, color: string | null, i: number, active: boolean) => {
