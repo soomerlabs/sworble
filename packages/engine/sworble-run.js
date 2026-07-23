@@ -133,7 +133,37 @@
     }
   }
 
-  const API = { RUN_VERSION, serializeRun, validateRun, remainingSecs, COUNT_IN_MS, countInStepAt };
+  // ---- TIME FUEL (owner-locked 2026-07-23): "three minutes given, seven if
+  // you earn it." Words grant time alongside points; the round's TOTAL length
+  // (base + earned) is hard-capped at the Seven. Deterministic by construction
+  // (time earned is a pure function of the words played) — replay validation
+  // and the anti-cheat ladder are unaffected. All values are tuning knobs.
+  const TIME_FUEL = {
+    BASE_SECS: 180,
+    CAP_SECS: 420, // the Seven — now the EARNED ceiling, not the given clock
+    CLUE_BONUS_MS: 20000, // catching a clue keeps the hunt alive
+    perLen: { 3: 4000, 4: 6000, 5: 9000, 6: 12000 },
+    sevenPlusMs: 15000,
+  };
+
+  // timeForWord({ len, isClue, earnedMs, baseSecs?, capSecs?, fuel? }) -> ms granted,
+  // CLIPPED so base + earned + grant never exceeds the cap. 0 for len < 3.
+  function timeForWord(args) {
+    const a = args || {};
+    const len = (typeof a.len === 'number' && isFinite(a.len)) ? Math.floor(a.len) : 0;
+    if (len < 3) return 0;
+    const fuel = a.fuel || TIME_FUEL;
+    const baseSecs = (typeof a.baseSecs === 'number' && isFinite(a.baseSecs)) ? a.baseSecs : fuel.BASE_SECS;
+    const capSecs = (typeof a.capSecs === 'number' && isFinite(a.capSecs)) ? a.capSecs : fuel.CAP_SECS;
+    const earnedMs = (typeof a.earnedMs === 'number' && isFinite(a.earnedMs) && a.earnedMs > 0) ? a.earnedMs : 0;
+    const base = len >= 7 ? fuel.sevenPlusMs : (fuel.perLen[len] || 0);
+    const grant = base + (a.isClue ? fuel.CLUE_BONUS_MS : 0);
+    const room = Math.max(0, capSecs * 1000 - baseSecs * 1000 - earnedMs);
+    return Math.min(grant, room);
+  }
+
+  const API = { RUN_VERSION, serializeRun, validateRun, remainingSecs, COUNT_IN_MS, countInStepAt,
+    TIME_FUEL, timeForWord };
   root.SworbleRun = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

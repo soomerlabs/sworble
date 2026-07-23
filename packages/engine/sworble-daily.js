@@ -241,7 +241,11 @@
     var prev = Number(a.prevSecsLeft);
     var now = Number(a.secsLeft);
     if (!isFinite(prev) || !isFinite(now)) return false;
-    var crossed = prev > MERCY_THRESHOLD_SECS && now <= MERCY_THRESHOLD_SECS;
+    // thresholdSecs override: TIME-FUEL rounds (3:00 base) fire mercy on a later
+    // crossing (e.g. 0:45) than the classic fixed-clock 2:00 default.
+    var th = (isFinite(Number(a.thresholdSecs)) && Number(a.thresholdSecs) > 0)
+      ? Number(a.thresholdSecs) : MERCY_THRESHOLD_SECS;
+    var crossed = prev > th && now <= th;
     if (!crossed) return false;
     var cluesFound = Number(a.cluesFound) || 0;
     return cluesFound <= MERCY_MAX_CLUES_FOUND;

@@ -104,6 +104,19 @@ amber-red-pink), and the color must **glide smooth-as-butter** on page switch (a
   enough to be a first-class screen).
 - Audit other modals for the same treatment.
 
+## TIME FUEL (owner-locked 2026-07-23) — "three minutes given, seven if you earn it"
+The round clock is EARNED: base 3:00; every word grants time alongside points (3L +4s, 4L +6s,
+5L +9s, 6L +12s, 7+L +15s — mirrors the score curve); catching a clue adds +20s (finding clues
+keeps the hunt alive). HARD CEILING: base + earned never exceeds 7:00 — the Seven survives as
+the earned ceiling, not the given clock. Rationale: kills the mid-round lull (the clock hunts
+you), drops the daily session cost for casual players (~3-4 min), keeps score expression for
+strong players, and ends bad days mercifully fast. Deterministic (time = pure function of the
+words played) — replay validation unaffected. Mercy pulse retuned to the 0:45 crossing.
+Engine: sworble-run.js timeForWord + TIME_FUEL (pinned by tests/time-fuel.test.js). All values
+are tuning knobs (apps/sworbl/src/game/tuning.ts until the settings sheet exists).
+DECLINED alternatives: fixed 7:00 (session too costly / lull), time bonuses ON TOP of 7:00
+(rich-get-richer + longer sessions), finish-early button (superseded — fuel self-terminates).
+
 ## HINT AIDS + MONETIZATION SEAM (owner-locked 2026-07-22; spend effect revised 2026-07-23)
 Chosen aids (all free): ghost pills show FIRST LETTER always; EARNED HINT — spell ~7 words while
 clues remain unfound → earn a hint token; tapping a ghost pill spends a token → **SONAR PING on

@@ -102,6 +102,7 @@ export interface RunSnap {
   score: number;
   found: string[];
   boardElapsedMs: number;
+  earnedMs: number; // time-fuel bank — rides the snapshot so resumes keep it
   // finale-phase carry (empty while live):
   guessesUsed: number;
   rows: { letters: string[]; colors: string[] }[];
@@ -118,7 +119,7 @@ export function loadRun(dayKey: string): RunSnap | null {
   if (!s || s.client !== 'rn' || s.v !== RN_RUN_V || s.day !== dayKey) return null;
   if (!Array.isArray(s.tiles) || !s.tiles.length) return null;
   if (s.phase !== 'live' && s.phase !== 'finale') return null;
-  return s;
+  return { ...s, earnedMs: Number(s.earnedMs) || 0 };
 }
 
 export function clearRun(dayKey: string): void {

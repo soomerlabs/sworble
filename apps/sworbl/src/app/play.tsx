@@ -20,9 +20,11 @@ import { BG_DARK } from '@/game/palette';
 import { dealDaily, bumpNextId } from '@/game/daily';
 import { CLUE_COUNT, type TileT } from '@/game/types';
 import { loadDay, saveProgress, finishDay, saveRun, type RunSnap, type BestWord } from '@/game/persist';
+import { TUNING } from '@/game/tuning';
 import { router } from 'expo-router';
+import Animated, { ZoomIn, FadeOut } from 'react-native-reanimated';
 
-const ROUND_SECS = 420; // "the Seven" — dev knob arrives with the settings screen
+// TIME FUEL: three minutes given, the Seven if you earn it (engine.run.timeForWord)
 
 type Phase = 'countin' | 'live' | 'paused' | 'finale' | 'done';
 
@@ -59,19 +61,23 @@ export default function PlayScreen() {
     return boot.run.tiles.map((t) => ({ ...t, spawnDrop: 0, bornAt: Date.now() }));
   }, [boot, deal]);
 
-  // ---- clock: accumulated elapsed ms; live time measured from liveStart ----
+  // ---- clock: accumulated elapsed ms vs base + EARNED time (the fuel bank) ----
   const elapsedBaseRef = useRef(boot?.run ? boot.run.boardElapsedMs : 0);
+  const earnedMsRef = useRef(boot?.run ? boot.run.earnedMs : 0);
   const liveStartRef = useRef(0);
   const elapsedNow = () =>
     elapsedBaseRef.current + (liveStartRef.current ? Date.now() - liveStartRef.current : 0);
+  const effSecs = () => TUNING.BASE_SECS + earnedMsRef.current / 1000;
   const [remaining, setRemaining] = useState(() =>
-    engine.run.remainingSecs(ROUND_SECS, elapsedBaseRef.current)
+    engine.run.remainingSecs(effSecs(), elapsedBaseRef.current)
   );
+  const [timePop, setTimePop] = useState<{ key: number; secs: number } | null>(null);
+  const popKeyRef = useRef(0);
 
   useEffect(() => {
     if (phase !== 'live') return;
     const h = setInterval(() => {
-      const left = engine.run.remainingSecs(ROUND_SECS, elapsedNow());
+      const left = engine.run.remainingSecs(effSecs(), elapsedNow());
       setRemaining(left);
       if (left <= 0) {
         liveStartRef.current = 0;
@@ -90,7 +96,7 @@ export default function PlayScreen() {
       client: 'rn', v: 1, day: deal.dayKey, phase: 'live',
       tiles: boardTilesRef.current.map(({ id, letter, col, row, ci }) => ({ id, letter, col, row, ci })),
       queueIdx: queueIdxRef.current,
-      score, found, boardElapsedMs: elapsedNow(),
+      score, found, boardElapsedMs: elapsedNow(), earnedMs: earnedMsRef.current,
       guessesUsed: 0, rows: [], slots: [], colors: [],
     };
     saveRun(snap);
@@ -101,10 +107,24 @@ export default function PlayScreen() {
     queueIdxRef.current = queueIdx;
   }, []);
 
-  // every spelled word, for the home superlatives (top-5 persisted at day end)
+  // every spelled word: superlatives feed + the TIME-FUEL grant (engine-decided,
+  // cap-clipped so base + earned never exceeds the Seven)
   const wordsRef = useRef<BestWord[]>([]);
-  const onWordSpelled = useCallback((word: string, pts: number) => {
+  const onWordSpelled = useCallback((word: string, pts: number, caughtClue: boolean) => {
     wordsRef.current.push({ word, pts });
+    const grant = engine.run.timeForWord({
+      len: word.length,
+      isClue: caughtClue,
+      earnedMs: earnedMsRef.current,
+      baseSecs: TUNING.BASE_SECS,
+      capSecs: TUNING.CAP_SECS,
+    });
+    if (grant > 0) {
+      earnedMsRef.current += grant;
+      setRemaining(engine.run.remainingSecs(effSecs(), elapsedNow()));
+      setTimePop({ key: ++popKeyRef.current, secs: Math.round(grant / 1000) });
+      setTimeout(() => setTimePop((p) => (p && p.key === popKeyRef.current ? null : p)), 1000);
+    }
   }, []);
 
   // persist progress + live snapshot on every meaningful change
@@ -122,7 +142,7 @@ export default function PlayScreen() {
         client: 'rn', v: 1, day: deal.dayKey, phase: 'finale',
         tiles: boardTilesRef.current.map(({ id, letter, col, row, ci }) => ({ id, letter, col, row, ci })),
         queueIdx: queueIdxRef.current,
-        score, found, boardElapsedMs: ROUND_SECS * 1000,
+        score, found, boardElapsedMs: effSecs() * 1000, earnedMs: earnedMsRef.current,
         guessesUsed: s.guessesUsed, rows: s.rows, slots: s.slots, colors: s.colors,
       };
       saveRun(snap);
@@ -156,7 +176,7 @@ export default function PlayScreen() {
 
   const onRelease = useCallback(() => {
     liveStartRef.current = Date.now();
-    setRemaining(engine.run.remainingSecs(ROUND_SECS, elapsedBaseRef.current));
+    setRemaining(engine.run.remainingSecs(effSecs(), elapsedBaseRef.current));
     setPhase('live');
   }, []);
 
@@ -203,7 +223,18 @@ export default function PlayScreen() {
           {onBoard && (
             // tap = pause · dev shortcut: long-press → straight to the finale
             <Pressable onPress={pause} onLongPress={() => setPhase('finale')} delayLongPress={600}>
-              <Text style={[styles.clock, remaining <= 60 && styles.clockLow]}>{clock}</Text>
+              <View style={styles.clockWrap}>
+                <Text style={[styles.clock, remaining <= 30 && styles.clockLow]}>{clock}</Text>
+                {timePop && (
+                  <Animated.Text
+                    key={timePop.key}
+                    entering={ZoomIn.springify().mass(0.5)}
+                    exiting={FadeOut.duration(200)}
+                    style={styles.timePop}>
+                    +0:{String(timePop.secs).padStart(2, '0')}
+                  </Animated.Text>
+                )}
+              </View>
             </Pressable>
           )}
           <Text style={styles.score}>{score.toLocaleString()}</Text>
@@ -220,6 +251,7 @@ export default function PlayScreen() {
                 initialFound={boot?.run?.found}
                 initialScore={boot?.run?.score}
                 secsLeft={phase === 'live' ? remaining : undefined}
+                mercySecs={TUNING.MERCY_SECS}
                 onScore={setScore}
                 onClues={setFound}
                 onTiles={onTiles}
@@ -285,11 +317,21 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#A78BFA',
   },
+  clockWrap: {
+    alignItems: 'center',
+  },
   clock: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 24,
     color: '#EDEFF7',
     fontVariant: ['tabular-nums'],
+  },
+  timePop: {
+    position: 'absolute',
+    top: 26,
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 14,
+    color: '#5FD6A8',
   },
   clockLow: {
     color: '#FF8A8E',

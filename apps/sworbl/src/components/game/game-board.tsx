@@ -28,11 +28,12 @@ interface Props {
   onScore?: (total: number) => void;
   onClues?: (found: string[]) => void;
   onTiles?: (tiles: TileT[], queueIdx: number) => void; // run-snapshot feed
-  onWordSpelled?: (word: string, pts: number) => void; // superlatives feed
+  onWordSpelled?: (word: string, pts: number, caughtClue: boolean) => void; // superlatives + time-fuel feed
+  mercySecs?: number; // mercy threshold override (time-fuel rounds fire later)
 }
 
 export function GameBoard({
-  deal, size, gap, initialTiles, initialFound, initialScore, secsLeft, onScore, onClues, onTiles, onWordSpelled,
+  deal, size, gap, initialTiles, initialFound, initialScore, secsLeft, onScore, onClues, onTiles, onWordSpelled, mercySecs,
 }: Props) {
   const cell = size + gap;
   const boardW = COLS * cell - gap;
@@ -117,6 +118,7 @@ export function GameBoard({
         prevSecsLeft: prev,
         secsLeft,
         cluesFound: found.length,
+        thresholdSecs: mercySecs,
       })
     ) {
       const clue = engine.daily.firstUnfoundClue(deal.clues, found);
@@ -233,7 +235,7 @@ export function GameBoard({
       setTimeout(() => setVerdict(null), 1200);
       haptic.good();
       scoreRef.current += pts;
-      onWordSpelled && onWordSpelled(word, pts);
+      onWordSpelled && onWordSpelled(word, pts, res.isNew);
       onScore && onScore(scoreRef.current);
       playedRef.current.add(word);
       const gone = new Set(ids);
