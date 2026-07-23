@@ -9,6 +9,7 @@ export interface TileT {
   ci: number; // PALETTE index
   spawnDrop: number; // 0 = dealt in place; >0 = rains in from N rows above
   bornAt: number; // ms epoch — mid-air tiles are not selectable until landed
+  boost?: number; // Threes-style stack count (merged twins) — value multiplies
 }
 
 // what the trace worklets need per tile (a slim copy that lives in shared values)

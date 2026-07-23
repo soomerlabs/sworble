@@ -90,6 +90,7 @@ export interface RunTileSnap {
   col: number;
   row: number;
   ci: number;
+  boost?: number; // Threes-stack count survives kills
 }
 
 export interface RunSnap {

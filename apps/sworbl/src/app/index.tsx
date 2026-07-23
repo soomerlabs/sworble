@@ -14,18 +14,15 @@ import Animated, {
   ZoomIn,
   useSharedValue,
   useAnimatedStyle,
-  useAnimatedProps,
   withSpring,
   withTiming,
   interpolate,
   Extrapolation,
   runOnJS,
 } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
 
 // native-feel blur: animate the INTENSITY (what iOS itself does), never the
 // layer's opacity — a fading frosted overlay is the "doesn't look native" tell
-const AnimatedBlur = Animated.createAnimatedComponent(BlurView);
 
 import Storm from '@/components/game/storm';
 import { ClueFan } from '@/components/game/clue-fan';
@@ -151,12 +148,10 @@ export default function HomeScreen() {
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: sheetY.value }],
   }));
-  // the background blur RAMPS GRADUALLY with the pull (owner: it slammed on
-  // early) — intensity rides sheet progress linearly, Apple-style
-  const blurProps = useAnimatedProps(() => ({
-    // integer steps — every push is a native effect update; float precision
-    // is invisible and expensive
-    intensity: Math.round(interpolate(sheetY.value, [0, height], [45, 0], Extrapolation.CLAMP) / 5) * 5,
+  // NO BLUR (owner: drag jank — "just delete it"). A plain dark scrim fades
+  // with the pull instead: one opacity on one solid view, compositing-only.
+  const scrimStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(sheetY.value, [0, height], [0.55, 0], Extrapolation.CLAMP),
   }));
 
   const dateLine = new Date()
@@ -258,12 +253,10 @@ export default function HomeScreen() {
           </GestureDetector>
         </SafeAreaView>
 
-        {/* progressive blur under the rising sheet — animated INTENSITY */}
-        <AnimatedBlur
+        {/* dark scrim under the rising sheet (blur deleted — owner call) */}
+        <Animated.View
           pointerEvents="none"
-          animatedProps={blurProps}
-          tint="dark"
-          style={StyleSheet.absoluteFill}
+          style={[StyleSheet.absoluteFill, styles.scrim, scrimStyle]}
         />
 
         {/* THE SHEET — pre-mounted hidden below the screen; drags are pure transform */}
@@ -280,6 +273,9 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: BG_DARK,
+  },
+  scrim: {
+    backgroundColor: '#000000',
   },
   stormRest: {
     opacity: 0.4, // v18 resting storm after the day is played

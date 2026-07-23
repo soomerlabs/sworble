@@ -8,4 +8,6 @@ export const TUNING = {
   CAP_SECS: engine.run.TIME_FUEL.CAP_SECS, // 420 — the Seven, earned
   MERCY_SECS: 45, // time-fuel rounds: mercy pings on the 0:45 crossing
   PAR_TARGET: 3500, // scoring-header crown STUB — becomes today's #1 when Supabase standings land
+  PAR_SECOND: 2400, // 2nd-place track mark STUB — same Supabase swap
+  PAR_THIRD: 1500, // 3rd-place track mark STUB — "what's needed to get on the board"
 };

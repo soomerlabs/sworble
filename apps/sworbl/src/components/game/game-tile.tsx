@@ -82,23 +82,36 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
   // THE WAVE-NO (web rjArrive + tileDeflate + rjDrainOut): the whole word
   // turns red TOGETHER (0.26s blend), DEFLATES in unison (womp: 1.07→0.94→1),
   // then the red DRAINS OUT FROM THE HEAD backwards (35ms/tile, from 0.5s)
+  // SNAPPIER than the web fossil (owner: the round is timed — "get it over
+  // with"): shorter red hold, faster drain, tighter womp. Same shape, ~60% time.
   const sRed = useSharedValue(0);
   const deflate = useSharedValue(1);
   useEffect(() => {
     if (!nope) return;
-    const drainDelay = 500 + (nopeTotal - 1 - nopeSeq) * 35;
+    const drainDelay = 260 + (nopeTotal - 1 - nopeSeq) * 22;
     sRed.value = withSequence(
       withTiming(1, { duration: 65 }), // rjArrive's 25% snap
       withTiming(1, { duration: Math.max(0, drainDelay - 65) }),
-      withTiming(0, { duration: 420 }) // rjDrainOut
+      withTiming(0, { duration: 260 }) // rjDrainOut, hurried
     );
     deflate.value = withSequence(
-      withTiming(1.07, { duration: 92 }),
-      withTiming(0.94, { duration: 129 }),
-      withTiming(1.005, { duration: 110 }),
-      withTiming(1, { duration: 129 })
+      withTiming(1.07, { duration: 70 }),
+      withTiming(0.94, { duration: 95 }),
+      withTiming(1.005, { duration: 80 }),
+      withTiming(1, { duration: 95 })
     );
   }, [nope]);
+
+  // THE STACK (web mergeTiles): survivor pops on impact; badge wears ×mult
+  const stackPop = useSharedValue(1);
+  useEffect(() => {
+    if (!tile.boost) return;
+    stackPop.value = withSequence(
+      withTiming(1.18, { duration: 90 }),
+      withTiming(0.96, { duration: 110 }),
+      withTiming(1, { duration: 100 })
+    );
+  }, [tile.boost]);
 
   const pal = PALETTE[tile.ci] || PALETTE[0];
 
@@ -134,7 +147,7 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
     transform: [
       { translateX: x },
       { translateY: y.value + liftY.value },
-      { scale: scale.value * deflate.value },
+      { scale: scale.value * deflate.value * stackPop.value },
       { scale: headScale.value },
       { scaleY: squashY.value },
     ],
@@ -187,6 +200,23 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
             ]}>
             {tile.letter === 'q' ? 'Qu' : tile.letter.toUpperCase()}
           </Animated.Text>
+          {!!tile.boost && (
+            <Animated.View
+              style={[
+                styles.stackBadge,
+                {
+                  minWidth: Math.round(size * 0.34),
+                  height: Math.round(size * 0.3),
+                  borderRadius: Math.round(size * 0.15),
+                  top: Math.round(size * 0.06),
+                  right: Math.round(size * 0.06),
+                },
+              ]}>
+              <Animated.Text style={[styles.stackText, { fontSize: Math.round(size * 0.2) }]}>
+                ×{tile.boost + 1}
+              </Animated.Text>
+            </Animated.View>
+          )}
         </Animated.View>
       </Animated.View>
     </Animated.View>
@@ -223,6 +253,18 @@ const styles = StyleSheet.create({
   },
   letter: {
     fontFamily: 'Fredoka_600SemiBold',
+    includeFontPadding: false,
+  },
+  stackBadge: {
+    position: 'absolute',
+    paddingHorizontal: 3,
+    backgroundColor: 'rgba(15,15,20,0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stackText: {
+    fontFamily: 'Fredoka_600SemiBold',
+    color: '#FFFFFF',
     includeFontPadding: false,
   },
 });

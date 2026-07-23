@@ -17,6 +17,7 @@ export interface StepperVerdict {
   pts?: number;
   ok: boolean;
   clue?: string;
+  mult?: number; // Threes-stack merge: the ×N banner instead of points
 }
 
 export interface SworbFace {
@@ -187,7 +188,12 @@ export function StepperCard({ width, traceWord, verdict, sworb }: Props) {
       {verdict ? (
         <View style={styles.bannerRow}>
           <Chips word={verdict.word.toLowerCase()} red={!verdict.ok} />
-          {verdict.ok && (
+          {verdict.ok && verdict.mult != null && (
+            <Animated.Text entering={FadeIn.duration(150)} style={styles.pts}>
+              ×{verdict.mult}
+            </Animated.Text>
+          )}
+          {verdict.ok && verdict.pts != null && (
             <Animated.Text entering={FadeIn.duration(150)} style={styles.pts}>
               +{verdict.pts}
               {verdict.clue ? '  ✦' : ''}

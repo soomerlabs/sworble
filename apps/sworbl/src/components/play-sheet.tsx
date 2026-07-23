@@ -165,7 +165,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     if (!deal) return;
     const snap: RunSnap = {
       client: 'rn', v: 1, day: deal.dayKey, phase: 'live',
-      tiles: boardTilesRef.current.map(({ id, letter, col, row, ci }) => ({ id, letter, col, row, ci })),
+      tiles: boardTilesRef.current.map(({ id, letter, col, row, ci, boost }) => ({ id, letter, col, row, ci, boost })),
       queueIdx: queueIdxRef.current,
       score, found,
       boardElapsedMs: clockElapsedMs(clockRef.current, Date.now()),
@@ -211,7 +211,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
       finaleRestore.current = s;
       const snap: RunSnap = {
         client: 'rn', v: 1, day: deal.dayKey, phase: 'finale',
-        tiles: boardTilesRef.current.map(({ id, letter, col, row, ci }) => ({ id, letter, col, row, ci })),
+        tiles: boardTilesRef.current.map(({ id, letter, col, row, ci, boost }) => ({ id, letter, col, row, ci, boost })),
         queueIdx: queueIdxRef.current,
         score, found,
         boardElapsedMs: clockEffSecs(clockRef.current, CT) * 1000,
@@ -346,7 +346,12 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
 
         {onBoard && (
           <View style={styles.scoreHdrWrap}>
-            <ScoreHeader score={score} target={TUNING.PAR_TARGET} width={tile * 5 + gap * 4 + 24} />
+            <ScoreHeader
+              score={score}
+              target={TUNING.PAR_TARGET}
+              marks={{ second: TUNING.PAR_SECOND, third: TUNING.PAR_THIRD }}
+              width={tile * 5 + gap * 4 + 24}
+            />
           </View>
         )}
 

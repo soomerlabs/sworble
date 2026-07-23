@@ -56,7 +56,7 @@ export function GameBoard({
   const [tiles, setTiles] = useState<TileT[]>(() => initialTiles ?? deal.tiles);
   // id → position-in-swipe (pop stagger rides the seq; web clearSeq)
   const [clearingIds, setClearingIds] = useState<Map<number, number>>(new Map());
-  const [verdict, setVerdict] = useState<{ word: string; pts?: number; ok: boolean; clue?: string } | null>(null);
+  const [verdict, setVerdict] = useState<{ word: string; pts?: number; ok: boolean; clue?: string; mult?: number } | null>(null);
   const [trace, setTrace] = useState({ word: '', ci: 0 });
   const [jsPath, setJsPath] = useState<TraceTile[]>([]); // web connector mirror
   const [found, setFound] = useState<string[]>(initialFound ?? []);
@@ -205,6 +205,16 @@ export function GameBoard({
   const [fShake, setFShake] = useState(0);
   const [fBurst, setFBurst] = useState(0);
 
+  useEffect(() => {
+    if (!fin) return;
+    if (fSlots.length !== fLen) {
+      setFRows(fin.restore?.rows ?? []);
+      setFSlots(fin.restore?.slots?.length === fLen ? fin.restore.slots : Array(fLen).fill(''));
+      setFColors(fin.restore?.colors?.length === fLen ? fin.restore.colors : Array(fLen).fill(null));
+      setFUsed(fin.restore?.guessesUsed ?? 0);
+    }
+  }, [fin, fLen, fSlots.length]);
+
   const fKey = useCallback(
     (ch: string) => {
       if (!fin || fLocked) return;
@@ -252,7 +262,17 @@ export function GameBoard({
     fin.onProgress({ rows: out.rows, slots: out.slots, colors: out.colors, guessesUsed: out.usedNow });
     setFShake((k) => k + 1);
     haptic.bad();
-  }, [fin, fLocked, fSlots, fRows, fUsed, deal]);
+    // the 3rd-miss FREEBIE (owner): another clue releases mid-guessing —
+    // banked as intel (no location claim, so no findability requirement)
+    if (out.usedNow === 3 && !ladder.guess3Given) {
+      const clue = deal.clues.find((c) => !foundRef.current.includes(c));
+      if (clue) {
+        setFound((cur) => (cur.includes(clue) ? cur : [...cur, clue]));
+        setLadder((l) => ({ ...l, guess3Given: true }));
+        haptic.good();
+      }
+    }
+  }, [fin, fLocked, fSlots, fRows, fUsed, deal, ladder.guess3Given]);
 
   const sworbFace: SworbFace | null = fin
     ? { slots: fSlots, colors: fColors, guessesUsed: fUsed, shakeKey: fShake, burstKey: fBurst }
@@ -307,7 +327,45 @@ export function GameBoard({
 
   const commitWord = useCallback(
     (ids: number[], word: string) => {
-      if (!deal || ids.length < 3) return;
+      if (!deal) return;
+      // THE STACK (web mergeTiles / Threes): a 2-tile pair of the SAME letter
+      // merges — survivor is the LAST tile of the swipe, takes the first's
+      // color, boost accumulates (a+b+1); ×mult shows on the tile and the
+      // stacked value pays out when the tile is finally spelled.
+      if (ids.length === 2) {
+        const a = tilesMirror.current.find((t) => t.id === ids[0]);
+        const b = tilesMirror.current.find((t) => t.id === ids[1]);
+        if (a && b && a.letter === b.letter) {
+          const boost = (a.boost || 0) + (b.boost || 0) + 1;
+          setVerdict({ word: b.letter, ok: true, mult: boost + 1 });
+          setTimeout(() => setVerdict(null), 1100);
+          haptic.good();
+          // survivor stacks NOW (badge + impact pop); the twin exits through
+          // the standard clearing pop, then the column settles — one motion
+          setTiles((cur) => cur.map((t) => (t.id === b.id ? { ...t, boost, ci: a.ci } : t)));
+          setClearingIds((cur) => new Map([...cur, [a.id, 0]]));
+          setTimeout(() => {
+            setClearingIds((cur) => {
+              const next = new Map(cur);
+              next.delete(a.id);
+              return next;
+            });
+            setTiles((cur) => {
+              const { tiles: settled, added } = settle(cur.filter((t) => t.id !== a.id), deal.nextLetter);
+              const unfound = deal.clues.filter(
+                (c) => !foundRef.current.includes(c) && !playedRef.current.has(c)
+              );
+              return restampBroken({ deal, tiles: settled, added, unfound });
+            });
+          }, 285);
+        } else if (a && b) {
+          // non-identical pair: too short for a word — shake it off (web)
+          setNope((n) => ({ key: n.key + 1, seqs: new Map(ids.map((id, i) => [id, i])), total: 2 }));
+          haptic.bad();
+        }
+        return;
+      }
+      if (ids.length < 3) return;
       if (!dict().has(word)) {
         setVerdict({ word: word.toUpperCase(), ok: false });
         // the WAVE-NO: seq = position in the swipe (drain sweeps head→back)
@@ -316,11 +374,19 @@ export function GameBoard({
           seqs: new Map(ids.map((id, i) => [id, i])),
           total: ids.length,
         }));
-        setTimeout(() => setVerdict(null), 900);
+        setTimeout(() => setVerdict(null), 600);
         haptic.bad();
         return;
       }
-      const pts = scoreWord(word);
+      // stacked tiles pay their multiplier (web tileVal): score from the PATH
+      const pathTiles = ids
+        .map((id) => tilesMirror.current.find((t) => t.id === id))
+        .filter(Boolean) as TileT[];
+      const base = pathTiles.reduce(
+        (sum, t) => sum + engine.core.letterVal(t.letter, t.boost),
+        0
+      );
+      const pts = Math.round(base * 10 * engine.core.lenMult(word.length));
       // the ENGINE decides whether this word banks a clue ("trims" banks "trim")
       const res = engine.daily.resolveCatch({ found: foundRef.current, word, targets: deal.clues });
       setVerdict(

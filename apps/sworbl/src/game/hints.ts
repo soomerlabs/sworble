@@ -16,9 +16,12 @@ export interface HintLadder {
   nudged: string | null; // the clue whose first letter was revealed (or null)
   freeGiven: boolean; // the 7-word free clue fired
   floorGiven: boolean; // the finale floor top-up fired
+  guess3Given: boolean; // the 3rd-missed-guess freebie (owner: "another freeb")
 }
 
-const FRESH: HintLadder = { words: 0, nudged: null, freeGiven: false, floorGiven: false };
+const FRESH: HintLadder = {
+  words: 0, nudged: null, freeGiven: false, floorGiven: false, guess3Given: false,
+};
 
 export const NUDGE_AT_WORDS = 3;
 export const FREE_CLUE_AT_WORDS = 7;
@@ -32,6 +35,7 @@ export function loadLadder(dayKey: string): HintLadder {
     nudged: typeof s.nudged === 'string' ? s.nudged : null,
     freeGiven: !!s.freeGiven,
     floorGiven: !!s.floorGiven,
+    guess3Given: !!s.guess3Given,
   };
 }
 
