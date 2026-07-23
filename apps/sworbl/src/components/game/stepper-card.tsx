@@ -7,6 +7,7 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, {
   ZoomIn, FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withSequence, withTiming,
+  withDelay, Easing, type EntryExitAnimationFunction,
 } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 import { PALETTE, CARD, tileColorFor } from '@/game/palette';
@@ -34,6 +35,57 @@ interface Props {
   verdict: StepperVerdict | null;
   sworb?: SworbFace | null; // finale: the stepper hosts the guess (fossil sworb face)
 }
+
+// THE MISS TUMBLE (web chipFall + _bannerMiss): rejected chips lean drunk in
+// place, then gravity takes them off the stepper — 48px fall with a rotation,
+// GOLDEN-RATIO scattered delays so they let go in "random" order, not a sweep.
+// Module-level worklet factories — closures inside render trip the React
+// Compiler (hoisted out of the worklet = remote-call crash).
+function chipFallAt(i: number): EntryExitAnimationFunction {
+  return ((values: { currentOriginY: number }) => {
+    'worklet';
+    const delay = ((i * 0.618034) % 1) * 160;
+    const fr = (i % 2 ? 1 : -1) * (12 + i * 8);
+    return {
+      initialValues: {
+        originY: values.currentOriginY,
+        transform: [{ rotate: '0deg' }],
+        opacity: 1,
+      },
+      animations: {
+        originY: withDelay(
+          delay,
+          withTiming(values.currentOriginY + 48, {
+            duration: 450,
+            easing: Easing.bezier(0.5, 0, 0.8, 0.5),
+          })
+        ),
+        transform: [{ rotate: withDelay(delay, withTiming(`${fr}deg`, { duration: 450 })) }],
+        opacity: withDelay(delay, withTiming(0, { duration: 450 })),
+      },
+    };
+  }) as EntryExitAnimationFunction;
+}
+
+// the reject row arrives SHAKING (web shakeX on the miss banner)
+const missShakeIn: EntryExitAnimationFunction = () => {
+  'worklet';
+  return {
+    initialValues: { transform: [{ translateX: 0 }] },
+    animations: {
+      transform: [
+        {
+          translateX: withSequence(
+            withTiming(-7, { duration: 55 }),
+            withTiming(6, { duration: 70 }),
+            withTiming(-3, { duration: 60 }),
+            withTiming(0, { duration: 70 })
+          ),
+        },
+      ],
+    },
+  };
+};
 
 const GUESS_C: Record<string, { bg: string; edge: string; ink: string }> = {
   green: { bg: '#5FD6A8', edge: '#38AD7F', ink: '#1F1442' },
@@ -100,6 +152,7 @@ function Chips({ word, red }: { word: string; red?: boolean }) {
           <Animated.View
             key={i + ch}
             entering={ZoomIn.springify().mass(0.5)}
+            exiting={red ? chipFallAt(i) : undefined}
             style={[
               styles.chip,
               {
@@ -108,6 +161,13 @@ function Chips({ word, red }: { word: string; red?: boolean }) {
                 borderRadius: Math.round(hs * 0.27),
                 backgroundColor: red ? '#E5484D' : pal.bg,
                 boxShadow: `0 2px 0 ${red ? '#8C2328' : pal.edge}`,
+              },
+              // the drunken lean (web _bannerMiss): each chip knocked askew
+              red && {
+                transform: [
+                  { rotate: `${i % 2 ? 5 : -6}deg` },
+                  { translateY: i % 2 ? -2 : 2 },
+                ],
               },
             ]}>
             <Text style={[styles.chipText, { fontSize: Math.round(hs * 0.55) }]}>
@@ -191,7 +251,9 @@ export function StepperCard({ width, traceWord, verdict, sworb }: Props) {
       <Animated.View key="spell" exiting={FadeOut.duration(200)} style={styles.face}>
       {/* the banner: live chain chips, a landed verdict, or the idle line */}
       {verdict ? (
-        <View style={styles.bannerRow}>
+        <Animated.View
+          entering={verdict.ok ? undefined : missShakeIn}
+          style={styles.bannerRow}>
           <Chips word={verdict.word.toLowerCase()} red={!verdict.ok} />
           {verdict.ok && verdict.mult != null && (
             <Animated.Text entering={FadeIn.duration(150)} style={styles.pts}>
@@ -204,7 +266,7 @@ export function StepperCard({ width, traceWord, verdict, sworb }: Props) {
               {verdict.clue ? '  ✦' : ''}
             </Animated.Text>
           )}
-        </View>
+        </Animated.View>
       ) : tracing ? (
         <Chips word={traceWord} />
       ) : (

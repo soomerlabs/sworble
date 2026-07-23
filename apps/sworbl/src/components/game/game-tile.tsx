@@ -19,7 +19,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { PALETTE, INK, MONO_DARK, MONO_INK } from '@/game/palette';
-import type { TileT, TraceTile } from '@/game/types';
+import { COLS, ROWS, type TileT, type TraceTile } from '@/game/types';
 
 const FALL_EASE = Easing.bezier(0.45, 0.02, 0.7, 0.5); // accelerate, hard stop
 
@@ -103,6 +103,25 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
     );
   }, [nope]);
 
+  // THE WAKE (owner count-in redesign): letters are masked until the clock
+  // runs; when concealment lifts, each letter STAMPS IN with a pop, staggered
+  // by distance from the board's center — the shockwave's footprint.
+  const sLetterO = useSharedValue(concealed ? 0 : 1);
+  const wakePop = useSharedValue(1);
+  useEffect(() => {
+    if (concealed) {
+      sLetterO.value = 0;
+      return;
+    }
+    const dist = Math.hypot(tile.col - (COLS - 1) / 2, tile.row - (ROWS - 1) / 2);
+    const delay = Math.round(dist * 60);
+    sLetterO.value = withDelay(delay, withTiming(1, { duration: 150 }));
+    wakePop.value = withDelay(
+      delay,
+      withSequence(withTiming(1.09, { duration: 100 }), withTiming(1, { duration: 140 }))
+    );
+  }, [concealed]);
+
   // THE STACK (web mergeTiles): survivor pops on impact; badge wears ×mult
   const stackPop = useSharedValue(1);
   useEffect(() => {
@@ -148,7 +167,7 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
     transform: [
       { translateX: x },
       { translateY: y.value + liftY.value },
-      { scale: scale.value * deflate.value * stackPop.value },
+      { scale: scale.value * deflate.value * stackPop.value * wakePop.value },
       { scale: headScale.value },
       { scaleY: squashY.value },
     ],
@@ -176,6 +195,7 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
     const base = sLit.value ? INK : MONO_INK;
     return {
       color: sRed.value > 0 ? interpolateColor(sRed.value, [0, 1], [base, '#FFFFFF']) : base,
+      opacity: sLetterO.value,
     };
   });
 
@@ -199,7 +219,7 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
                 lineHeight: Math.round(size * 0.62),
               },
             ]}>
-            {concealed ? '' : tile.letter === 'q' ? 'Qu' : tile.letter.toUpperCase()}
+            {tile.letter === 'q' ? 'Qu' : tile.letter.toUpperCase()}
           </Animated.Text>
           {!concealed && !!tile.boost && (
             <Animated.View

@@ -1,16 +1,21 @@
-// The 3·2·1·GO count-in, board-local. Timeline and step meaning come from the
-// ENGINE (COUNT_IN_MS + countInStepAt) — this component only renders the beats.
-// 700ms per beat, GO holds 650ms, 'out' fade at 2750ms, unmount at 3300ms.
+// The COUNT-IN, redesigned (owner): board letters stay MASKED while candy
+// NUMBER BLOCKS pop — 3, 2, 1 — and there is NO "GO" card. At the GO beat
+// the overlay dies and the BOARD ITSELF turns on (shockwave + radial letter
+// wake, owned by the board). Beat timing still comes from the ENGINE
+// (COUNT_IN_MS + countInStepAt) — this component only renders the beats.
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 import Animated, { ZoomIn, FadeOut } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
-import { PALETTE } from '@/game/palette';
+import { PALETTE, INK } from '@/game/palette';
 
 interface Props {
-  onRelease: () => void; // board unlocks (engine RELEASE step)
+  onRelease: () => void; // board unlocks + wakes (engine GO beat)
   onUnmount: () => void;
 }
+
+// 3 violet · 2 gold · 1 green — green hands off to the board turning on
+const BEAT_PAL: Record<string, number> = { '3': 0, '2': 4, '1': 2 };
 
 export function CountIn({ onRelease, onUnmount }: Props) {
   const [step, setStep] = useState<string>('3');
@@ -25,30 +30,32 @@ export function CountIn({ onRelease, onUnmount }: Props) {
     const timers = [
       at(MS.STEP2, () => setStep(stepAt(MS.STEP2, '2'))),
       at(MS.STEP1, () => setStep(stepAt(MS.STEP1, '1'))),
-      at(MS.GO, () => setStep(stepAt(MS.GO, 'GO'))),
-      at(MS.RELEASE, () => {
+      // the GO beat: no card — the overlay clears and the BOARD wakes
+      at(MS.GO, () => {
         setOut(true);
         onRelease();
       }),
-      at(MS.UNMOUNT, () => onUnmount()),
+      at(MS.GO + 400, () => onUnmount()),
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
 
-  const ci = step === 'GO' ? 2 : step === '1' ? 1 : step === '2' ? 0 : 3;
-  const pal = PALETTE[ci];
+  const pal = PALETTE[BEAT_PAL[step] ?? 0];
 
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.wrap, out && styles.out]}>
-      <Animated.Text
-        key={step}
-        entering={ZoomIn.springify().mass(0.6).damping(12)}
-        exiting={FadeOut.duration(140)}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RN 0.86's
-        // string textShadow prop isn't in Reanimated's style types yet
-        style={[styles.digit, { color: pal.bg, textShadow: `0 4px 0 ${pal.edge}` } as any]}>
-        {step}
-      </Animated.Text>
+      {!out && (
+        <Animated.View
+          key={step}
+          entering={ZoomIn.springify().mass(0.6).damping(12)}
+          exiting={FadeOut.duration(120)}
+          style={[
+            styles.block,
+            { backgroundColor: pal.bg, boxShadow: `0 7px 0 ${pal.edge}` },
+          ]}>
+          <Text style={styles.digit}>{step}</Text>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -62,10 +69,19 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   out: {
-    opacity: 0, // RELEASE → the overlay fades while GO's exit plays underneath
+    opacity: 0, // GO → the overlay vanishes; the board's shockwave takes over
+  },
+  block: {
+    width: 96,
+    height: 96,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   digit: {
     fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 96,
+    fontSize: 54,
+    color: INK,
+    includeFontPadding: false,
   },
 });

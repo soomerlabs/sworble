@@ -17,6 +17,7 @@ import { haptic } from '@/game/haptics';
 import { loadLadder, saveLadder, NUDGE_AT_WORDS, FREE_CLUE_AT_WORDS, FINALE_FLOOR, type HintLadder } from '@/game/hints';
 import { PingRings } from './ping-rings';
 import { StepperCard, type SworbFace } from './stepper-card';
+import { Shockwave } from './shockwave';
 import { BoardKeyboard } from './board-keyboard';
 import { applyGuess } from '@/game/finale-logic';
 import type { FinaleRestore } from './finale';
@@ -139,6 +140,18 @@ export function GameBoard({
     haptic.good();
     return true;
   }, [findableUnfound, firePing, deal]);
+
+  // THE WAKE: concealment lifting = the board turning ON — one shockwave
+  // (owner count-in redesign: no GO card, the board itself announces it)
+  const prevConcealed = useRef(!!concealed);
+  const [wave, setWave] = useState(0);
+  useEffect(() => {
+    if (prevConcealed.current && !concealed) {
+      setWave((w) => w + 1);
+      haptic.good();
+    }
+    prevConcealed.current = !!concealed;
+  }, [concealed]);
 
   // FINALE FLOOR: enter the guess round with at least 2 clues banked. Keyed on
   // the finale prop ARRIVING — the old secsLeft<=0 trigger never fired (the
@@ -569,6 +582,7 @@ export function GameBoard({
               concealed={!!concealed}
             />
           ))}
+          {wave > 0 && !concealed && <Shockwave key={wave} width={boardW} height={boardH} />}
           {ping && (
             <PingRings
               key={ping.key}
