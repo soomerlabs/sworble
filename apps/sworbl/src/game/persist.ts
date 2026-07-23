@@ -73,6 +73,9 @@ export function finishDay(
   engine.store.setJSON(K.SEVEN_PREFIX + dayKey, {
     words: [...bestWords].sort((a, b) => b.pts - a.pts).slice(0, 5),
   });
+  // the FULL word list (the explorer's "every word") — top-5 alone can't
+  // tell the day's story
+  engine.store.setJSON(DAY_WORDS_KEY + dayKey, bestWords);
   engine.store.set(K.DONE_PREFIX + dayKey, 1);
   clearRun(dayKey);
   // lifetime stats append (profile screen) — idempotent by day, lazy import
@@ -131,6 +134,13 @@ export function loadRun(dayKey: string): RunSnap | null {
 
 export function clearRun(dayKey: string): void {
   engine.store.remove(K.RUN_PREFIX + dayKey);
+}
+
+const DAY_WORDS_KEY = 'sworbl_rn_daywords_';
+
+export function loadDayWords(dayKey: string): BestWord[] {
+  const v = engine.store.getJSON(DAY_WORDS_KEY + dayKey, null) as BestWord[] | null;
+  return Array.isArray(v) ? v : [];
 }
 
 // ---- UI restoration: "the sheet was open when the OS reclaimed us" ----
