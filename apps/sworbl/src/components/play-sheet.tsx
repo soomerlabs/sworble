@@ -131,12 +131,14 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   useEffect(() => {
     if (!active) return;
     const t = setTimeout(() => {
+      // console.log, NOT warn — a recovery note must never nag LogBox on
+      // every open (owner); the gold diagnostics overlay is the loud channel
       if (phase === 'countin' && !countInMounted) {
-        if (__DEV__) console.warn('[sworbl] watchdog: stuck countin → paused cover');
+        if (__DEV__) console.log('[sworbl] watchdog: stuck countin → paused cover');
         setPhase('paused');
       }
       if (phase === 'live' && !clockRef.current.liveStartAt) {
-        if (__DEV__) console.warn('[sworbl] watchdog: live with a paused clock → paused cover');
+        if (__DEV__) console.log('[sworbl] watchdog: live with a paused clock → paused cover');
         setPhase('paused');
       }
     }, 400);
