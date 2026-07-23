@@ -427,7 +427,27 @@ export default function HomeScreen() {
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: DOCK_H + insets.bottom + 10 }]}
           showsVerticalScrollIndicator={false}>
-          {deal && <DateHeader theme={theme} dayKey={deal.dayKey} />}
+          {deal && (
+            <DateHeader
+              theme={theme}
+              dayKey={deal.dayKey}
+              score={played && you ? you.score : null}
+              onShare={() =>
+                deal &&
+                Share.share({
+                  message: buildShareText({
+                    dayKey: deal.dayKey,
+                    archetypeLabel: deal.archetype ? twistLabel(deal.archetype) : null,
+                    clues: deal.clues,
+                    found: day?.found ?? [],
+                    solved,
+                    guessesUsed: day?.sworb?.guessesUsed ?? 0,
+                    score: you?.score ?? 0,
+                  }),
+                }).catch(() => {})
+              }
+            />
+          )}
 
           {/* word of the day: candy bloom when the day is done, dashed
               blanks before (the answer is hidden — no spoilers) */}
@@ -466,39 +486,6 @@ export default function HomeScreen() {
                   />
                 ))}
           </View>
-          {/* THE DAY'S HEADLINE (owner: score was buried in the list) —
-              score + rank + the sworbl-style share card */}
-          {played && deal && you && (
-            <View style={styles.scoreLine}>
-              <Text style={[styles.scoreBig, { color: theme.ink }]}>
-                {you.score.toLocaleString()}
-                <Text style={[styles.scoreUnit, { color: theme.sub }]}> pts</Text>
-              </Text>
-              <Text style={styles.scoreRank}>#{you.rank} today</Text>
-              <Pressable
-                onPress={() =>
-                  Share.share({
-                    message: buildShareText({
-                      dayKey: deal.dayKey,
-                      archetypeLabel: deal.archetype ? twistLabel(deal.archetype) : null,
-                      clues: deal.clues,
-                      found: day?.found ?? [],
-                      solved,
-                      guessesUsed: day?.sworb?.guessesUsed ?? 0,
-                      score: you.score,
-                    }),
-                  }).catch(() => {})
-                }
-                hitSlop={10}
-                style={[styles.shareChip, { backgroundColor: theme.card }]}>
-                {Platform.OS === 'ios' ? (
-                  <SymbolView name={'square.and.arrow.up' as never} size={15} tintColor="#8971FF" />
-                ) : (
-                  <Text style={styles.chartGlyph}>↗</Text>
-                )}
-              </Pressable>
-            </View>
-          )}
           {played && !solved && (
             <Text style={[styles.missLine, { color: theme.sub }]}>
               not cracked — tomorrow's another sworbl

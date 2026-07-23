@@ -11,6 +11,7 @@ import { router } from 'expo-router';
 import Constants from 'expo-constants';
 
 import { ScreenBar } from '@/components/screen-bar';
+import { ScreenHeader } from '@/components/screen-header';
 import { useTheme, useThemeMode, setThemeMode, ACCENT, type ThemeMode } from '@/game/theme';
 import { getPlayerName, setPlayerName } from '@/game/player';
 import { hapticsEnabled, setHapticsEnabled, haptic } from '@/game/haptics';
@@ -38,7 +39,7 @@ export default function SettingsScreen() {
       <SafeAreaView style={styles.safe}>
         <ScreenBar theme={theme} />
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <Text style={[styles.title, { color: theme.ink }]}>settings</Text>
+          <ScreenHeader theme={theme} eyebrow="SWORBL" title="settings" />
 
           <Text style={[styles.sectionLabel, { color: theme.faint }]}>PLAYER</Text>
           <View style={[styles.row, { backgroundColor: theme.card }]}>
@@ -125,11 +126,6 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 28,
     gap: 10,
-  },
-  title: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 26,
-    marginBottom: 6,
   },
   sectionLabel: {
     fontFamily: 'Fredoka_600SemiBold',

@@ -1,55 +1,74 @@
-// DATE HEADER (handoff 20a/6b): tiny "DAILY PUZZLE · Nº N" eyebrow, then the
-// big weekday + accent month-day line, then a hairline. Leads the screen —
-// the par bar is gone (owner-approved handoff call).
+// DATE HEADER — home's instance of the shared ScreenHeader grammar. When
+// the day is complete, the score docks at the title's right edge and IS the
+// share button (owner: "right edge, put the score... we need a way to share").
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { Text, Pressable, StyleSheet, Platform, View } from 'react-native';
+import { SymbolView } from 'expo-symbols';
+import { ScreenHeader } from '@/components/screen-header';
 import { type Theme, ACCENT } from '@/game/theme';
 import { puzzleNo } from '@/game/share';
 
-export function DateHeader({ theme, dayKey }: { theme: Theme; dayKey: string }) {
+interface Props {
+  theme: Theme;
+  dayKey: string;
+  score?: number | null; // completed day → docks right of the title
+  onShare?: () => void;
+}
+
+export function DateHeader({ theme, dayKey, score, onShare }: Props) {
   const now = new Date();
   const weekday = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
   const monthDay = now
     .toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
     .toLowerCase();
   return (
-    <View style={styles.wrap}>
-      <Text style={[styles.eyebrow, { color: theme.faint }]}>
-        DAILY PUZZLE · Nº {puzzleNo(dayKey)}
-      </Text>
-      <View style={styles.line}>
-        <Text style={[styles.big, { color: theme.ink }]}>{weekday}</Text>
-        <Text style={[styles.big, { color: ACCENT }]}>{monthDay}</Text>
-      </View>
-      <View style={[styles.hairline, { backgroundColor: theme.hairline }]} />
-    </View>
+    <ScreenHeader
+      theme={theme}
+      eyebrow={`DAILY PUZZLE · Nº ${puzzleNo(dayKey)}`}
+      title={weekday}
+      titleAccent={monthDay}
+      right={
+        score != null ? (
+          <Pressable onPress={onShare} hitSlop={10} style={styles.scoreTap}>
+            <Text style={[styles.score, { color: theme.ink }]}>{score.toLocaleString()}</Text>
+            <View style={styles.shareRow}>
+              {Platform.OS === 'ios' ? (
+                <SymbolView name={'square.and.arrow.up' as never} size={11} tintColor={ACCENT} />
+              ) : (
+                <Text style={styles.shareGlyph}>↗</Text>
+              )}
+              <Text style={styles.shareText}>share</Text>
+            </View>
+          </Pressable>
+        ) : undefined
+      }
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    alignSelf: 'stretch',
-    gap: 4,
+  scoreTap: {
+    alignItems: 'flex-end',
+    gap: 1,
   },
-  eyebrow: {
+  score: {
     fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 10,
-    letterSpacing: 2.5,
+    fontSize: 22,
+    lineHeight: 26,
+    fontVariant: ['tabular-nums'],
   },
-  line: {
+  shareRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 9,
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 3,
   },
-  big: {
+  shareGlyph: {
+    fontSize: 11,
+    color: ACCENT,
+  },
+  shareText: {
     fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 31,
-    lineHeight: 36,
-  },
-  hairline: {
-    height: 1.5,
-    marginTop: 11,
-    alignSelf: 'stretch',
+    fontSize: 10.5,
+    color: ACCENT,
   },
 });

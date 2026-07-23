@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
 import { ScreenBar } from '@/components/screen-bar';
+import { ScreenHeader } from '@/components/screen-header';
 import { useTheme, CLUE_GREEN } from '@/game/theme';
 import { PALETTE, tileColorFor } from '@/game/palette';
 import { loadStats, historyGrid } from '@/game/stats';
@@ -46,23 +47,23 @@ export default function ProfileScreen() {
       <SafeAreaView style={styles.safe}>
         <ScreenBar theme={theme} />
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          {/* identity row */}
-          <View style={styles.idRow}>
-            <View
-              style={[
-                styles.avatar,
-                {
-                  backgroundColor: avatarPal.bg,
-                  boxShadow: `0 6px 0 ${avatarPal.edge}, inset 0 3px 0 rgba(255,255,255,0.42)`,
-                },
-              ]}>
-              <Text style={styles.avatarLetter}>{name[0]}</Text>
-            </View>
-            <View style={styles.idText}>
-              <Text style={[styles.name, { color: theme.ink }]}>{name}</Text>
-              <Text style={[styles.since, { color: theme.sub }]}>{sinceLine(stats.firstDay)}</Text>
-            </View>
-          </View>
+          <ScreenHeader
+            theme={theme}
+            eyebrow={`PLAYER · ${sinceLine(stats.firstDay).toUpperCase()}`}
+            title={name.toLowerCase()}
+            right={
+              <View
+                style={[
+                  styles.avatar,
+                  {
+                    backgroundColor: avatarPal.bg,
+                    boxShadow: `0 5px 0 ${avatarPal.edge}, inset 0 3px 0 rgba(255,255,255,0.42)`,
+                  },
+                ]}>
+                <Text style={styles.avatarLetter}>{name[0]}</Text>
+              </View>
+            }
+          />
 
           {/* 2×2 stat cards */}
           <View style={styles.cards}>
@@ -171,34 +172,18 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
     gap: 20,
   },
-  idRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 17,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarLetter: {
     fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 28,
+    fontSize: 22,
     color: '#1F1442',
     includeFontPadding: false,
-  },
-  idText: {
-    gap: 3,
-  },
-  name: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 22,
-  },
-  since: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 11.5,
   },
   cards: {
     flexDirection: 'row',

@@ -11,6 +11,7 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 
 import { ScreenBar } from '@/components/screen-bar';
+import { ScreenHeader } from '@/components/screen-header';
 import { FloatingPodium } from '@/components/home/floating-podium';
 import { CountdownDock } from '@/components/home/countdown-dock';
 import { useTheme, ACCENT, ACCENT_EDGE } from '@/game/theme';
@@ -115,9 +116,11 @@ export default function LeaderboardScreen() {
         <ScreenBar theme={theme} action={{ symbol: 'square.and.arrow.up', fallback: '↗', onPress: share }} />
         <GestureDetector gesture={flip}>
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-            <Text style={[styles.title, { color: theme.ink }]}>
-              {page === 0 ? 'daily' : 'all-time'}
-            </Text>
+            <ScreenHeader
+              theme={theme}
+              eyebrow="STANDINGS"
+              title={page === 0 ? 'daily' : 'all-time'}
+            />
             <Animated.View
               key={page}
               entering={FadeIn.duration(240)}
@@ -174,11 +177,6 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 12,
     gap: 16,
-  },
-  title: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 26,
-    marginBottom: 2,
   },
   pageWrap: {
     // the podium row now carries its own crown headroom (26px) — this is

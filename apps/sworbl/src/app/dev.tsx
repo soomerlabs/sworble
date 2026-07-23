@@ -12,6 +12,7 @@ import { StatusBar } from 'expo-status-bar';
 import engine from '@sworbl/engine';
 
 import { ScreenBar } from '@/components/screen-bar';
+import { ScreenHeader } from '@/components/screen-header';
 import { useTheme, ACCENT, CLUE_GREEN } from '@/game/theme';
 import { PALETTE } from '@/game/palette';
 import { dealDaily, getDevDay, setDevDay, authoredDays } from '@/game/daily';
@@ -77,7 +78,7 @@ export default function DevScreen() {
       <SafeAreaView style={styles.safe}>
         <ScreenBar theme={theme} />
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <Text style={[styles.title, { color: theme.ink }]}>dev tools</Text>
+          <ScreenHeader theme={theme} eyebrow="DEVELOPER" title="dev tools" />
 
           {/* ---- TODAY ---- */}
           <Text style={sectionLabel}>TODAY</Text>
@@ -324,11 +325,6 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 28,
     gap: 10,
-  },
-  title: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 26,
-    marginBottom: 6,
   },
   sectionLabel: {
     fontFamily: 'Fredoka_600SemiBold',
