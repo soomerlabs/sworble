@@ -192,6 +192,19 @@ export default function HomeScreen() {
   const sSquash = useSharedValue(1); // candy squash when the sheet docks at full
   const sDetent = useSharedValue(0); // 1 once the pull crosses the commit line
   const [sheetOpen, setSheetOpen] = useState(bootOpen); // fully open → home drag off, round armed
+  // REVEAL WATCHDOG (owner: "gameboard is super dimmed"): sReveal normally
+  // ramps in markOpen, but a sheet that's open by ANY other path — hot
+  // reload with the board up, dev restarts — would leave the stretched
+  // crest parked over the board at full burn. Law: an open sheet ends
+  // fully revealed, whatever road opened it.
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const t = setTimeout(() => {
+      if (sReveal.value < 1) sReveal.value = withTiming(1, { duration: 300 });
+    }, 1200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheetOpen]);
   const sheetRef = useRef<PlaySheetHandle>(null);
 
   // the rollover gate: adopt the new day only while no round is in flight

@@ -13,8 +13,8 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
-  Canvas, Group, Paint, Blur, ColorMatrix, Rect, RoundedRect, Circle,
-  LinearGradient, RadialGradient, vec,
+  Canvas, Group, Paint, Blur, ColorMatrix, Rect, RoundedRect,
+  LinearGradient, vec,
 } from '@shopify/react-native-skia';
 import {
   useSharedValue, useDerivedValue, withRepeat, withTiming, Easing,
@@ -166,14 +166,6 @@ export default function Storm({ width, height = 260 }: {
             {CURTAINS.map((_, i) => (
               <Curtain key={i} i={i} width={width} height={height} />
             ))}
-            <Circle cx={width / 2} cy={height * 0.9} r={width * 0.5}>
-              <RadialGradient
-                c={vec(width / 2, height * 0.9)}
-                r={width * 0.5}
-                colors={['rgba(167,139,250,0.55)', 'rgba(167,139,250,0)']}
-                positions={[0, 0.85]}
-              />
-            </Circle>
           </Group>
           {/* THE GOO BLOBS — the fossil recipe, the heroes: sharp source
               UNDER the goo'd copy (blur 11 → alpha ×30 −14), the whole
