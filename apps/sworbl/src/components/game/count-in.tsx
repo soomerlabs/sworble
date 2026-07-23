@@ -8,6 +8,7 @@ import { StyleSheet, View, Text } from 'react-native';
 import Animated, { ZoomIn, FadeOut } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 import { PALETTE, INK } from '@/game/palette';
+import { haptic } from '@/game/haptics';
 
 interface Props {
   onRelease: () => void; // board unlocks + wakes (engine GO beat)
@@ -20,6 +21,12 @@ const BEAT_PAL: Record<string, number> = { '3': 0, '2': 4, '1': 2 };
 export function CountIn({ onRelease, onUnmount }: Props) {
   const [step, setStep] = useState<string>('3');
   const [out, setOut] = useState(false);
+
+  // each beat TAPS (owner): 3·2·1 soft ticks — GO's heavier thump belongs to
+  // the board's wake (game-board fires haptic.good when concealment lifts)
+  useEffect(() => {
+    haptic.soft();
+  }, [step]);
 
   useEffect(() => {
     // DRIFT-CORRECTED beats (owner: "not in perfect sync"): timeout chains
