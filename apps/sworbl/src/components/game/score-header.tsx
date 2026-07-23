@@ -84,7 +84,7 @@ export function ScoreHeader({ score, target, marks, width, gs = GAME_DARK }: Pro
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: 10, // honest spacing now that the track has its real height
+    gap: 8, // owner-tuned
     marginBottom: 8,
   },
   reading: {
