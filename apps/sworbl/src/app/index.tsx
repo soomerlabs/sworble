@@ -506,6 +506,7 @@ export default function HomeScreen() {
               dayKey={deal.dayKey}
               score={played && you ? you.score : null}
               streak={streak}
+              onInfo={!played ? () => router.push('/how-to') : undefined}
               onShare={() =>
                 deal &&
                 Share.share({
@@ -574,11 +575,6 @@ export default function HomeScreen() {
 
           {/* pre-play: six BLANK hint slots (no letter counts, no spoilers).
               post-play the clue intel lives inside the superlatives pager. */}
-          {!played && stats.games === 0 && (
-            <Text style={[styles.firstRun, { color: theme.sub }]}>
-              swipe words · catch the 6 clues · crack the day's word at 0:00
-            </Text>
-          )}
           {!played && (
             <View style={styles.hintRow}>
               {HINT_SLOT_W.map((w, i) => (
@@ -845,12 +841,6 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     letterSpacing: 0.6,
     color: '#8971FF',
-  },
-  firstRun: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 12.5,
-    textAlign: 'center',
-    marginTop: -6,
   },
   hintRow: {
     flexDirection: 'row',

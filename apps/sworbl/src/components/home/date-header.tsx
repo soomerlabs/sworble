@@ -14,9 +14,10 @@ interface Props {
   score?: number | null; // completed day → docks right of the title
   streak?: number; // 🔥 in the eyebrow when ≥2
   onShare?: () => void;
+  onInfo?: () => void; // pre-play: the ⓘ lives where the score will
 }
 
-export function DateHeader({ theme, dayKey, score, streak, onShare }: Props) {
+export function DateHeader({ theme, dayKey, score, streak, onShare, onInfo }: Props) {
   const now = new Date();
   const weekday = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
   const monthDay = now
@@ -40,6 +41,14 @@ export function DateHeader({ theme, dayKey, score, streak, onShare }: Props) {
               )}
               <Text style={styles.shareText}>share</Text>
             </View>
+          </Pressable>
+        ) : onInfo ? (
+          <Pressable onPress={onInfo} hitSlop={12} style={[styles.infoChip, { backgroundColor: theme.card }]}>
+            {Platform.OS === 'ios' ? (
+              <SymbolView name={'info' as never} size={14} tintColor={ACCENT} />
+            ) : (
+              <Text style={styles.infoGlyph}>i</Text>
+            )}
           </Pressable>
         ) : undefined
       }
@@ -70,6 +79,18 @@ const styles = StyleSheet.create({
   shareText: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 10.5,
+    color: ACCENT,
+  },
+  infoChip: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoGlyph: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 14,
     color: ACCENT,
   },
 });
