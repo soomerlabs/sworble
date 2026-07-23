@@ -75,10 +75,12 @@ export function SheetWeather({ sheetY, sGlow, sBoot, sReveal, closedY, width, pe
           style={StyleSheet.absoluteFill}
         />
         {/* the SURFACE MELT: the board's own color dissolving down into the
-            hues — the wash's top edge is a blend now, never a line */}
+            hues. Sized to the GLOW's reach (1.15×band), not a % of the
+            sheet — at 45%-of-screen it out-ran the glow and left a black
+            gap between the band and the first visible color (owner) */}
         <LinearGradient
           colors={[gs.bg, gs.bg + '00']}
-          style={styles.melt}
+          style={[styles.melt, { height: Math.round(peekH * 1.15) }]}
         />
       </Animated.View>
       <Animated.View
@@ -107,7 +109,6 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: '45%',
   },
   // the crest rides the sheet's TOP edge; scaling from that edge lets the
   // swell spread DOWN over the emerging board during the pull
