@@ -3,7 +3,9 @@
 // stepped podium, the ranked list with the player's row pinned INLINE
 // (indigo), and the NEXT SWORBL IN countdown. Stub fields until Supabase.
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Share, useWindowDimensions } from 'react-native';
+import {
+  View, Text, StyleSheet, ScrollView, Pressable, Share, useWindowDimensions, RefreshControl,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import engine from '@sworbl/engine';
@@ -117,6 +119,20 @@ export default function LeaderboardScreen() {
       return rows.slice(3, Math.max(LIST_CAP, youIdx + 2));
     }, [entries, played, myRank, name, myScore, isRemote]);
 
+  // PULL TO REFRESH (owner; unblocked now that the field is live) — both
+  // boards re-fetch; the spinner holds until the slower one answers
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      const [d, a] = await Promise.all([fetchDaily(dayKey), fetchAllTime()]);
+      if (d?.entries.length) setRemoteDaily(d);
+      if (a?.entries.length) setRemoteAll(a);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const share = () => {
     const line =
       played && myRank
@@ -132,7 +148,12 @@ export default function LeaderboardScreen() {
       <Floaters width={dims.width} height={dims.height} />
       <SafeAreaView style={styles.safe}>
         <ScreenBar theme={theme} action={{ icon: 'share', onPress: share }} />
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={ACCENT} />
+          }>
             <ScreenHeader
               theme={theme}
               eyebrow="STANDINGS"

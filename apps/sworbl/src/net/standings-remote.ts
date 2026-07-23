@@ -118,16 +118,29 @@ export async function drainOutbox(): Promise<void> {
   const remaining: Pending[] = [];
   for (const p of box) {
     try {
-      const { error } = await sb.from('submissions').insert({
-        player_id: uid,
-        day: p.day,
-        score: p.score,
-        solved: p.solved,
-        guesses: p.guesses,
-        words: p.words,
+      // THE HONESTY GATE (schema v2): results go through the submit-score
+      // edge function, which re-scores the words server-side and inserts
+      // with the service role — clients lost direct INSERT.
+      const { data, error } = await sb.functions.invoke('submit-score', {
+        body: { day: p.day, score: p.score, solved: p.solved, guesses: p.guesses, words: p.words },
       });
-      // duplicate (already submitted) counts as delivered — the day is one-shot
-      if (error && !`${error.code}`.startsWith('23')) remaining.push(p);
+      if (data?.ok) continue; // delivered (duplicates count — one-shot law)
+      if (error) {
+        // TRANSITION FALLBACK: function not deployed yet → the legacy
+        // direct insert (works until schema-v2 drops the policy). A 4xx
+        // VALIDATION rejection is final — drop it, don't retry forever.
+        const status = (error as { context?: { status?: number } }).context?.status;
+        if (status === 404) {
+          const { error: insErr } = await sb.from('submissions').insert({
+            player_id: uid, day: p.day, score: p.score,
+            solved: p.solved, guesses: p.guesses, words: p.words,
+          });
+          if (insErr && !`${insErr.code}`.startsWith('23')) remaining.push(p);
+          continue;
+        }
+        if (status === 422 || status === 400) continue; // rejected: final
+        remaining.push(p); // network/5xx: retry later
+      }
     } catch {
       remaining.push(p);
     }
