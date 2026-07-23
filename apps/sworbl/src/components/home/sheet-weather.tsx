@@ -12,6 +12,8 @@ import Animated, {
 
 import Storm from '@/components/game/storm';
 import { bootWindow } from './home-motion';
+import { gameSurface } from '@/game/palette';
+import { useTheme } from '@/game/theme';
 
 // the six hues — during the pull the emerging sheet's face IS this color
 const WASH_HUES = ['#A78BFA', '#5BC8F5', '#5FD6A8', '#F58FB8', '#F5B84A', '#F58A66'] as const;
@@ -53,8 +55,11 @@ export function SheetWeather({ sheetY, sGlow, sBoot, closedY, width, peekH }: Pr
     // hand the surface back BEFORE the animation ends (owner) — the board's
     // real colors are already standing when the sheet docks
     const reveal = interpolate(travel, [0.68, 0.9], [1, 0], Extrapolation.CLAMP);
-    return { opacity: build * reveal };
+    // TINT, not paint (owner: "such hard lines looks bad") — at 55% the
+    // hues glow through the dark surface instead of reading as bands
+    return { opacity: build * reveal * 0.55 };
   }, [closedY]);
+  const gs = gameSurface(useTheme().mode);
 
   return (
     <>
@@ -66,6 +71,12 @@ export function SheetWeather({ sheetY, sGlow, sBoot, closedY, width, peekH }: Pr
           start={{ x: 0.1, y: 0 }}
           end={{ x: 0.9, y: 1 }}
           style={StyleSheet.absoluteFill}
+        />
+        {/* the SURFACE MELT: the board's own color dissolving down into the
+            hues — the wash's top edge is a blend now, never a line */}
+        <LinearGradient
+          colors={[gs.bg, gs.bg + '00']}
+          style={styles.melt}
         />
       </Animated.View>
       <Animated.View
@@ -88,6 +99,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+  },
+  melt: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '45%',
   },
   // the crest rides the sheet's TOP edge; scaling from that edge lets the
   // swell spread DOWN over the emerging board during the pull
