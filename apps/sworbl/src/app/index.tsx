@@ -34,7 +34,7 @@ import { PlaySheet, type PlaySheetHandle } from '@/components/play-sheet';
 import { ARCHETYPE_LABEL } from '@/components/game/result-view';
 import { PALETTE, INK, tileColorFor } from '@/game/palette';
 import { useTheme } from '@/game/theme';
-import { dealDaily } from '@/game/daily';
+import { dealDaily, getDevDay } from '@/game/daily';
 import { loadDay, saveSheetOpen, wasSheetOpen, type DayState } from '@/game/persist';
 import { standingsStub, rankFor } from '@/game/standings';
 import { useDayKey } from '@/game/use-day-key';
@@ -59,7 +59,10 @@ export default function HomeScreen() {
   // finishes honestly against yesterday's keys), then the new day arrives.
   const dayKey = useDayKey();
   const [activeDayKey, setActiveDayKey] = useState(dayKey);
-  const deal = useMemo(() => dealDaily(), [activeDayKey]);
+  // devDay: __DEV__ playtest override — reading it during render means the
+  // focus-refresh after returning from /dev picks up a changed override
+  const devDay = getDevDay();
+  const deal = useMemo(() => dealDaily(), [activeDayKey, devDay]);
 
   // (rollover gate lives below the sheet state — it must see sheetOpen)
 
@@ -313,9 +316,15 @@ export default function HomeScreen() {
             />
           )}
 
+          {/* flex springs: pre-play the column is short (header + tiles +
+              hints + standings) and everything pooled at the top (owner:
+              "top heavy"). The springs float the standings into the leftover
+              space; on full recap days they collapse to zero. */}
+          <View style={styles.spring} />
           <Pressable style={styles.podiumTap} onPress={() => router.push('/leaderboard')}>
             <FloatingPodium theme={theme} entries={entries} you={you} />
           </Pressable>
+          <View style={styles.springSmall} />
         </View>
 
         {/* the swipe-to-play GRAB ZONE is the dock area only (owner call) —
@@ -337,7 +346,7 @@ export default function HomeScreen() {
       {deal && (
         <Animated.View style={[styles.sheet, sheetStyle]}>
           <PlaySheet
-            key={activeDayKey}
+            key={deal.dayKey}
             ref={sheetRef}
             onClose={closeSheet}
             active={sheetOpen}
@@ -431,7 +440,12 @@ const styles = StyleSheet.create({
   },
   podiumTap: {
     alignSelf: 'stretch',
-    paddingTop: 4,
+  },
+  spring: {
+    flexGrow: 1,
+  },
+  springSmall: {
+    flexGrow: 0.6,
   },
   hintSlot: {
     height: 33,

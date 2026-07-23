@@ -24,8 +24,37 @@ export interface DailyDeal {
 
 let nextId = 1;
 
+// DEV-ONLY day override: playtest any authored day (archetype week etc.)
+// without touching the device clock. Hard-fenced — release builds can't set
+// or read it.
+// __DEV__ is a bundler global — absent under the Node test runner
+const IS_DEV = typeof __DEV__ !== 'undefined' && __DEV__;
+const DEV_DAY_KEY = 'sworbl_rn_dev_day';
+
+export function getDevDay(): string | null {
+  if (!IS_DEV) return null;
+  const v = engine.store.getJSON(DEV_DAY_KEY, null) as string | null;
+  return typeof v === 'string' && v in dailies ? v : null;
+}
+
+export function setDevDay(day: string | null): void {
+  if (!IS_DEV) return;
+  if (day) engine.store.setJSON(DEV_DAY_KEY, day);
+  else engine.store.remove(DEV_DAY_KEY);
+}
+
+export function authoredDays(): { day: string; sworb: string; archetype: string | null }[] {
+  return Object.keys(dailies)
+    .sort()
+    .map((day) => ({
+      day,
+      sworb: dailies[day].sworb,
+      archetype: typeof dailies[day].archetype === 'string' ? dailies[day].archetype : null,
+    }));
+}
+
 export function dealDaily(now = new Date()): DailyDeal | null {
-  const dayKey = engine.core.dayKey(now);
+  const dayKey = getDevDay() ?? engine.core.dayKey(now);
   const entry = engine.daily.parseEntry(dailies, dayKey);
   if (!entry) return null;
 

@@ -16,6 +16,30 @@ const POOL = [
   'OTTO', 'MAVE', 'CLEO', 'IGGY', 'ROON', 'VESP', 'BODE', 'NELL',
 ];
 
+// DEV: "LB FIELD" knob (web settings > DEVELOPER port) — truncates the stub
+// field to eyeball empty/partial standings states. Session-persistent in dev
+// storage; release builds always get the full field.
+// __DEV__ is a bundler global — absent under the Node test runner
+const IS_DEV = typeof __DEV__ !== 'undefined' && __DEV__;
+const DEV_LB_KEY = 'sworbl_rn_dev_lb';
+export type LbFieldMode = 'full' | '2' | '1' | '0';
+
+export function getLbFieldMode(): LbFieldMode {
+  if (!IS_DEV) return 'full';
+  const v = engine.store.getJSON(DEV_LB_KEY, 'full');
+  return v === '0' || v === '1' || v === '2' ? v : 'full';
+}
+
+export function setLbFieldMode(m: LbFieldMode): void {
+  if (!IS_DEV) return;
+  engine.store.setJSON(DEV_LB_KEY, m);
+}
+
+function capField(entries: LbEntry[]): LbEntry[] {
+  const m = getLbFieldMode();
+  return m === 'full' ? entries : entries.slice(0, parseInt(m, 10));
+}
+
 export function standingsStub(dayKey: string): LbEntry[] {
   const seed = engine.core.hashSeed('lb' + dayKey);
   const rnd = engine.core.mulberry32(seed >>> 0);
@@ -35,7 +59,7 @@ export function standingsStub(dayKey: string): LbEntry[] {
       solved: rnd() < 0.6,
     });
   }
-  return entries.sort((a, b) => b.score - a.score);
+  return capField(entries.sort((a, b) => b.score - a.score));
 }
 
 // ALL-TIME stub board — one stable seeded field (not day-keyed) with

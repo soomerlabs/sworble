@@ -22,6 +22,8 @@ import { PingRings } from './ping-rings';
 import { StepperCard, type SworbFace } from './stepper-card';
 import { BoardKeyboard } from './board-keyboard';
 import { applyGuess } from '@/game/finale-logic';
+import { getClueAudit } from '@/game/dev-flags';
+import { DevClueAudit, DevFlash } from './dev-clue-audit';
 import type { FinaleRestore } from './finale';
 
 interface Props {
@@ -142,6 +144,25 @@ export function GameBoard({
     haptic.good();
     return true;
   }, [findableUnfound, firePing, deal]);
+
+  // DEV CLUE AUDIT (owner fairness lens): tap a revealed chip → the solver
+  // must prove the path on the live board NOW; flash it or refuse red.
+  const audit = __DEV__ && getClueAudit();
+  const [devFlash, setDevFlash] = useState<{ key: number; cells: { col: number; row: number }[] } | null>(null);
+  const devFlashKey = useRef(0);
+  const devProve = useCallback((clue: string): boolean => {
+    const live = tilesMirror.current.filter((t: TileT) => !clearingMirror.current.has(t.id));
+    const path = engine.solver.findWord(live, {
+      word: clue, expand: engine.core.expandLetter, diag: true,
+    });
+    if (!path) return false;
+    const cells = (path as number[])
+      .map((id) => live.find((t: TileT) => t.id === id))
+      .filter(Boolean)
+      .map((t) => ({ col: (t as TileT).col, row: (t as TileT).row }));
+    setDevFlash({ key: ++devFlashKey.current, cells });
+    return true;
+  }, []);
 
   // THE WAKE: concealment lifting = the board turning ON. The ring shockwave
   // was owner-rejected ("don't like it, something subtle") — the announcement
@@ -591,6 +612,15 @@ export function GameBoard({
               concealed={!!concealed}
             />
           ))}
+          {devFlash && (
+            <DevFlash
+              key={devFlash.key}
+              cells={devFlash.cells}
+              size={size}
+              cell={cell}
+              onDone={() => setDevFlash(null)}
+            />
+          )}
           {ping && (
             <PingRings
               key={ping.key}
@@ -618,6 +648,7 @@ export function GameBoard({
         </Animated.View>
 
       <ClueFan clues={deal.clues} found={found} nudged={ladder.nudged} />
+      {audit && <DevClueAudit clues={deal.clues} found={found} onTap={devProve} />}
     </View>
   );
 }

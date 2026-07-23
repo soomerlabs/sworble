@@ -197,12 +197,41 @@ function PodCol({ theme, entry, place }: ColProps) {
           <Text style={[styles.blockLetter, { fontSize: first ? 27 : 23 }]}>
             {entry.name[0]}
           </Text>
+          <View
+            style={[
+              styles.placeBadge,
+              { backgroundColor: theme.mode === 'dark' ? '#EDEFF7' : '#1F1442' },
+            ]}>
+            <Text
+              style={[
+                styles.placeText,
+                { color: theme.mode === 'dark' ? '#1F1442' : '#FFFFFF' },
+              ]}>
+              {place}
+            </Text>
+          </View>
         </View>
       </Animated.View>
       <Text style={[styles.name, { color: theme.sub }]}>{entry.name}</Text>
       <Text style={[styles.score, { color: theme.ink, fontSize: first ? 13 : 12 }]}>
         {entry.score.toLocaleString()}
       </Text>
+    </View>
+  );
+}
+
+// unplayed: the SPOT where you'd float — a dashed ghost of the you-block
+// (owner: replaced the "play to join" text; the empty seat says it better)
+function GhostYou({ theme }: { theme: Theme }) {
+  const float = useFloatB();
+  return (
+    <View style={styles.youWrap}>
+      <Animated.View style={float}>
+        <View style={[styles.block, styles.youBlock, styles.ghostYou, { borderColor: theme.dashed }]}>
+          <Text style={[styles.blockLetter, { fontSize: 23, color: theme.dashed }]}>?</Text>
+        </View>
+      </Animated.View>
+      <Text style={[styles.youLabel, { color: theme.faint }]}>YOU</Text>
     </View>
   );
 }
@@ -262,7 +291,7 @@ export function FloatingPodium({ theme, entries, you, showTitle = true, showFoot
         (you ? (
           <YouBlock theme={theme} score={you.score} rank={you.rank} />
         ) : (
-          <Text style={[styles.join, { color: theme.faint }]}>play to join</Text>
+          <GhostYou theme={theme} />
         ))}
     </View>
   );
@@ -369,13 +398,28 @@ const styles = StyleSheet.create({
     color: ACCENT,
     marginTop: 5,
   },
+  ghostYou: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+  },
+  placeBadge: {
+    position: 'absolute',
+    top: -7,
+    left: -9,
+    width: 18,
+    height: 18,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  placeText: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 10,
+    includeFontPadding: false,
+  },
   youScore: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 15,
-  },
-  join: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 12.5,
-    paddingTop: 8,
   },
 });
