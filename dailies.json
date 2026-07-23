@@ -18,7 +18,8 @@
       "spray",
       "abyss"
     ],
-    "definition": "the vast body of salt water that covers most of the earth"
+    "definition": "the vast body of salt water that covers most of the earth",
+    "archetype": "straight-category"
   },
   "2026-07-21": {
     "sworb": "kitchen",
@@ -39,7 +40,8 @@
       "grill",
       "sink"
     ],
-    "definition": "the room where meals are cooked and prepared"
+    "definition": "the room where meals are cooked and prepared",
+    "archetype": "straight-category"
   },
   "2026-07-22": {
     "sworb": "bloom",
@@ -58,7 +60,8 @@
       "weed",
       "sprout"
     ],
-    "definition": "to produce flowers; to flourish or thrive"
+    "definition": "to produce flowers; to flourish or thrive",
+    "archetype": "straight-category"
   },
   "2026-07-23": {
     "sworb": "storm",
@@ -78,7 +81,8 @@
       "breeze",
       "thunder"
     ],
-    "definition": "a violent weather disturbance with wind, rain, or thunder"
+    "definition": "a violent weather disturbance with wind, rain, or thunder",
+    "archetype": "straight-category"
   },
   "2026-07-24": {
     "sworb": "chorus",
@@ -97,25 +101,27 @@
       "guitar",
       "encore"
     ],
-    "definition": "the part of a song sung by many voices together; a refrain"
+    "definition": "the part of a song sung by many voices together; a refrain",
+    "archetype": "straight-category"
   },
   "2026-07-25": {
-    "sworb": "batter",
+    "archetype": "sibling",
+    "sworb": "waffle",
     "themeWords": [
-      "bake",
-      "cake",
-      "loaf",
-      "malt",
-      "flour",
-      "sugar",
-      "yeast",
-      "knead",
-      "glaze",
-      "crumb",
-      "pastry",
-      "muffin"
+      "bacon",
+      "toast",
+      "bagel",
+      "juice",
+      "syrup",
+      "scone",
+      "donut",
+      "muffin",
+      "crepe",
+      "cocoa",
+      "honey",
+      "pancake"
     ],
-    "definition": "a beaten mixture of flour, eggs, and liquid, ready for baking"
+    "definition": "one square dish is still missing from the breakfast table"
   },
   "2026-07-26": {
     "sworb": "rocket",
@@ -135,26 +141,27 @@
       "cosmos",
       "gravity"
     ],
-    "definition": "a vehicle propelled by burning fuel, built to leave the earth"
+    "definition": "a vehicle propelled by burning fuel, built to leave the earth",
+    "archetype": "straight-category"
   },
   "2026-07-27": {
-    "sworb": "canopy",
+    "archetype": "connector",
+    "sworb": "light",
     "themeWords": [
-      "tree",
-      "bark",
-      "pine",
-      "glen",
-      "grove",
-      "trail",
-      "acorn",
-      "maple",
-      "birch",
-      "cedar",
-      "timber",
-      "willow",
-      "branch"
+      "flash",
+      "spot",
+      "lime",
+      "head",
+      "street",
+      "candle",
+      "green",
+      "night",
+      "lamp",
+      "torch",
+      "pilot",
+      "traffic"
     ],
-    "definition": "the uppermost leafy layer of a forest, spread like a roof"
+    "definition": "every word on this board is waiting for the same glow"
   },
   "2026-07-28": {
     "sworb": "hammer",
@@ -173,26 +180,26 @@
       "chisel",
       "wrench"
     ],
-    "definition": "a hand tool with a weighted head, used for driving nails"
+    "definition": "a hand tool with a weighted head, used for driving nails",
+    "archetype": "straight-category"
   },
   "2026-07-29": {
-    "sworb": "shadow",
+    "archetype": "lateral",
+    "sworb": "heavy",
     "themeWords": [
-      "dusk",
-      "dark",
-      "glow",
-      "veil",
-      "quiet",
-      "sleep",
-      "dream",
-      "shade",
-      "cloak",
-      "haunt",
-      "candle",
-      "silent",
-      "gloomy"
+      "metal",
+      "rain",
+      "duty",
+      "weight",
+      "hand",
+      "cream",
+      "hitter",
+      "sleeper",
+      "frost",
+      "price",
+      "load"
     ],
-    "definition": "the dark shape cast when a body blocks the light"
+    "definition": "everything on this board can weigh on you"
   },
   "2026-07-30": {
     "archetype": "straight-category",
