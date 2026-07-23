@@ -72,6 +72,52 @@ const PARK_SPRING = {
 
 const twistLabel = (a: string) => ARCHETYPE_LABEL[a] ?? null;
 
+// THE REVEAL FLIP (owner: 'the wordle character reversal') — each answer
+// tile flips over on arrival, staggered down the word: mono back → candy
+// face at the halfway point, exactly the Wordle reveal grammar in sworbl
+// candy. Shared values only.
+function FlipTile({ ch, i, w, h, r, palBg, palEdge, monoBg, monoEdge }: {
+  ch: string; i: number; w: number; h: number; r: number;
+  palBg: string; palEdge: string; monoBg: string; monoEdge: string;
+}) {
+  const p = useSharedValue(0);
+  useEffect(() => {
+    p.value = withDelay(200 + i * 160, withTiming(1, { duration: 420, easing: Easing.inOut(Easing.quad) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const pose = useAnimatedStyle(() => {
+    const deg = interpolate(p.value, [0, 1], [0, 180]);
+    const flipped = p.value > 0.5;
+    return {
+      transform: [{ perspective: 600 }, { rotateX: `${deg}deg` }],
+      backgroundColor: flipped ? palBg : monoBg,
+      boxShadow: `inset 0 -5px 0 ${flipped ? palEdge : monoEdge}, 0 2px 3px rgba(0,0,0,0.3)`,
+    };
+  });
+  const inkPose = useAnimatedStyle(() => ({
+    opacity: p.value > 0.5 ? 1 : 0,
+    // the face is mid-flip mirrored — counter-rotate the letter upright
+    transform: [{ rotateX: p.value > 0.5 ? '180deg' : '0deg' }],
+  }));
+  return (
+    <Animated.View
+      style={[
+        { width: w, height: h, borderRadius: r, alignItems: 'center', justifyContent: 'center' },
+        pose,
+      ]}>
+      <Animated.Text
+        style={[
+          { fontFamily: 'Fredoka_600SemiBold', color: INK, includeFontPadding: false, fontSize: Math.round(w * 0.57) },
+          inkPose,
+        ]}>
+        {ch.toUpperCase()}
+      </Animated.Text>
+    </Animated.View>
+  );
+}
+
+
+
 // the six blank hint slots: staggered widths, NO letter-count leak. SMALLER
 // than the hero word blocks in both axes (owner: the placeholders were
 // out-measuring the word of the day — the hierarchy was upside down)
