@@ -56,7 +56,8 @@ function Key({
   ch, w, h, onPress,
 }: { ch: string; w: number; h: number; onPress: () => void }) {
   const blockKey = KEY_BLOCKS[ch];
-  const rad = Math.round(h * (blockKey ? 0.26 : 0.2));
+  // letters: crisp corners (owner: no rounded letter keys); blocks stay candy
+  const rad = blockKey ? Math.round(h * 0.26) : 7;
   if (!blockKey) {
     // flat letter key: one quiet rounded face, press = sink
     return (
@@ -206,7 +207,7 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone 
   const kbPad = 6;
   const keyGap = 6;
   const keyW = Math.floor((width - kbPad * 2 - 9 * keyGap) / 10);
-  const keyH = Math.round(keyW * 1.6); // taller — a REAL keyboard's presence
+  const keyH = Math.round(keyW * 1.75); // taller still — the keyboard OWNS the bottom
   const wideW = Math.floor(keyW * 1.5);
 
   return (
@@ -294,7 +295,7 @@ const styles = StyleSheet.create({
   pip: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#2a2446' },
   pipUsed: { backgroundColor: '#ff6b5a' },
   kb: {
-    gap: 9,
+    gap: 10,
     alignItems: 'center',
   },
   kbRow: {
