@@ -49,19 +49,14 @@ export default function HomeScreen() {
 
   // ---- THE SHEET: position rides the finger; blur rides the position ----
   const sheetY = useSharedValue(height); // height = closed, 0 = open
-  const [sheetMounted, setSheetMounted] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false); // fully open → home drag disabled
+  const [sheetOpen, setSheetOpen] = useState(false); // fully open → home drag off, round armed
   const sheetRef = useRef<PlaySheetHandle>(null);
 
   const openSheet = useCallback(() => {
-    setSheetMounted(true);
     setSheetOpen(true);
     sheetY.value = withSpring(0, SHEET_SPRING);
   }, []);
-  const finishClose = useCallback(() => {
-    setSheetMounted(false);
-    setSheetOpen(false);
-  }, []);
+  const finishClose = useCallback(() => setSheetOpen(false), []);
   const closeSheet = useCallback(() => {
     sheetRef.current?.pauseForClose();
     sheetY.value = withTiming(height, { duration: 260 }, (fin) => {
@@ -72,19 +67,14 @@ export default function HomeScreen() {
     setTimeout(refreshDay, 300);
   }, [height, refreshDay, finishClose]);
 
-  // pull UP from home: the sheet follows the finger from the first pixel.
-  // DISABLED once fully open — the board's trace owns every gesture in there.
-  const mountSheet = useCallback(() => setSheetMounted(true), []);
+  // pull UP from the dock: the sheet (pre-mounted, hidden) rides the finger —
+  // pure transform on the UI thread, nothing mounts mid-gesture.
   const markOpen = useCallback(() => setSheetOpen(true), []);
   const openDrag = useMemo(
     () =>
       Gesture.Pan()
         .enabled(!sheetOpen)
         .minDistance(12)
-        .onStart(() => {
-          'worklet';
-          runOnJS(mountSheet)();
-        })
         .onUpdate((e) => {
           'worklet';
           // the sheet's TOP EDGE rides the finger itself (absoluteY), not the
@@ -98,13 +88,40 @@ export default function HomeScreen() {
             sheetY.value = withSpring(0, SHEET_SPRING);
             runOnJS(markOpen)();
           } else {
-            sheetY.value = withTiming(height, { duration: 200 }, (fin) => {
+            sheetY.value = withTiming(height, { duration: 200 });
+          }
+        }),
+    [height, sheetOpen, markOpen]
+  );
+
+  // close drag (lives HERE because home owns sheetY; the sheet's top bar wears
+  // it): pauses at first movement — fairness — then the sheet rides the finger
+  // down; release past 25% (or a flick) commits the close, else springs back.
+  const prepClose = useCallback(() => sheetRef.current?.pauseForClose(), []);
+  const closeDrag = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetY(15)
+        .onStart(() => {
+          'worklet';
+          runOnJS(prepClose)();
+        })
+        .onUpdate((e) => {
+          'worklet';
+          sheetY.value = Math.min(height, Math.max(0, e.translationY));
+        })
+        .onEnd((e) => {
+          'worklet';
+          if (e.translationY > height * 0.25 || e.velocityY > 900) {
+            sheetY.value = withTiming(height, { duration: 220 }, (fin) => {
               'worklet';
               if (fin) runOnJS(finishClose)();
             });
+          } else {
+            sheetY.value = withSpring(0, SHEET_SPRING);
           }
         }),
-    [height, sheetOpen, mountSheet, markOpen, finishClose]
+    [height, prepClose, finishClose]
   );
 
   const sheetStyle = useAnimatedStyle(() => ({
@@ -213,17 +230,15 @@ export default function HomeScreen() {
           </GestureDetector>
         </SafeAreaView>
 
-        {/* progressive blur under the rising sheet */}
-        {sheetMounted && (
-          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, blurStyle]}>
-            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
-          </Animated.View>
-        )}
+        {/* progressive blur under the rising sheet (always mounted; opacity 0 idle) */}
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, blurStyle]}>
+          <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+        </Animated.View>
 
-        {/* THE SHEET */}
-        {sheetMounted && deal && (
+        {/* THE SHEET — pre-mounted hidden below the screen; drags are pure transform */}
+        {deal && (
           <Animated.View style={[styles.sheet, sheetStyle]}>
-            <PlaySheet ref={sheetRef} onClose={closeSheet} />
+            <PlaySheet ref={sheetRef} onClose={closeSheet} active={sheetOpen} closeGesture={closeDrag} />
           </Animated.View>
         )}
       </View>

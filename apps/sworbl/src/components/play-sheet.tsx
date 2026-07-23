@@ -29,7 +29,7 @@ import Animated, { ZoomIn, FadeOut } from 'react-native-reanimated';
 
 // TIME FUEL: three minutes given, the Seven if you earn it (engine.run.timeForWord)
 
-type Phase = 'countin' | 'live' | 'paused' | 'finale' | 'done';
+type Phase = 'idle' | 'countin' | 'live' | 'paused' | 'finale' | 'done';
 
 export interface PlaySheetHandle {
   pauseForClose: () => void; // home calls this before sliding the sheet away
@@ -37,10 +37,16 @@ export interface PlaySheetHandle {
 
 interface PlaySheetProps {
   onClose: () => void;
+  // the sheet is PRE-MOUNTED hidden at boot (drag must move an already-built
+  // layer — mounting mid-gesture was the pull jank). The round only ARMS
+  // (count-in starts) when `active` flips true at sheet-dock.
+  active: boolean;
+  // built by HOME (it owns sheetY): finger-following close drag on the top bar
+  closeGesture: React.ComponentProps<typeof GestureDetector>['gesture'];
 }
 
 export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function PlaySheet(
-  { onClose },
+  { onClose, active, closeGesture },
   handleRef
 ) {
   const { width, height } = useWindowDimensions();
@@ -54,9 +60,17 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
 
   // a resumed run re-enters through the pause cover; a killed finale re-enters the finale
   const [phase, setPhase] = useState<Phase>(
-    route === 'consumed' ? 'done' : route === 'resume' ? 'paused' : route === 'finale' ? 'finale' : 'countin'
+    route === 'consumed' ? 'done' : route === 'resume' ? 'paused' : route === 'finale' ? 'finale' : 'idle'
   );
-  const [countInMounted, setCountInMounted] = useState(route === 'fresh');
+  const [countInMounted, setCountInMounted] = useState(false);
+
+  // ARM on dock: a fresh round's count-in starts only when the sheet is up
+  useEffect(() => {
+    if (active && phase === 'idle') {
+      setCountInMounted(true);
+      setPhase('countin');
+    }
+  }, [active, phase]);
   const bootedFromKill = useRef(route === 'resume');
   const [score, setScore] = useState(boot?.run ? boot.run.score : route === 'consumed' ? boot!.score : 0);
   const [found, setFound] = useState<string[]>(boot?.run ? boot.run.found : boot ? boot.found : []);
@@ -201,23 +215,17 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     return () => sub.remove();
   }, [pause]);
 
-  // home drives the sheet's motion; before it slides away it pauses the round
-  useImperativeHandle(handleRef, () => ({ pauseForClose: pause }), [pause]);
-  const closeBoard = useCallback(() => {
-    pause();
-    onClose();
-  }, [pause, onClose]);
-  // top-bar swipe down still closes (never fights board traces)
-  const closeSwipe = useMemo(
-    () =>
-      Gesture.Pan()
-        .activeOffsetY(30)
-        .onEnd((e) => {
-          'worklet';
-          if (e.translationY > 70 && Math.abs(e.translationX) < 90) runOnJS(closeBoard)();
-        }),
-    [closeBoard]
-  );
+  // home drives the sheet's motion; before it slides away the round settles:
+  // live → paused (snapshot), mid-count-in → disarm back to idle
+  const pauseForClose = useCallback(() => {
+    if (phase === 'live') {
+      pause();
+    } else if (phase === 'countin') {
+      setCountInMounted(false);
+      setPhase('idle');
+    }
+  }, [phase, pause]);
+  useImperativeHandle(handleRef, () => ({ pauseForClose }), [pauseForClose]);
 
   const onFinaleDone = useCallback(
     (r: { solved: boolean; guessesUsed: number; bonus: number }) => {
@@ -242,13 +250,13 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   const tile = Math.min(64, Math.floor((Math.min(width, 480) - 32) / (5 + 4 * 0.16)));
   const gap = Math.round(tile * 0.16);
   const clock = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`;
-  const onBoard = phase === 'countin' || phase === 'live' || phase === 'paused';
+  const onBoard = phase === 'idle' || phase === 'countin' || phase === 'live' || phase === 'paused';
 
   return (
     <View style={styles.root}>
-      <Storm width={width} height={Math.min(280, height * 0.32)} />
+      {phase !== 'idle' && <Storm width={width} height={Math.min(280, height * 0.32)} />}
       <View style={[styles.safe, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <GestureDetector gesture={closeSwipe}>
+        <GestureDetector gesture={closeGesture}>
         <View style={styles.top}>
           <Text style={styles.brand}>sworbl</Text>
           {onBoard && (
