@@ -1,34 +1,42 @@
-// DEV-ONLY runtime flags (hard-fenced: release builds read constants).
+// DEV-ONLY runtime flags — MEMORY-FIRST (hard lesson: on-device storage
+// reads lagged same-session writes, so uncached flags read stale while the
+// cached theme toggle worked fine). Memory is the in-session truth; storage
+// is only persistence across launches.
 import engine from '@sworbl/engine';
 
 // __DEV__ is a bundler global — absent under the Node test runner
 const IS_DEV = typeof __DEV__ !== 'undefined' && __DEV__;
-const AUDIT_KEY = 'sworbl_rn_dev_audit';
 
-// CLUE AUDIT overlay: revealed clue chips under the board; tap → the solver
-// proves the path live (flash) or refuses (red shake). The fairness lens.
-export function getClueAudit(): boolean {
-  if (!IS_DEV) return false;
-  return engine.store.getJSON(AUDIT_KEY, false) === true;
+function makeFlag(key: string, def: boolean) {
+  let mem: boolean | null = null;
+  return {
+    get(): boolean {
+      if (!IS_DEV) return false;
+      if (mem === null) mem = engine.store.getJSON(key, def) === true;
+      return mem;
+    },
+    set(v: boolean): void {
+      if (!IS_DEV) return;
+      mem = v;
+      engine.store.setJSON(key, v);
+    },
+  };
 }
 
-export function setClueAudit(v: boolean): void {
-  if (!IS_DEV) return;
-  engine.store.setJSON(AUDIT_KEY, v);
-}
+const audit = makeFlag('sworbl_rn_dev_audit', false);
+const diag = makeFlag('sworbl_rn_dev_diag', false);
+const short = makeFlag('sworbl_rn_dev_short', false);
+const stall = makeFlag('sworbl_rn_dev_stall', false);
 
-// COUNT-IN STALL STRESS: deliberately blocks the JS thread across the GO
-// beat so a single interval tick straddles the whole release..unmount
-// window — the exact conditions of the count-in freeze. With the fix, the
-// board still wakes (late); without it, this reproduced the freeze on demand.
-const STALL_KEY = 'sworbl_rn_dev_stall';
-
-export function getCountInStall(): boolean {
-  if (!IS_DEV) return false;
-  return engine.store.getJSON(STALL_KEY, false) === true;
-}
-
-export function setCountInStall(v: boolean): void {
-  if (!IS_DEV) return;
-  engine.store.setJSON(STALL_KEY, v);
-}
+// CLUE AUDIT overlay: revealed chips under the board; tap → solver proof
+export const getClueAudit = audit.get;
+export const setClueAudit = audit.set;
+// DIAGNOSTICS: the gold state readouts (off unless hunting a mystery)
+export const getDiagnostics = diag.get;
+export const setDiagnostics = diag.set;
+// SHORT ROUNDS: 20s base clock — full loop in under a minute
+export const getShortRounds = short.get;
+export const setShortRounds = short.set;
+// COUNT-IN STALL: freeze-repro stress (blocks JS across the GO beat)
+export const getCountInStall = stall.get;
+export const setCountInStall = stall.set;

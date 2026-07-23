@@ -39,6 +39,7 @@ import { ARCHETYPE_LABEL } from '@/components/game/result-view';
 import { PALETTE, INK, tileColorFor, gameSurface } from '@/game/palette';
 import { useTheme } from '@/game/theme';
 import { dealDaily, getDevDay } from '@/game/daily';
+import { getDiagnostics } from '@/game/dev-flags';
 import { loadDay, saveSheetOpen, wasSheetOpen, getResetNonce, type DayState } from '@/game/persist';
 import { standingsStub, rankFor, type LbEntry } from '@/game/standings';
 import { buildShareText } from '@/game/share';
@@ -539,7 +540,7 @@ export default function HomeScreen() {
             <View style={styles.standingsHead}>
               <Text style={[styles.standingsTitle, { color: theme.sub }]}>
                 standings
-                {__DEV__ ? `  ·  ${entries.length} in field` : ''}
+                {__DEV__ && getDiagnostics() ? `  ·  ${entries.length} in field` : ''}
               </Text>
               <Pressable
                 onPress={() => router.push('/leaderboard')}
@@ -614,7 +615,7 @@ export default function HomeScreen() {
               <View style={[styles.dockInner, { paddingBottom: Math.max(insets.bottom, 14) }]}>
                 <CountdownDock played={played} />
               </View>
-              {__DEV__ && (
+              {__DEV__ && getDiagnostics() && (
                 <Text style={styles.devBand}>
                   {deal?.dayKey ?? 'no-deal'}·{day?.route ?? 'no-day'}·{played ? 'played' : 'open'}
                   {getDevDay() ? '·OVERRIDE' : ''}

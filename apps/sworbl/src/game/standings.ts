@@ -24,14 +24,20 @@ const IS_DEV = typeof __DEV__ !== 'undefined' && __DEV__;
 const DEV_LB_KEY = 'sworbl_rn_dev_lb';
 export type LbFieldMode = 'full' | '2' | '1' | '0';
 
+let lbModeMem: LbFieldMode | null = null; // memory-first (see dev-flags.ts)
+
 export function getLbFieldMode(): LbFieldMode {
   if (!IS_DEV) return 'full';
-  const v = engine.store.getJSON(DEV_LB_KEY, 'full');
-  return v === '0' || v === '1' || v === '2' ? v : 'full';
+  if (lbModeMem === null) {
+    const v = engine.store.getJSON(DEV_LB_KEY, 'full');
+    lbModeMem = v === '0' || v === '1' || v === '2' ? v : 'full';
+  }
+  return lbModeMem;
 }
 
 export function setLbFieldMode(m: LbFieldMode): void {
   if (!IS_DEV) return;
+  lbModeMem = m;
   engine.store.setJSON(DEV_LB_KEY, m);
 }
 

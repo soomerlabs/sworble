@@ -18,7 +18,10 @@ import { dealDaily, getDevDay, setDevDay, authoredDays } from '@/game/daily';
 import { loadDay, resetDay, getResetNonce, bumpResetNonce } from '@/game/persist';
 import { isFullDictionary, dict } from '@/game/dict';
 import { getLbFieldMode, setLbFieldMode, type LbFieldMode } from '@/game/standings';
-import { getClueAudit, setClueAudit, getCountInStall, setCountInStall } from '@/game/dev-flags';
+import {
+  getClueAudit, setClueAudit, getCountInStall, setCountInStall,
+  getDiagnostics, setDiagnostics, getShortRounds, setShortRounds,
+} from '@/game/dev-flags';
 import { ARCHETYPE_LABEL } from '@/components/game/result-view';
 import { TUNING } from '@/game/tuning';
 import { haptic } from '@/game/haptics';
@@ -226,6 +229,31 @@ export default function DevScreen() {
             </Text>
           </Pressable>
 
+          <Pressable
+            onPress={() => {
+              setDiagnostics(!getDiagnostics());
+              refresh(getDiagnostics() ? 'gold diagnostics ON (sheet/band/standings readouts)' : 'diagnostics off');
+            }}
+            style={[styles.actionRow, { backgroundColor: theme.card }]}>
+            <Text style={[styles.actionText, { color: theme.ink }]}>gold diagnostics</Text>
+            <Text style={[styles.actionText, { color: getDiagnostics() ? CLUE_GREEN : theme.faint }]}>
+              {getDiagnostics() ? 'ON' : 'off'}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              setShortRounds(!getShortRounds());
+              refresh(getShortRounds() ? 'SHORT ROUNDS — 20s clock (rearm to apply)' : 'normal rounds');
+            }}
+            style={[styles.actionRow, { backgroundColor: theme.card }]}>
+            <Text style={[styles.actionText, { color: theme.ink }]}>short rounds (20s)</Text>
+            <Text style={[styles.actionText, { color: getShortRounds() ? CLUE_GREEN : theme.faint }]}>
+              {getShortRounds() ? 'ON' : 'off'}
+            </Text>
+          </Pressable>
+          <Text style={[styles.metaLine, { color: theme.faint }]}>
+            tip: long-press the CLOCK on a live board → skip straight to the finale
+          </Text>
           <Pressable
             onPress={() => {
               const next = !getCountInStall();

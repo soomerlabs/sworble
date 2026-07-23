@@ -27,6 +27,7 @@ import { dealDaily, bumpNextId } from '@/game/daily';
 import { type TileT } from '@/game/types';
 import { loadDay, saveProgress, finishDay, saveRun, type RunSnap, type BestWord } from '@/game/persist';
 import { loadLadder } from '@/game/hints';
+import { getDiagnostics, getShortRounds } from '@/game/dev-flags';
 import { TUNING } from '@/game/tuning';
 import Animated, {
   ZoomIn, FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withSequence, withTiming, withSpring,
@@ -179,7 +180,10 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
 
   // ---- clock: ONE ClockState ref; all accounting decided by round-clock.ts
   // (pure, test-pinned) — this screen only schedules ticks and renders ----
-  const CT = { baseSecs: TUNING.BASE_SECS, capSecs: TUNING.CAP_SECS };
+  const CT = {
+    baseSecs: __DEV__ && getShortRounds() ? 20 : TUNING.BASE_SECS,
+    capSecs: TUNING.CAP_SECS,
+  };
   const clockRef = useRef<ClockState>(mkClock(boot?.run ?? undefined));
   const [remaining, setRemaining] = useState(() => clockRemaining(clockRef.current, Date.now(), CT));
   const [timePop, setTimePop] = useState<{ key: number; secs: number } | null>(null);
@@ -396,7 +400,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     <View style={styles.root}>
       {phase !== 'idle' && <Storm width={width} height={Math.min(280, height * 0.32)} />}
       <View style={[styles.safe, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        {__DEV__ && (
+        {__DEV__ && getDiagnostics() && (
           <Text style={styles.devPhase}>
             {phase}·{route}
           </Text>

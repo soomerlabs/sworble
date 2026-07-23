@@ -31,15 +31,20 @@ let nextId = 1;
 // __DEV__ is a bundler global — absent under the Node test runner
 const IS_DEV = typeof __DEV__ !== 'undefined' && __DEV__;
 const DEV_DAY_KEY = 'sworbl_rn_dev_day';
+let devDayMem: string | null | undefined; // memory-first (see dev-flags.ts)
 
 export function getDevDay(): string | null {
   if (!IS_DEV) return null;
-  const v = engine.store.getJSON(DEV_DAY_KEY, null) as string | null;
-  return typeof v === 'string' && v in dailies ? v : null;
+  if (devDayMem === undefined) {
+    const v = engine.store.getJSON(DEV_DAY_KEY, null) as string | null;
+    devDayMem = typeof v === 'string' && v in dailies ? v : null;
+  }
+  return devDayMem;
 }
 
 export function setDevDay(day: string | null): void {
   if (!IS_DEV) return;
+  devDayMem = day;
   if (day) engine.store.setJSON(DEV_DAY_KEY, day);
   else engine.store.remove(DEV_DAY_KEY);
 }
