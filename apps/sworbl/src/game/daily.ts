@@ -13,6 +13,8 @@ export interface DailyDeal {
   dayKey: string;
   sworb: string;
   definition: string;
+  archetype: string | null; // today's twist — REVEALED ONLY POST-ROUND (owner:
+  // pre-round diagnosis IS the game; the tag teaches the vocabulary after)
   clues: string[]; // the 6 realized clue words actually stamped on this board
   tiles: TileT[];
   nextLetter: () => string; // deterministic finite-bag refill dealer
@@ -66,6 +68,7 @@ export function dealDaily(now = new Date()): DailyDeal | null {
     dayKey,
     sworb: entry.sworb,
     definition: entry.definition || '',
+    archetype: typeof entry.archetype === 'string' ? entry.archetype : null,
     clues: cand.realized,
     tiles,
     nextLetter,

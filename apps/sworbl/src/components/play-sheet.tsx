@@ -453,6 +453,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
               <ResultView
                 word={deal.sworb}
                 definition={deal.definition}
+                archetype={deal.archetype}
                 solved={result.solved}
                 guessesUsed={result.guessesUsed}
                 score={score}

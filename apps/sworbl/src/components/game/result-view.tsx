@@ -6,16 +6,26 @@ import { View, Text, StyleSheet } from 'react-native';
 import Animated, { ZoomIn, FadeIn } from 'react-native-reanimated';
 import { PALETTE, INK, tileColorFor } from '@/game/palette';
 
+// content values → player-facing labels ("straight-category" is internal)
+export const ARCHETYPE_LABEL: Record<string, string> = {
+  'straight-category': 'category',
+  connector: 'connector',
+  sibling: 'sibling',
+  lateral: 'lateral',
+  wordplay: 'wordplay',
+};
+
 interface Props {
   word: string;
   definition: string;
+  archetype?: string | null;
   solved: boolean;
   guessesUsed: number;
   score: number;
   bonus: number;
 }
 
-export function ResultView({ word, definition, solved, guessesUsed, score, bonus }: Props) {
+export function ResultView({ word, definition, archetype, solved, guessesUsed, score, bonus }: Props) {
   const bs = Math.min(56, Math.floor(300 / word.length));
   return (
     <Animated.View entering={FadeIn.duration(350)} style={styles.wrap}>
@@ -52,6 +62,11 @@ export function ResultView({ word, definition, solved, guessesUsed, score, bonus
           <Text style={styles.defText}>{definition}</Text>
         </Animated.View>
       )}
+      {!!archetype && ARCHETYPE_LABEL[archetype] && (
+        <Animated.View entering={FadeIn.delay(800)} style={styles.twistPill}>
+          <Text style={styles.twistText}>today's twist: {ARCHETYPE_LABEL[archetype]}</Text>
+        </Animated.View>
+      )}
       <Animated.View entering={FadeIn.delay(900)} style={styles.scoreRow}>
         <Text style={styles.score}>{score.toLocaleString()}</Text>
         {bonus > 0 && <Text style={styles.bonus}>+{bonus.toLocaleString()} sworb bonus</Text>}
@@ -67,6 +82,18 @@ const styles = StyleSheet.create({
   block: { alignItems: 'center', justifyContent: 'center' },
   grayBlock: { backgroundColor: '#3A3A44', boxShadow: '0 3px 0 #26262E' },
   blockText: { fontFamily: 'Fredoka_600SemiBold', includeFontPadding: false },
+  twistPill: {
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(137,113,255,0.14)',
+  },
+  twistText: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 11.5,
+    letterSpacing: 0.6,
+    color: '#8971FF',
+  },
   defCard: {
     backgroundColor: 'rgba(167,139,250,0.12)',
     borderRadius: 14,

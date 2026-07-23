@@ -31,6 +31,7 @@ import { DateHeader } from '@/components/home/date-header';
 import { FloatingPodium } from '@/components/home/floating-podium';
 import { SuperlativesPager } from '@/components/home/superlatives-pager';
 import { PlaySheet, type PlaySheetHandle } from '@/components/play-sheet';
+import { ARCHETYPE_LABEL } from '@/components/game/result-view';
 import { PALETTE, INK, tileColorFor } from '@/game/palette';
 import { useTheme } from '@/game/theme';
 import { dealDaily } from '@/game/daily';
@@ -40,6 +41,8 @@ import { useDayKey } from '@/game/use-day-key';
 import { haptic } from '@/game/haptics';
 
 const SHEET_SPRING = { mass: 0.7, damping: 20, stiffness: 180 };
+
+const twistLabel = (a: string) => ARCHETYPE_LABEL[a] ?? null;
 
 // the six blank hint slots (20a): staggered widths, NO letter-count leak
 const HINT_SLOT_W = [62, 58, 64, 60, 58, 62];
@@ -278,6 +281,11 @@ export default function HomeScreen() {
               not cracked — tomorrow's another sworbl
             </Text>
           )}
+          {played && deal?.archetype && twistLabel(deal.archetype) && (
+            <View style={styles.twistPill}>
+              <Text style={styles.twistText}>today's twist: {twistLabel(deal.archetype)}</Text>
+            </View>
+          )}
 
           {/* pre-play: six BLANK hint slots (no letter counts, no spoilers).
               post-play the clue intel lives inside the superlatives pager. */}
@@ -397,6 +405,19 @@ const styles = StyleSheet.create({
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 12.5,
     marginTop: -6,
+  },
+  twistPill: {
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(137,113,255,0.14)',
+    marginTop: -4,
+  },
+  twistText: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 11.5,
+    letterSpacing: 0.6,
+    color: '#8971FF',
   },
   hintRow: {
     flexDirection: 'row',
