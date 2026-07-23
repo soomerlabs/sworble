@@ -302,6 +302,11 @@ export default function HomeScreen() {
     sheetY.value = withSpring(closedY, PARK_SPRING); // settle back flat
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [closedY]);
+  // the Y's tick must LAND before the arm thump (owner: fast traces stacked
+  // both haptics on one beat) — the arm statement waits one clear moment
+  const armSoon = useCallback(() => {
+    setTimeout(() => armNowRef.current(), 170);
+  }, []);
   const armNow = useCallback(() => {
     if (traceIdle.current) clearTimeout(traceIdle.current);
     haptic.good();
@@ -313,6 +318,8 @@ export default function HomeScreen() {
     armIdle.current = setTimeout(disarm, 4000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [disarm, closedY]);
+  const armNowRef = useRef(armNow);
+  armNowRef.current = armNow;
   const pm = playMetrics(width);
   // TWO-STAGE DOOR (owner): trace P·L·A·Y to unlock, then the chevron —
   // swipe up launches. The trace teaches the verb; the swipe starts the day.
@@ -335,8 +342,8 @@ export default function HomeScreen() {
             sLit.value = idx + 1;
             runOnJS(traceBeat)(idx);
             if (idx === 3) {
-              sArmed.value = 1;
-              runOnJS(armNow)();
+              sArmed.value = 1; // input locks NOW; the ceremony follows the tick
+              runOnJS(armSoon)();
             }
           }
         })
@@ -348,8 +355,8 @@ export default function HomeScreen() {
               sLit.value = idx + 1;
               runOnJS(traceBeat)(idx);
               if (idx === 3) {
-                sArmed.value = 1;
-                runOnJS(armNow)();
+                sArmed.value = 1; // input locks NOW; the ceremony follows the tick
+                runOnJS(armSoon)();
               }
             }
             return;
@@ -389,7 +396,7 @@ export default function HomeScreen() {
             runOnJS(disarm)(); // released without committing → PLAY melts back NOW
           }
         }),
-    [width, height, closedY, sheetOpen, played, markOpen, traceBeat, armNow, disarm, detentIn, detentOut]
+    [width, height, closedY, sheetOpen, played, markOpen, traceBeat, armSoon, disarm, detentIn, detentOut]
   );
 
   // close drag (home owns sheetY): the round pauses ONLY when the close
