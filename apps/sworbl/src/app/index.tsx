@@ -338,8 +338,11 @@ export default function HomeScreen() {
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [
       // scaleY is center-origin — the translate compensation anchors the
-      // squash to the BOTTOM edge so the top visibly dips, tile-style
-      { translateY: sheetY.value + (height * (1 - sSquash.value)) / 2 },
+      // squash to the BOTTOM edge so the top visibly dips, tile-style.
+      // Math.max(0,…): the open spring may OVERSHOOT past the top — clamped
+      // so the sheet never rides above dock (the "cheap boing" artifact);
+      // the squash is the only landing statement.
+      { translateY: Math.max(0, sheetY.value) + (height * (1 - sSquash.value)) / 2 },
       { scaleY: sSquash.value },
     ],
   }));
