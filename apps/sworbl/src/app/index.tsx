@@ -44,10 +44,10 @@ const SHEET_SPRING = { mass: 0.7, damping: 20, stiffness: 180 };
 
 const twistLabel = (a: string) => ARCHETYPE_LABEL[a] ?? null;
 
-// the six blank hint slots: staggered widths, NO letter-count leak — sized
-// to MATCH the game board's clue-fan ghost pills (owner: home skeletons were
-// bigger than the real pills they foreshadow; r9, ~26px tall, gap 7)
-const HINT_SLOT_W = [52, 48, 56, 50, 48, 54];
+// the six blank hint slots: staggered widths, NO letter-count leak. SMALLER
+// than the hero word blocks in both axes (owner: the placeholders were
+// out-measuring the word of the day — the hierarchy was upside down)
+const HINT_SLOT_W = [40, 36, 44, 38, 36, 42];
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
@@ -209,7 +209,9 @@ export default function HomeScreen() {
   }));
 
   const wordLen = deal?.sworb.length ?? 5;
-  const tileW = Math.min(46, Math.floor((Math.min(width, 480) - 36 - (wordLen - 1) * 8) / wordLen));
+  // 46 was the 300px design-mock cap — real phones earn bigger blocks; the
+  // word of the day is the hero and must dominate everything under it
+  const tileW = Math.min(56, Math.floor((Math.min(width, 480) - 36 - (wordLen - 1) * 8) / wordLen));
   const tileH = Math.round(tileW * (50 / 46));
   const tileR = Math.round(tileW * (13 / 46));
 
