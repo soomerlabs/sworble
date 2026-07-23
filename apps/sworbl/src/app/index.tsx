@@ -57,9 +57,9 @@ import { haptic } from '@/game/haptics';
 //   throw instead of restarting from rest (the dead-hand-off fix)
 const OPEN_SPRING = { mass: 0.7, damping: 29, stiffness: 270 }; // overdamped —
 // the open lands DEAD FLAT (owner: no bounce), snap comes from stiffness
-// park got its bounce back (owner: "like it took the hit") — one soft
-// overshoot, plus the landing squash below
-const PARK_SPRING = { mass: 0.9, damping: 25, stiffness: 210 };
+// park lands FLAT (owner reversal: "i don't want it to bounce") — overdamped,
+// no overshoot, no squash; the dock tap is the landing statement
+const PARK_SPRING = { mass: 0.9, damping: 32, stiffness: 210 };
 
 const twistLabel = (a: string) => ARCHETYPE_LABEL[a] ?? null;
 
@@ -225,14 +225,8 @@ export default function HomeScreen() {
     // closingRef keeps the self-heal's hands off the park spring
     closingRef.current = true;
     finishClose();
-    sheetY.value = withSpring(closedY, PARK_SPRING, (fin) => {
+    sheetY.value = withSpring(closedY, PARK_SPRING, () => {
       'worklet';
-      if (fin) {
-        sSquash.value = withSequence(
-          withTiming(0.988, { duration: 80 }),
-          withTiming(1, { duration: 190 })
-        );
-      }
       runOnJS(closeSettled)();
     });
     // day state may have changed inside the round (finish/lock)
@@ -392,14 +386,7 @@ export default function HomeScreen() {
             runOnJS(commitClose)();
             sheetY.value = withSpring(closedY, { ...PARK_SPRING, velocity: e.velocityY }, (fin) => {
               'worklet';
-              if (fin) {
-                // took the hit: the peek compresses on landing, then breathes out
-                sSquash.value = withSequence(
-                  withTiming(0.988, { duration: 80 }),
-                  withTiming(1, { duration: 190 })
-                );
-                runOnJS(parkBeat)(); // the soft "docked at the peek" tap
-              }
+              if (fin) runOnJS(parkBeat)(); // the soft "docked at the peek" tap
               runOnJS(closeSettled)();
             });
           } else {
