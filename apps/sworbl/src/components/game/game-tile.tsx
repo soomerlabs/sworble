@@ -202,8 +202,9 @@ const styles = StyleSheet.create({
     top: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    borderTopWidth: 1.5,
-    borderTopColor: 'rgba(255,255,255,0.14)',
+    // NO top-edge decoration: RN borders render web's soft inset highlights
+    // as hard gray lines (owner: 'gray line on top of the blocks'). Flat face
+    // on ledge IS the web look at phone scale.
   },
   letter: {
     fontFamily: 'Fredoka_600SemiBold',

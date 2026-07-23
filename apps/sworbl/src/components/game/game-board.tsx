@@ -432,9 +432,7 @@ const styles = StyleSheet.create({
   cellWell: {
     position: 'absolute',
     backgroundColor: CARD.well,
-    // sunken read (web: inset 0 3px 5px black) — top-edge shade approximation
-    borderTopWidth: 3,
-    borderTopColor: 'rgba(0,0,0,0.35)',
+    // flat — the border 'inset' approximation drew 30 hard dark lines
   },
   noDay: {
     padding: 32,
