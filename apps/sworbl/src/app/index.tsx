@@ -323,7 +323,10 @@ export default function HomeScreen() {
           'worklet';
           if (sArmed.value) return;
           const idx = Math.floor((e.absoluteX - pm.left) / (pm.tile + pm.gap));
-          if (idx >= 0 && idx < 4 && idx + 1 > sLit.value) {
+          // a TAP only takes the NEXT tile (owner: 'you MUST hit them all
+          // yourself' — tapping Y cannot light the word behind it). A drag
+          // still lights pass-through tiles: the finger physically crossed.
+          if (idx >= 0 && idx < 4 && idx === sLit.value) {
             sLit.value = idx + 1;
             runOnJS(traceBeat)(idx);
             if (idx === 3) {
