@@ -35,6 +35,7 @@ interface Props {
   onWordSpelled?: (word: string, pts: number, caughtClue: boolean) => void; // superlatives + time-fuel feed
   mercySecs?: number; // mercy threshold override (time-fuel rounds fire later)
   gestureRef?: React.MutableRefObject<PanGesture | undefined>; // the sheet's close-drag yields to this
+  concealed?: boolean; // pre-GO / paused: blocks render, letters DON'T (anti-stare)
   // THE IN-PLACE FINALE (owner loop): at 0:00 the BOARD becomes the keyboard,
   // the STEPPER hosts the guess — the player never leaves the gameboard
   finale?: {
@@ -46,7 +47,7 @@ interface Props {
 }
 
 export function GameBoard({
-  deal, size, gap, initialTiles, initialFound, initialScore, secsLeft, onScore, onClues, onTiles, onWordSpelled, mercySecs, gestureRef, finale,
+  deal, size, gap, initialTiles, initialFound, initialScore, secsLeft, onScore, onClues, onTiles, onWordSpelled, mercySecs, gestureRef, finale, concealed,
 }: Props) {
   const inFinale = !!finale;
   const cell = size + gap;
@@ -565,6 +566,7 @@ export function GameBoard({
               nope={nope.seqs.has(t.id) ? nope.key : 0}
               nopeSeq={nope.seqs.get(t.id) ?? 0}
               nopeTotal={nope.total}
+              concealed={!!concealed}
             />
           ))}
           {ping && (

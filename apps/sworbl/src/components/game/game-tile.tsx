@@ -32,9 +32,10 @@ interface Props {
   nope: number; // increments per rejected word this tile was part of
   nopeSeq: number; // this tile's position in the rejected word
   nopeTotal: number; // rejected word length (drain sweeps head→back)
+  concealed: boolean; // letters only exist while YOUR clock runs (anti-stare)
 }
 
-function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nopeTotal }: Props) {
+function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nopeTotal, concealed }: Props) {
   const cell = size + gap;
   const x = tile.col * cell;
   const targetY = tile.row * cell;
@@ -198,9 +199,9 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
                 lineHeight: Math.round(size * 0.62),
               },
             ]}>
-            {tile.letter === 'q' ? 'Qu' : tile.letter.toUpperCase()}
+            {concealed ? '' : tile.letter === 'q' ? 'Qu' : tile.letter.toUpperCase()}
           </Animated.Text>
-          {!!tile.boost && (
+          {!concealed && !!tile.boost && (
             <Animated.View
               style={[
                 styles.stackBadge,
@@ -228,7 +229,7 @@ export const GameTile = React.memo(
   GameTileInner,
   (a, b) =>
     a.tile === b.tile && a.size === b.size && a.gap === b.gap &&
-    a.clearingSeq === b.clearingSeq && a.nope === b.nope
+    a.clearingSeq === b.clearingSeq && a.nope === b.nope && a.concealed === b.concealed
 );
 
 const styles = StyleSheet.create({

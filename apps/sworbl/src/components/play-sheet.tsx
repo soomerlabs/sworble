@@ -268,6 +268,16 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   const rearm = useCallback(() => {
     if (phase === 'idle' || phase === 'paused') arm();
   }, [phase, arm]);
+  // the PAUSE BUTTON (owner: "pause to do something and come back"): stays ON
+  // the gameboard — letters conceal (anti-stare), tap-to-resume re-arms 3·2·1
+  const pauseInPlace = useCallback(() => {
+    if (phase === 'live') {
+      pause();
+    } else if (phase === 'countin') {
+      setCountInMounted(false);
+      setPhase('idle');
+    }
+  }, [phase, pause]);
   useImperativeHandle(handleRef, () => ({ pauseForClose, rearm }), [pauseForClose, rearm]);
 
   const onFinaleDone = useCallback(
@@ -321,7 +331,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
             // (__DEV__ fence — audit weakness #4: a skip in a one-shot daily is
             // a player-facing integrity hole in release builds)
             <Pressable
-              onPress={onClose}
+              onPress={pauseInPlace}
               onLongPress={__DEV__ ? () => setPhase('finale') : undefined}
               delayLongPress={600}>
               <View style={styles.clockWrap}>
@@ -344,7 +354,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
           {/* score lives in the ScoreHeader rail only (it showed twice) —
               the corner is the PAUSE button, the visible face of swipe-down */}
           {onBoard ? (
-            <Pressable onPress={onClose} hitSlop={12} style={styles.pauseBtn}>
+            <Pressable onPress={pauseInPlace} hitSlop={12} style={styles.pauseBtn}>
               <View style={styles.pauseBar} />
               <View style={styles.pauseBar} />
             </Pressable>
@@ -393,6 +403,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
                   onTiles={onTiles}
                   onWordSpelled={onWordSpelled}
                   gestureRef={boardPanRef}
+                  concealed={phase !== 'live' && phase !== 'finale'}
                   finale={
                     phase === 'finale'
                       ? {
@@ -407,6 +418,12 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
               </View>
               {countInMounted && phase === 'countin' && (
                 <CountIn onRelease={onRelease} onUnmount={() => setCountInMounted(false)} />
+              )}
+              {active && (phase === 'paused' || phase === 'idle') && (
+                <Pressable style={styles.pausedCover} onPress={rearm}>
+                  <Text style={styles.pausedTitle}>paused</Text>
+                  <Text style={styles.pausedSub}>tap to resume</Text>
+                </Pressable>
               )}
             </Animated.View>
           )}
@@ -504,6 +521,27 @@ const styles = StyleSheet.create({
     height: 13,
     borderRadius: 2,
     backgroundColor: '#9DA2B3',
+  },
+  pausedCover: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  pausedTitle: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 26,
+    color: '#EDEFF7',
+    letterSpacing: 1,
+  },
+  pausedSub: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 14,
+    color: '#9DA2B3',
   },
   center: {
     // WEB-PARITY LAYOUT: top-anchored stack (header → score bar → stepper →
