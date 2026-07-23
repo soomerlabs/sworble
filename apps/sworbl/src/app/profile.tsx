@@ -17,7 +17,7 @@ import { Floaters } from '@/components/home/floaters';
 import { useTheme, CLUE_GREEN } from '@/game/theme';
 import { PALETTE, tileColorFor } from '@/game/palette';
 import { loadStats, historyGrid, streakDays } from '@/game/stats';
-import { getPlayerName, setPlayerName } from '@/game/player';
+import { getPlayerName, setPlayerName, isNameAllowed } from '@/game/player';
 import { ensurePlayer } from '@/net/supabase';
 import { toast } from '@/components/toast';
 import { haptic } from '@/game/haptics';
@@ -48,6 +48,11 @@ export default function ProfileScreen() {
   };
   const commitName = () => {
     setEditing(false);
+    if (!isNameAllowed(draft)) {
+      toast("that one won't fly on a public board", { title: 'pick another name', pal: 5 });
+      haptic.bad();
+      return;
+    }
     const before = getPlayerName();
     const saved = setPlayerName(draft);
     setName(saved);

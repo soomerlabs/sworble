@@ -37,7 +37,12 @@ function FlipTile({ ch, i, w, h, r, palBg, palEdge, monoBg, monoEdge }: {
     return {
       transform: [{ perspective: 600 }, { rotateX: `${deg}deg` }],
       backgroundColor: flipped ? palBg : monoBg,
-      boxShadow: `inset 0 -5px 0 ${flipped ? palEdge : monoEdge}, 0 2px 3px rgba(0,0,0,0.3)`,
+      // the shadows FLIP SIGN with the face (owner: "the blocks are upside
+      // down") — the tile rests rotated 180°, so its local-coords shadows
+      // must invert for the ledge to read at the BOTTOM on screen
+      boxShadow: flipped
+        ? `inset 0 5px 0 ${palEdge}, 0 -2px 3px rgba(0,0,0,0.3)`
+        : `inset 0 -5px 0 ${monoEdge}, 0 2px 3px rgba(0,0,0,0.3)`,
     };
   });
   const inkPose = useAnimatedStyle(() => ({

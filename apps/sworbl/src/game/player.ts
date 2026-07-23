@@ -1,8 +1,9 @@
-// PLAYER IDENTITY (device-local until Supabase): display name for the
-// profile/leaderboard. Validation is length/charset only for now — the
-// public-name profanity gate (engine containsFoulTerm) arrives with the
-// server, where the canonical foul list will live.
+// PLAYER IDENTITY: display name for the profile/leaderboard. Length +
+// charset + the profanity gate (engine containsFoulTerm over FOUL_STEMS,
+// the Scunthorpe-aware boundary matcher). A server-side twin lands with
+// the rename edge function at launch.
 import engine from '@sworbl/engine';
+import { FOUL_STEMS } from './foul';
 
 const NAME_KEY = 'sworbl_rn_name';
 
@@ -23,10 +24,17 @@ export function getPlayerName(): string {
   return minted;
 }
 
+// the public-name gate — callers can pre-check to give honest feedback
+export function isNameAllowed(raw: string): boolean {
+  const name = raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  return !engine.core.containsFoulTerm(name, FOUL_STEMS);
+}
+
 // returns the SAVED name (normalized) — callers re-read instead of trusting input
 export function setPlayerName(raw: string): string {
   const name = raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 10);
   if (name.length < 2) return getPlayerName(); // too short: keep what we had
+  if (!isNameAllowed(name)) return getPlayerName(); // the foul gate holds
   engine.store.setJSON(NAME_KEY, name);
   return name;
 }
