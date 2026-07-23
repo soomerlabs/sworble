@@ -29,6 +29,7 @@ export interface ShareArgs {
   solved: boolean;
   guessesUsed: number;
   score: number;
+  streak?: number; // 🔥 rides the score line when ≥2
 }
 
 export function buildShareText(a: ShareArgs): string {
@@ -43,5 +44,6 @@ export function buildShareText(a: ShareArgs): string {
     ? `${'⬛'.repeat(Math.max(0, a.guessesUsed - 1))}🟪 cracked in ${a.guessesUsed}`
     : `${'⬛'.repeat(Math.max(1, a.guessesUsed))} ✗ not cracked`;
 
-  return `${head}\n${clueLine}\n${guessLine}\n${a.score.toLocaleString()} pts`;
+  const scoreLine = `${a.score.toLocaleString()} pts${a.streak && a.streak >= 2 ? ` · 🔥 ${a.streak}` : ''}`;
+  return `${head}\n${clueLine}\n${guessLine}\n${scoreLine}`;
 }

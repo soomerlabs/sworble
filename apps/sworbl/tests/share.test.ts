@@ -28,4 +28,17 @@ assert.strictEqual(
   'failed card'
 );
 
-console.log('share: card format pinned (solved, failed, bonus, untagged)');
+const fire = buildShareText({
+  dayKey: '2026-07-24', archetypeLabel: null,
+  clues: ['a', 'b', 'c', 'd', 'e', 'f'], found: ['a'],
+  solved: true, guessesUsed: 1, score: 2000, streak: 5,
+});
+assert.ok(fire.endsWith('2,000 pts · 🔥 5'), 'streak rides the score line');
+const noFire = buildShareText({
+  dayKey: '2026-07-24', archetypeLabel: null,
+  clues: ['a', 'b', 'c', 'd', 'e', 'f'], found: ['a'],
+  solved: true, guessesUsed: 1, score: 2000, streak: 1,
+});
+assert.ok(noFire.endsWith('2,000 pts'), 'a 1-day streak stays quiet');
+
+console.log('share: card format pinned (solved, failed, bonus, untagged, streak)');

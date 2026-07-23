@@ -11,7 +11,7 @@ import { ScreenBar } from '@/components/screen-bar';
 import { ScreenHeader } from '@/components/screen-header';
 import { useTheme, CLUE_GREEN } from '@/game/theme';
 import { PALETTE, tileColorFor } from '@/game/palette';
-import { loadStats, historyGrid } from '@/game/stats';
+import { loadStats, historyGrid, streakDays } from '@/game/stats';
 import { getPlayerName } from '@/game/player';
 
 const HEAT_DARK = ['#1b1a22', '#3d3557', '#8a72d6', '#B485FF'];
@@ -35,6 +35,7 @@ export default function ProfileScreen() {
   const cellS = Math.floor((Math.min(width, 480) - 36 - 8 * 6) / 2 / 4.6); // 9 cols fit
 
   const cards = [
+    { label: 'STREAK', value: streakDays(stats), dot: PALETTE[5], accent: '#F58A66' },
     { label: 'BEST SCORE', value: stats.best, dot: PALETTE[2], accent: CLUE_GREEN },
     { label: 'AVG SCORE', value: stats.games ? Math.round(stats.total / stats.games) : 0, dot: PALETTE[0] },
     { label: 'GAMES', value: stats.games, dot: PALETTE[1] },

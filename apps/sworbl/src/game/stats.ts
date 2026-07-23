@@ -66,6 +66,19 @@ export function recordDay(
   return next;
 }
 
+// THE STREAK: consecutive played days ending today — or yesterday, so an
+// unplayed today doesn't break it before the day is over
+export function streakDays(stats: Stats): number {
+  let n = 0;
+  const d = new Date();
+  if (stats.history[engine.core.dayKey(d)] === undefined) d.setDate(d.getDate() - 1);
+  while (stats.history[engine.core.dayKey(d)] !== undefined) {
+    n++;
+    d.setDate(d.getDate() - 1);
+  }
+  return n;
+}
+
 // the heat grid: last `weeks`×7 cells, oldest first — intensity 0-3
 export function historyGrid(stats: Stats, weeks = 9): number[] {
   const cells: number[] = [];

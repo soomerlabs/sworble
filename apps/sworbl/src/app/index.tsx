@@ -43,6 +43,7 @@ import { dealDaily, getDevDay } from '@/game/daily';
 import { getDiagnostics } from '@/game/dev-flags';
 import { loadDay, saveSheetOpen, wasSheetOpen, getResetNonce, type DayState } from '@/game/persist';
 import { standingsStub, rankFor, type LbEntry } from '@/game/standings';
+import { loadStats, streakDays } from '@/game/stats';
 import { buildShareText } from '@/game/share';
 import { StandingsList, type StandingRow } from '@/components/home/standings-list';
 import { getPlayerName } from '@/game/player';
@@ -128,6 +129,8 @@ export default function HomeScreen() {
   }, [deal]);
   useFocusEffect(refreshDay);
 
+  const stats = useMemo(() => loadStats(), [day]); // re-read when the day state moves
+  const streak = useMemo(() => streakDays(stats), [stats]);
   const played = day?.route === 'consumed';
   const solved = played && !!day?.sworb?.solved;
   const inProgress = day?.route === 'resume' || day?.route === 'finale';
@@ -505,6 +508,7 @@ export default function HomeScreen() {
               theme={theme}
               dayKey={deal.dayKey}
               score={played && you ? you.score : null}
+              streak={streak}
               onShare={() =>
                 deal &&
                 Share.share({
@@ -516,6 +520,7 @@ export default function HomeScreen() {
                     solved,
                     guessesUsed: day?.sworb?.guessesUsed ?? 0,
                     score: you?.score ?? 0,
+                    streak,
                   }),
                 }).catch(() => {})
               }
@@ -572,6 +577,11 @@ export default function HomeScreen() {
 
           {/* pre-play: six BLANK hint slots (no letter counts, no spoilers).
               post-play the clue intel lives inside the superlatives pager. */}
+          {!played && stats.games === 0 && (
+            <Text style={[styles.firstRun, { color: theme.sub }]}>
+              swipe words · catch the 6 clues · crack the day's word at 0:00
+            </Text>
+          )}
           {!played && (
             <View style={styles.hintRow}>
               {HINT_SLOT_W.map((w, i) => (
@@ -834,6 +844,12 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     letterSpacing: 0.6,
     color: '#8971FF',
+  },
+  firstRun: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 12.5,
+    textAlign: 'center',
+    marginTop: -6,
   },
   hintRow: {
     flexDirection: 'row',

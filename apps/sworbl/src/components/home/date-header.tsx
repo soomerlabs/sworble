@@ -12,10 +12,11 @@ interface Props {
   theme: Theme;
   dayKey: string;
   score?: number | null; // completed day → docks right of the title
+  streak?: number; // 🔥 in the eyebrow when ≥2
   onShare?: () => void;
 }
 
-export function DateHeader({ theme, dayKey, score, onShare }: Props) {
+export function DateHeader({ theme, dayKey, score, streak, onShare }: Props) {
   const now = new Date();
   const weekday = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
   const monthDay = now
@@ -24,7 +25,7 @@ export function DateHeader({ theme, dayKey, score, onShare }: Props) {
   return (
     <ScreenHeader
       theme={theme}
-      eyebrow={`DAILY PUZZLE · Nº ${puzzleNo(dayKey)}`}
+      eyebrow={`DAILY PUZZLE · Nº ${puzzleNo(dayKey)}${streak && streak >= 2 ? `  ·  🔥 ${streak}` : ''}`}
       title={weekday}
       titleAccent={monthDay}
       right={

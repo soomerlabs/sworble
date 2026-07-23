@@ -6,8 +6,6 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 
 import { ScreenBar } from '@/components/screen-bar';
@@ -94,13 +92,6 @@ export default function LeaderboardScreen() {
       return rows.slice(3, Math.max(LIST_CAP, youIdx + 2));
     }, [entries, played, myRank, name, myScore]);
 
-  const flip = Gesture.Pan()
-    .activeOffsetX([-20, 20])
-    .runOnJS(true)
-    .onEnd((e) => {
-      if (Math.abs(e.translationX) >= 30) setPage(e.translationX < 0 ? 1 : 0);
-    });
-
   const share = () => {
     const line =
       played && myRank
@@ -114,18 +105,31 @@ export default function LeaderboardScreen() {
       <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
       <SafeAreaView style={styles.safe}>
         <ScreenBar theme={theme} action={{ symbol: 'square.and.arrow.up', fallback: '↗', onPress: share }} />
-        <GestureDetector gesture={flip}>
-          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             <ScreenHeader
               theme={theme}
               eyebrow="STANDINGS"
               title={page === 0 ? 'daily' : 'all-time'}
             />
-            <Animated.View
-              key={page}
-              entering={FadeIn.duration(240)}
-              exiting={FadeOut.duration(150)}
-              style={styles.pageWrap}>
+            {/* PILL FILTER (owner: the swipe pager fought iOS back-swipe) */}
+            <View style={styles.pills}>
+              {(['daily', 'all-time'] as const).map((label, i) => (
+                <Pressable
+                  key={label}
+                  onPress={() => setPage(i)}
+                  style={[
+                    styles.pill,
+                    page === i
+                      ? { backgroundColor: ACCENT, boxShadow: `0 3px 0 ${ACCENT_EDGE}` }
+                      : { backgroundColor: theme.card },
+                  ]}>
+                  <Text style={[styles.pillText, { color: page === i ? '#fff' : theme.sub }]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <View key={page} style={styles.pageWrap}>
               <FloatingPodium
                 theme={theme}
                 entries={entries}
@@ -151,19 +155,11 @@ export default function LeaderboardScreen() {
                   </Text>
                 )}
               </View>
-            </Animated.View>
-            <View style={styles.dots}>
-              {[0, 1].map((i) => (
-                <Pressable key={i} onPress={() => setPage(i)} hitSlop={8}>
-                  <View style={[styles.dot, { backgroundColor: i === page ? ACCENT : theme.dashed }]} />
-                </Pressable>
-              ))}
             </View>
             <View style={styles.foot}>
               <CountdownDock played />
             </View>
           </ScrollView>
-        </GestureDetector>
       </SafeAreaView>
     </View>
   );
@@ -231,15 +227,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingTop: 6,
   },
-  dots: {
+  pills: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 7,
+    gap: 8,
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  pill: {
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+  },
+  pillText: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 13.5,
+    letterSpacing: 0.3,
   },
   foot: {
     paddingTop: 2,
