@@ -294,10 +294,7 @@ export default function HomeScreen() {
         .minDistance(4)
         .onBegin((e) => {
           'worklet';
-          if (sArmed.value) {
-            runOnJS(armNow)(); // touching while armed refreshes the window
-            return;
-          }
+          if (sArmed.value) return;
           const idx = Math.floor((e.absoluteX - pm.left) / (pm.tile + pm.gap));
           if (idx >= 0 && idx < 4 && idx + 1 > sLit.value) {
             sLit.value = idx + 1;
@@ -343,9 +340,10 @@ export default function HomeScreen() {
             runOnJS(markOpen)();
           } else {
             sheetY.value = withSpring(closedY, { ...PARK_SPRING, velocity: e.velocityY });
+            runOnJS(disarm)(); // released without committing → PLAY melts back NOW
           }
         }),
-    [width, height, closedY, sheetOpen, played, markOpen, traceBeat, armNow, detentIn, detentOut]
+    [width, height, closedY, sheetOpen, played, markOpen, traceBeat, armNow, disarm, detentIn, detentOut]
   );
 
   // close drag (home owns sheetY): the round pauses ONLY when the close
