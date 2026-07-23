@@ -47,6 +47,8 @@ Deno.serve(async (req) => {
   let body: {
     day?: string; score?: number; solved?: boolean; guesses?: number;
     words?: { word?: string; pts?: number }[];
+    mode?: string; // 'regular' (keep-best) | 'hard' (one-shot) | 'practice'
+    seed?: string; // practice only
   };
   try {
     body = await req.json();
@@ -55,7 +57,12 @@ Deno.serve(async (req) => {
   }
 
   const { day, score, solved, guesses, words } = body;
-  if (typeof day !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return bad("bad day");
+  const mode = body.mode ?? "hard"; // pre-modes clients were one-shot days
+  if (!["regular", "hard", "practice"].includes(mode)) return bad("bad mode");
+  if (mode === "practice") {
+    if (typeof body.seed !== "string" || !/^[a-z0-9-]{3,24}$/.test(body.seed))
+      return bad("bad seed");
+  } else if (typeof day !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return bad("bad day");
   if (typeof score !== "number" || !Number.isInteger(score) || score < 0 || score >= 100000)
     return bad("bad score");
   if (typeof solved !== "boolean") return bad("bad solved");
@@ -74,27 +81,69 @@ Deno.serve(async (req) => {
     sum += w.pts;
   }
   // the total must RECONCILE: score - word points is exactly a legal bonus
+  // (practice has NO sworb → no bonus: delta must be zero)
   const delta = score - sum;
-  if (!BONUSES.includes(delta)) return bad("score does not reconcile");
+  if (mode === "practice" ? delta !== 0 : !BONUSES.includes(delta))
+    return bad("score does not reconcile");
   if (delta > 0 && !solved) return bad("bonus without solve");
 
-  // validated: insert with the service role (clients have no INSERT policy)
+  // validated: write with the service role (clients have no write policies).
+  // The one-shot law is PER-MODE POLICY now (docs/modes-spec.md):
+  //   hard → insert once, duplicate = delivered
+  //   regular → keep-best (update only when the new score beats the stored)
+  //   practice → keep-best per seed
   const admin = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
-  const { error } = await admin.from("submissions").insert({
+  const json = (o: object) =>
+    new Response(JSON.stringify(o), { headers: { "Content-Type": "application/json" } });
+
+  if (mode === "practice") {
+    const { data: prior } = await admin
+      .from("practice_scores")
+      .select("score")
+      .eq("player_id", user.id)
+      .eq("seed", body.seed!)
+      .maybeSingle();
+    if (prior && prior.score >= score) return json({ ok: true, kept: prior.score });
+    const { error } = await admin.from("practice_scores").upsert({
+      player_id: user.id,
+      seed: body.seed!,
+      score,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) return bad(error.message, 500);
+    return json({ ok: true });
+  }
+
+  const row = {
     player_id: user.id,
     day,
     score,
     solved,
     guesses,
+    mode,
     words: words.map((w) => ({ word: w.word, pts: w.pts })),
-  });
-  // duplicate = already submitted = the day is one-shot: report delivered
-  if (error && error.code !== "23505") return bad(error.message, 500);
+  };
+  const { error } = await admin.from("submissions").insert(row);
+  if (!error) return json({ ok: true, duplicate: false });
+  if (error.code !== "23505") return bad(error.message, 500);
 
-  return new Response(JSON.stringify({ ok: true, duplicate: !!error }), {
-    headers: { "Content-Type": "application/json" },
-  });
+  // duplicate day: hard = one-shot (delivered); regular = keep-best
+  if (mode === "hard") return json({ ok: true, duplicate: true });
+  const { data: prior } = await admin
+    .from("submissions")
+    .select("score")
+    .eq("player_id", user.id)
+    .eq("day", day)
+    .maybeSingle();
+  if (prior && prior.score >= score) return json({ ok: true, kept: prior.score });
+  const { error: upErr } = await admin
+    .from("submissions")
+    .update({ score, solved, guesses, mode, words: row.words })
+    .eq("player_id", user.id)
+    .eq("day", day);
+  if (upErr) return bad(upErr.message, 500);
+  return json({ ok: true, improved: true });
 });
