@@ -15,7 +15,6 @@ import Animated, {
   withDelay,
   withSequence,
   Easing,
-  FadeOut,
   type SharedValue,
 } from 'react-native-reanimated';
 import { PALETTE, INK, MONO_DARK, MONO_INK } from '@/game/palette';
@@ -152,10 +151,10 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
   }));
 
 
-  // OUTER: layout exiting only — board→finale is a clean CROSS-FADE (owner:
-  // keep the prototype loop simple; the fancy morph was janky)
+  // OUTER/INNER split (layout-anim vs transforms); the board→finale fade is
+  // owned by the play-sheet wrapper — tiles carry NO exit of their own
   return (
-    <Animated.View exiting={FadeOut.duration(220)} style={styles.outer}>
+    <Animated.View style={styles.outer}>
       <Animated.View style={[inner, { width: size, height: size + lift + 2 }]}>
         <Animated.View
           style={[styles.ledge, ledgeStyle, { width: size, height: size, borderRadius: rad }]}

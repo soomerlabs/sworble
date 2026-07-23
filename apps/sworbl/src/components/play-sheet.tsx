@@ -334,7 +334,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
             </View>
           )}
           {onBoard && deal && (
-            <View>
+            <Animated.View exiting={FadeOut.duration(250)}>
               {/* only the BOARD is input-gated — the covers above it must stay
                   tappable (the old parent-level gate ate the resume tap) */}
               <View pointerEvents={phase === 'live' ? 'auto' : 'none'}>
@@ -356,7 +356,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
               {countInMounted && phase === 'countin' && (
                 <CountIn onRelease={onRelease} onUnmount={() => setCountInMounted(false)} />
               )}
-            </View>
+            </Animated.View>
           )}
           {phase === 'finale' && deal && (
             <Finale

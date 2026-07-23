@@ -8,7 +8,7 @@
 // The ENGINE still decides everything (applyGuess/nextSlots/scoreGuess).
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform, useWindowDimensions } from 'react-native';
-import Animated, { ZoomIn, FadeIn, SlideInDown } from 'react-native-reanimated';
+import Animated, { ZoomIn, FadeIn } from 'react-native-reanimated';
 import { type PanGesture } from 'react-native-gesture-handler';
 import engine from '@sworbl/engine';
 import { INK, MONO_DARK, MONO_INK } from '@/game/palette';
@@ -225,13 +225,7 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone,
           </View>
         ))}
         {!locked && (
-          // each new round's row DROPS IN from the top — one beat per attempt
-          <Animated.View
-            key={`active-${rows.length}`}
-            entering={E(SlideInDown.springify().mass(0.55).damping(16))}
-            style={styles.row}>
-            {slots.map((l, i) => block(l, colors[i], i, true, false))}
-          </Animated.View>
+          <View style={styles.row}>{slots.map((l, i) => block(l, colors[i], i, true, false))}</View>
         )}
         <Animated.View style={styles.pips}>
           {Array.from({ length: 6 }, (_, i) => (
