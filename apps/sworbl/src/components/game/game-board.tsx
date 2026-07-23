@@ -77,7 +77,10 @@ export function GameBoard({
     saveTokens(deal.dayKey, tokens);
   }, [deal.dayKey, tokens]);
 
-  // fire the ping at a clue's STARTING tile (compass, not answer)
+  // fire the ping at a clue's STARTING tile (compass, not answer).
+  // VALIDATED AT GIVE-TIME (owner bug catch): a clue's path can be temporarily
+  // broken between refills (re-stamp waits for cells) — a hint must NEVER point
+  // at a location it can't prove. No path now = no ping, token kept.
   const firePing = useCallback(
     (clue: string, slot: number) => {
       const live = tilesMirror.current.filter((t: TileT) => !clearingMirror.current.has(t.id));
@@ -86,10 +89,8 @@ export function GameBoard({
         expand: engine.core.expandLetter,
         diag: true,
       });
-      // fallback: clue path broken by cascades (re-stamp port pending) — ping
-      // any tile carrying the clue's first letter rather than staying silent
-      const startId: number | undefined = path ? path[0] : live.find((t: TileT) => t.letter === clue[0])?.id;
-      const t = startId != null ? live.find((x: TileT) => x.id === startId) : undefined;
+      if (!path) return false; // unprovable location — refuse, honestly
+      const t = live.find((x: TileT) => x.id === path[0]);
       if (!t) return false;
       setPing({
         key: ++pingKeyRef.current,
@@ -103,11 +104,17 @@ export function GameBoard({
     [cell, size]
   );
 
-  // spend: tap a ghost pill while a token is banked
+  // spend: tap a ghost pill while a token is banked. If THAT clue is in a
+  // broken-path window, the token is NOT consumed (error haptic instead) —
+  // the next refill's re-stamp restores it.
   const onGhostTap = useCallback(
     (clue: string, slot: number) => {
       if (tokens.count <= 0) return;
-      if (firePing(clue, slot)) setTokens((t) => ({ ...t, count: t.count - 1 }));
+      if (firePing(clue, slot)) {
+        setTokens((t) => ({ ...t, count: t.count - 1 }));
+      } else {
+        haptic.bad();
+      }
     },
     [tokens.count, firePing]
   );
@@ -128,11 +135,13 @@ export function GameBoard({
         thresholdSecs: mercySecs,
       })
     ) {
-      const clue = engine.daily.firstUnfoundClue(deal.clues, found);
-      if (clue) {
-        firePing(clue, deal.clues.indexOf(clue));
-        setTokens((t) => ({ ...t, mercyFired: true }));
+      // mercy targets the first unfound clue that is PROVABLY findable right
+      // now — never a broken-path clue (validated-at-give-time rule)
+      for (const clue of deal.clues) {
+        if (found.includes(clue)) continue;
+        if (firePing(clue, deal.clues.indexOf(clue))) break;
       }
+      setTokens((t) => ({ ...t, mercyFired: true }));
     }
   }, [secsLeft]);
 
