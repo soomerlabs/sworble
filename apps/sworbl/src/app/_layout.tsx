@@ -1,11 +1,10 @@
+import { Stack } from 'expo-router';
 import { DarkTheme, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts, Fredoka_500Medium, Fredoka_600SemiBold } from '@expo-google-fonts/fredoka';
 import { useEffect } from 'react';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
 import { initStorage } from '@/game/storage';
 
 SplashScreen.preventAutoHideAsync();
@@ -13,7 +12,7 @@ SplashScreen.preventAutoHideAsync();
 // (MMKV on native via setBacking; localStorage on web needs no injection)
 initStorage();
 
-export default function TabLayout() {
+export default function RootLayout() {
   // sworbl is dark, always (the game's visual identity — not a scheme choice)
   const [fontsLoaded] = useFonts({ Fredoka_500Medium, Fredoka_600SemiBold });
   useEffect(() => {
@@ -23,8 +22,13 @@ export default function TabLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={DarkTheme}>
-        <AnimatedSplashOverlay />
-        <AppTabs />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: '#101014' },
+            animation: 'fade',
+          }}
+        />
       </ThemeProvider>
     </GestureHandlerRootView>
   );

@@ -13,12 +13,18 @@ export interface SworbState {
   bonus: number;
 }
 
+export interface BestWord {
+  word: string;
+  pts: number;
+}
+
 export interface DayState {
   route: 'consumed' | 'resume' | 'finale' | 'fresh';
   score: number;
   found: string[];
   sworb: SworbState | null;
   run: RunSnap | null;
+  bestWords: BestWord[]; // top-5 by points — the home superlatives
 }
 
 export function loadDay(dayKey: string): DayState {
@@ -39,6 +45,8 @@ export function loadDay(dayKey: string): DayState {
     found: engine.store.getJSON(K.FOUND_PREFIX + dayKey, []) as string[],
     sworb: engine.store.getJSON(K.SWORB_PREFIX + dayKey, null) as SworbState | null,
     run,
+    bestWords: (engine.store.getJSON(K.SEVEN_PREFIX + dayKey, { words: [] }) as { words: BestWord[] })
+      .words,
   };
 }
 
@@ -50,10 +58,20 @@ export function saveProgress(dayKey: string, score: number, found: string[]): vo
 
 // the day ends exactly once: result + the DONE lock, in that order (a crash
 // between the two leaves the day unlocked, never a locked day with no result)
-export function finishDay(dayKey: string, score: number, found: string[], sworb: SworbState): void {
+export function finishDay(
+  dayKey: string,
+  score: number,
+  found: string[],
+  sworb: SworbState,
+  bestWords: BestWord[] = []
+): void {
   engine.store.set(K.DAILY_PREFIX + dayKey, score);
   engine.store.setJSON(K.FOUND_PREFIX + dayKey, found);
   engine.store.setJSON(K.SWORB_PREFIX + dayKey, sworb);
+  // top-5 words by points (SEVEN_PREFIX carries the day's superlatives)
+  engine.store.setJSON(K.SEVEN_PREFIX + dayKey, {
+    words: [...bestWords].sort((a, b) => b.pts - a.pts).slice(0, 5),
+  });
   engine.store.set(K.DONE_PREFIX + dayKey, 1);
   clearRun(dayKey);
 }
