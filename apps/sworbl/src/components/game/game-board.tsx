@@ -4,7 +4,7 @@ import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react'
 import { View, Text, StyleSheet } from 'react-native';
 import { Gesture, GestureDetector, type PanGesture } from 'react-native-gesture-handler';
 import Animated, {
-  useSharedValue, useAnimatedReaction, useAnimatedStyle, runOnJS, runOnUI,
+  FadeIn, useSharedValue, useAnimatedReaction, useAnimatedStyle, runOnJS, runOnUI,
   withSequence, withTiming, Easing,
 } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
@@ -213,6 +213,14 @@ export function GameBoard({
     prevConcealed.current = !!concealed;
   }, [concealed]);
   const breathStyle = useAnimatedStyle(() => ({ transform: [{ scale: sBreath.value }] }));
+
+  // the tile layer ACTUALLY crossfades under the finale keyboard now — the
+  // comment always said crossfade; the style was an instant opacity swap
+  const sTiles = useSharedValue(inFinale ? 0 : 1);
+  useEffect(() => {
+    sTiles.value = withTiming(inFinale ? 0 : 1, { duration: 320 });
+  }, [inFinale]);
+  const tilesStyle = useAnimatedStyle(() => ({ opacity: sTiles.value }));
 
   // FINALE FLOOR: enter the guess round with at least 2 clues banked. Keyed on
   // the finale prop ARRIVING — the old secsLeft<=0 trigger never fired (the
@@ -611,7 +619,7 @@ export function GameBoard({
         <GestureDetector gesture={pan}>
         <View style={{ width: boardW, height: boardH, marginTop: 12, marginLeft: 12 }}>
           {/* the tile layer fades under the incoming keyboard (fossil crossfade) */}
-          <View style={inFinale ? styles.tilesFaded : undefined} pointerEvents={inFinale ? 'none' : 'auto'}>
+          <Animated.View style={tilesStyle} pointerEvents={inFinale ? 'none' : 'auto'}>
           {Array.from({ length: COLS * ROWS }, (_, i) => (
             <View
               key={`bgc${i}`}
@@ -672,8 +680,9 @@ export function GameBoard({
               onFinish={() => setPing(null)}
             />
           )}
-          </View>
+          </Animated.View>
           {inFinale && fin && (
+            <Animated.View entering={FadeIn.duration(320)} style={StyleSheet.absoluteFill}>
             <BoardKeyboard
               gs={gs}
               size={size}
@@ -683,6 +692,7 @@ export function GameBoard({
               onBackspace={() => fKey(engine.daily.BACKSPACE)}
               onSubmit={fSubmit}
             />
+            </Animated.View>
           )}
         </View>
         </GestureDetector>

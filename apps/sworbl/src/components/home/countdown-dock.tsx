@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing,
+  FadeIn, useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing,
 } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 import { useTheme } from '@/game/theme';
@@ -37,16 +37,16 @@ export function CountdownDock({ played }: { played: boolean }) {
   return (
     <View pointerEvents="none" style={styles.wrap}>
       {played ? (
-        <>
+        <Animated.View key="count" entering={FadeIn.duration(240)} style={styles.face}>
           <Text style={[styles.nextLabel, { color: theme.sub }]}>next sworbl in</Text>
           <Text style={[styles.nextClock, { color: theme.ink }]}>{clock}</Text>
-        </>
+        </Animated.View>
       ) : (
-        <>
+        <Animated.View key="swipe" entering={FadeIn.duration(240)} style={styles.face}>
           {/* the ^ (owner: pill tried, chevron won) */}
           <Animated.Text style={[styles.chev, bobStyle]}>︿</Animated.Text>
           <Text style={[styles.swipeLabel, { color: theme.ink }]}>swipe up to play</Text>
-        </>
+        </Animated.View>
       )}
     </View>
   );
@@ -54,6 +54,10 @@ export function CountdownDock({ played }: { played: boolean }) {
 
 const styles = StyleSheet.create({
   wrap: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  face: {
     alignItems: 'center',
     gap: 2,
   },

@@ -29,7 +29,7 @@ import { loadDay, saveProgress, finishDay, saveRun, type RunSnap, type BestWord 
 import { loadLadder } from '@/game/hints';
 import { TUNING } from '@/game/tuning';
 import Animated, {
-  ZoomIn, FadeOut, useSharedValue, useAnimatedStyle, withSequence, withTiming, withSpring,
+  ZoomIn, FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withSequence, withTiming, withSpring,
 } from 'react-native-reanimated';
 
 // TIME FUEL: three minutes given, the Seven if you earn it (engine.run.timeForWord)
@@ -463,10 +463,15 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
                 <CountIn gs={gs} onRelease={onRelease} onUnmount={() => setCountInMounted(false)} />
               )}
               {active && (phase === 'paused' || phase === 'idle') && (
-                <Pressable style={styles.pausedCover} onPress={rearm}>
-                  <Text style={[styles.pausedTitle, { color: gs.ink }]}>paused</Text>
-                  <Text style={[styles.pausedSub, { color: gs.sub }]}>tap to resume</Text>
-                </Pressable>
+                <Animated.View
+                  entering={FadeIn.duration(160)}
+                  exiting={FadeOut.duration(120)}
+                  style={styles.pausedCoverWrap}>
+                  <Pressable style={styles.pausedCover} onPress={rearm}>
+                    <Text style={[styles.pausedTitle, { color: gs.ink }]}>paused</Text>
+                    <Text style={[styles.pausedSub, { color: gs.sub }]}>tap to resume</Text>
+                  </Pressable>
+                </Animated.View>
               )}
             </Animated.View>
           )}
@@ -569,12 +574,15 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
   },
-  pausedCover: {
+  pausedCoverWrap: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+  },
+  pausedCover: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,

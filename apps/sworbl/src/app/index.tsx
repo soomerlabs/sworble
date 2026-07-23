@@ -16,6 +16,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   ZoomIn,
+  FadeIn,
+  FadeOut,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
@@ -445,36 +447,42 @@ export default function HomeScreen() {
                 ))}
           </View>
           {played && !solved && (
-            <Text style={[styles.missLine, { color: theme.sub }]}>
+            <Animated.Text
+              entering={FadeIn.duration(260)}
+              style={[styles.missLine, { color: theme.sub }]}>
               not cracked — tomorrow's another sworbl
-            </Text>
+            </Animated.Text>
           )}
           {played && deal?.archetype && twistLabel(deal.archetype) && (
-            <View style={styles.twistPill}>
+            <Animated.View entering={FadeIn.delay(200).duration(260)} style={styles.twistPill}>
               <Text style={styles.twistText}>today's twist: {twistLabel(deal.archetype)}</Text>
-            </View>
+            </Animated.View>
           )}
 
           {/* pre-play: six BLANK hint slots (no letter counts, no spoilers).
               post-play the clue intel lives inside the superlatives pager. */}
           {!played && (
-            <View style={styles.hintRow}>
+            <Animated.View exiting={FadeOut.duration(150)} style={styles.hintRow}>
               {HINT_SLOT_W.map((w, i) => (
                 <View
                   key={i}
                   style={[styles.hintSlot, { width: w, borderColor: theme.dashed }]}
                 />
               ))}
-            </View>
+            </Animated.View>
           )}
 
           {played && deal && (
+            <Animated.View
+              entering={FadeIn.delay(120).duration(280)}
+              style={styles.pagerWrap}>
             <SuperlativesPager
               theme={theme}
               bestWords={day?.bestWords ?? []}
               foundClues={day?.found ?? []}
               clues={deal.clues}
             />
+            </Animated.View>
           )}
 
           {/* standings section — ONLY the chart button opens the leaderboard
@@ -655,6 +663,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 12.5,
     marginTop: -6,
+  },
+  pagerWrap: {
+    alignSelf: 'stretch',
   },
   twistPill: {
     borderRadius: 999,

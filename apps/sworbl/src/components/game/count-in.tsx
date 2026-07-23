@@ -5,7 +5,9 @@
 // (COUNT_IN_MS + countInStepAt) — this component only renders the beats.
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import Animated, { ZoomIn, FadeOut } from 'react-native-reanimated';
+import Animated, {
+  ZoomIn, FadeOut, useSharedValue, useAnimatedStyle, withTiming,
+} from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 import { PALETTE, INK, GAME_DARK, type GameSurface } from '@/game/palette';
 import { haptic } from '@/game/haptics';
@@ -24,6 +26,13 @@ const BEAT_PAL: Record<string, number> = { '3': 0, '2': 4, '1': 2 };
 export function CountIn({ onRelease, onUnmount, gs = GAME_DARK }: Props) {
   const [step, setStep] = useState<string>('3');
   const [out, setOut] = useState(false);
+  // the dim ARRIVES and LEAVES softly — the old `out` was an instant style
+  // swap (audit: unanimated state change)
+  const sDim = useSharedValue(0);
+  useEffect(() => {
+    sDim.value = withTiming(out ? 0 : 1, { duration: out ? 160 : 140 });
+  }, [out]);
+  const dimStyle = useAnimatedStyle(() => ({ opacity: sDim.value }));
 
   // each beat TAPS (owner): 3·2·1 soft ticks — GO's heavier thump belongs to
   // the board's wake (game-board fires haptic.good when concealment lifts)
@@ -68,9 +77,9 @@ export function CountIn({ onRelease, onUnmount, gs = GAME_DARK }: Props) {
   const pal = PALETTE[BEAT_PAL[step] ?? 0];
 
   return (
-    <View
+    <Animated.View
       pointerEvents="none"
-      style={[StyleSheet.absoluteFill, styles.wrap, { backgroundColor: gs.overlay }, out && styles.out]}>
+      style={[StyleSheet.absoluteFill, styles.wrap, { backgroundColor: gs.overlay }, dimStyle]}>
       {!out && (
         <Animated.View
           key={step}
@@ -83,7 +92,7 @@ export function CountIn({ onRelease, onUnmount, gs = GAME_DARK }: Props) {
           <Text style={styles.digit}>{step}</Text>
         </Animated.View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -93,9 +102,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 18,
     zIndex: 10,
-  },
-  out: {
-    opacity: 0, // GO → the overlay vanishes; the board's shockwave takes over
   },
   block: {
     width: 96,
