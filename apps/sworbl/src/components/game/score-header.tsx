@@ -77,7 +77,7 @@ export function ScoreHeader({ score, target, marks, width, gs = GAME_DARK }: Pro
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: 2,
+    gap: 8, // real air between the track and the reading line (owner)
     marginBottom: 8,
   },
   reading: {
