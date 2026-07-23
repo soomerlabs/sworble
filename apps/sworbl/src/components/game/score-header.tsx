@@ -19,7 +19,6 @@ interface Props {
 }
 
 const EASE_MS = 500; // web: width 0.5s cubic-bezier(0.22,1,0.36,1)
-const KNOB = 17;
 
 export function ScoreHeader({ score, target, marks, width, gs = GAME_DARK }: Props) {
   const ratio = Math.min(1, target > 0 ? score / target : 0);
@@ -30,21 +29,6 @@ export function ScoreHeader({ score, target, marks, width, gs = GAME_DARK }: Pro
   const fillStyle = useAnimatedStyle(() => ({
     width: withTiming(ratio * trackW, { duration: EASE_MS }),
     opacity: withTiming(score > 0 ? 1 : 0, { duration: EASE_MS }),
-  }));
-  // knob glides with the fill tip (web: left transitions on the same curve);
-  // parked near the start while the fill is dormant (web: left 2%, faded)
-  const knobStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        // clamped INSIDE the rail: at 0 the knob rests flush with the track's
-        // start, never poking past it (owner)
-        translateX: withTiming(
-          Math.min(Math.max(0, ratio * trackW - KNOB / 2), trackW - KNOB),
-          { duration: EASE_MS }
-        ),
-      },
-    ],
-    opacity: withTiming(score > 0 ? 1 : 0.45, { duration: EASE_MS }),
   }));
 
   return (
@@ -68,7 +52,6 @@ export function ScoreHeader({ score, target, marks, width, gs = GAME_DARK }: Pro
             );
           })}
         <Animated.View style={[styles.fill, fillStyle]} />
-        <Animated.View style={[styles.knob, { backgroundColor: gs.bg, borderColor: gs.line }, knobStyle]} />
       </View>
       {/* the reading line: score grows leftward forever, target sits right */}
       <View style={styles.reading}>
@@ -84,7 +67,7 @@ export function ScoreHeader({ score, target, marks, width, gs = GAME_DARK }: Pro
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: 8, // owner-tuned
+    gap: 4, // owner-tuned (knob removed — the glow fill alone marks progress)
     marginBottom: 8,
   },
   reading: {
@@ -124,18 +107,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(137,113,255,0.8)',
     // web: filter blur(1px) + glow shadow — the SOFT bar, never a hard line
     boxShadow: '0 0 9px 1px rgba(137,113,255,0.8)',
-  },
-  knob: {
-    position: 'absolute',
-    left: 0,
-    top: (18 - KNOB) / 2,
-    width: KNOB,
-    height: KNOB,
-    borderRadius: 6,
-    backgroundColor: '#131318',
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: '#3A3A44',
   },
   markWrap: {
     position: 'absolute',
