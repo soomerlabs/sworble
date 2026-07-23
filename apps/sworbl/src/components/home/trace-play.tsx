@@ -9,19 +9,24 @@ import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reani
 import { PALETTE, INK, tileColorFor, gameSurface } from '@/game/palette';
 import { type Theme } from '@/game/theme';
 
-export const PLAY_TILE = 42;
-export const PLAY_GAP = 8;
 export const PLAY_WORD = ['p', 'l', 'a', 'y'] as const;
-export const PLAY_ROW_W = PLAY_TILE * 4 + PLAY_GAP * 3;
 
-const LIFT = 3; // board rule: max(3, 0.08·s) — 3 at this scale
-const RAD = Math.round(PLAY_TILE * 0.2);
+// BOARD-SIZE tiles (owner): the door previews the game — same sizing rule
+// as the real board (play-sheet's tile formula)
+export function playMetrics(width: number) {
+  const tile = Math.min(64, Math.floor((Math.min(width, 480) - 32) / (5 + 4 * 0.16)));
+  const gap = Math.round(tile * 0.16);
+  const rowW = tile * 4 + gap * 3;
+  return { tile, gap, rowW, left: (width - rowW) / 2 };
+}
 
-function PlayTile({ ch, i, sLit, theme }: {
-  ch: string; i: number; sLit: SharedValue<number>; theme: Theme;
+function PlayTile({ ch, i, sLit, theme, tile }: {
+  ch: string; i: number; sLit: SharedValue<number>; theme: Theme; tile: number;
 }) {
   const pal = PALETTE[tileColorFor(ch, i)];
   const gs = gameSurface(theme.mode);
+  const LIFT = Math.max(3, Math.round(tile * 0.08));
+  const RAD = Math.round(tile * 0.2);
   const ledgeStyle = useAnimatedStyle(() => ({
     backgroundColor: sLit.value > i ? pal.edge : gs.mono.edge,
   }));
@@ -33,21 +38,32 @@ function PlayTile({ ch, i, sLit, theme }: {
     color: sLit.value > i ? INK : gs.monoInk,
   }));
   return (
-    <View style={styles.tileWrap}>
-      <Animated.View style={[styles.ledge, ledgeStyle]} />
-      <Animated.View style={[styles.face, faceStyle, { boxShadow: gs.tileBevel }]}>
-        <Animated.Text style={[styles.letter, inkStyle]}>{ch.toUpperCase()}</Animated.Text>
+    <View style={{ width: tile, height: tile + LIFT + 1 }}>
+      <Animated.View
+        style={[styles.ledge, ledgeStyle, { top: LIFT, width: tile, height: tile, borderRadius: RAD }]}
+      />
+      <Animated.View
+        style={[
+          styles.face,
+          faceStyle,
+          { width: tile, height: tile, borderRadius: RAD, boxShadow: gs.tileBevel },
+        ]}>
+        <Animated.Text style={[styles.letter, inkStyle, { fontSize: Math.round(tile * 0.5) }]}>
+          {ch.toUpperCase()}
+        </Animated.Text>
       </Animated.View>
     </View>
   );
 }
 
-export function TracePlay({ sLit, theme }: { sLit: SharedValue<number>; theme: Theme }) {
+export function TracePlay({ sLit, theme, tile, gap }: {
+  sLit: SharedValue<number>; theme: Theme; tile: number; gap: number;
+}) {
   return (
     <View style={styles.wrap}>
-      <View style={styles.row}>
+      <View style={[styles.row, { gap }]}>
         {PLAY_WORD.map((ch, i) => (
-          <PlayTile key={ch} ch={ch} i={i} sLit={sLit} theme={theme} />
+          <PlayTile key={ch} ch={ch} i={i} sLit={sLit} theme={theme} tile={tile} />
         ))}
       </View>
       <Text style={[styles.label, { color: theme.ink }]}>trace to play</Text>
@@ -62,33 +78,20 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    gap: PLAY_GAP,
-  },
-  tileWrap: {
-    width: PLAY_TILE,
-    height: PLAY_TILE + LIFT + 1,
   },
   ledge: {
     position: 'absolute',
     left: 0,
-    top: LIFT,
-    width: PLAY_TILE,
-    height: PLAY_TILE,
-    borderRadius: RAD,
   },
   face: {
     position: 'absolute',
     left: 0,
     top: 0,
-    width: PLAY_TILE,
-    height: PLAY_TILE,
-    borderRadius: RAD,
     alignItems: 'center',
     justifyContent: 'center',
   },
   letter: {
     fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 20,
     includeFontPadding: false,
   },
   label: {

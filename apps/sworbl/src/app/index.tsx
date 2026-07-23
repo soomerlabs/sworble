@@ -30,7 +30,7 @@ import Animated, {
 import Storm from '@/components/game/storm';
 import { Floaters } from '@/components/home/floaters';
 import { CountdownDock } from '@/components/home/countdown-dock';
-import { PLAY_TILE, PLAY_GAP, PLAY_ROW_W } from '@/components/home/trace-play';
+import { playMetrics } from '@/components/home/trace-play';
 import { AppBar } from '@/components/home/app-bar';
 import { DateHeader } from '@/components/home/date-header';
 import { FloatingPodium } from '@/components/home/floating-podium';
@@ -70,7 +70,7 @@ const HINT_SLOT_W = [40, 36, 44, 38, 36, 42];
 
 // the frosted dock band: taller grab zone; home content scrolls UNDER it to
 // the screen's bottom edge and blurs out; "swipe to play" always rides on top
-const DOCK_H = 96;
+const DOCK_H = 116; // board-size PLAY tiles need the extra air
 
 // TRUE gradient frost: one BlurView masked by a LinearGradient (the sliced
 // approximation banded — owner: "woof"). FLIP THIS TO true AFTER the next
@@ -178,7 +178,9 @@ export default function HomeScreen() {
   // TRACE TO PLAY: 0-4 lit tiles; the open gesture is DUAL-MODE — the first
   // decisive movement axis picks trace (horizontal) or sheet-pull (vertical)
   const sLit = useSharedValue(0);
-  const sMode = useSharedValue(0); // 0 undecided · 1 sheet · 2 trace · 3 launched
+  const sMode = useSharedValue(0); // 0 tracing · 3 launch fired
+  const sArmed = useSharedValue(0); // PLAY traced → swipe unlocked
+  const [armed, setArmed] = useState(false);
   const sSquash = useSharedValue(1); // candy squash when the sheet docks at full
   const sDetent = useSharedValue(0); // 1 once the pull crosses the commit line
   const [sheetOpen, setSheetOpen] = useState(bootOpen); // fully open → home drag off, round armed
@@ -203,6 +205,8 @@ export default function HomeScreen() {
     saveSheetOpen(null); // a closed sheet must never restore
     sLit.value = 0;
     sMode.value = 0;
+    sArmed.value = 0;
+    setArmed(false); // the door re-locks: tomorrow starts with a fresh trace
   }, []);
   const closeSheet = useCallback(() => {
     sheetRef.current?.pauseForClose();
@@ -242,7 +246,6 @@ export default function HomeScreen() {
   const traceBeat = useCallback(
     (n: number) => {
       haptic.tick(n + 1);
-      // partial progress persists briefly (taps accumulate); idle melts it
       if (traceIdle.current) clearTimeout(traceIdle.current);
       if (n < 3) {
         traceIdle.current = setTimeout(() => {
@@ -253,9 +256,15 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
-  const playRowLeft = (width - PLAY_ROW_W) / 2;
-  // TRACE TO PLAY is THE way in (owner: swipe disabled until you trace) —
-  // the band pan only lights P·L·A·Y under the finger; the fourth launches.
+  // stage 1 complete: PLAY lit → the row morphs to the chevron, swipe unlocks
+  const armNow = useCallback(() => {
+    if (traceIdle.current) clearTimeout(traceIdle.current);
+    haptic.good();
+    setArmed(true);
+  }, []);
+  const pm = playMetrics(width);
+  // TWO-STAGE DOOR (owner): trace P·L·A·Y to unlock, then the chevron —
+  // swipe up launches. The trace teaches the verb; the swipe starts the day.
   const openDrag = useMemo(
     () =>
       Gesture.Pan()
@@ -263,34 +272,55 @@ export default function HomeScreen() {
         .minDistance(4)
         .onBegin((e) => {
           'worklet';
-          // touch-DOWN lights the tile under the finger (taps respond)
-          const idx = Math.floor((e.absoluteX - playRowLeft) / (PLAY_TILE + PLAY_GAP));
-          if (idx >= 0 && idx < 4 && idx + 1 > sLit.value && sMode.value !== 3) {
+          if (sArmed.value) return;
+          const idx = Math.floor((e.absoluteX - pm.left) / (pm.tile + pm.gap));
+          if (idx >= 0 && idx < 4 && idx + 1 > sLit.value) {
             sLit.value = idx + 1;
             runOnJS(traceBeat)(idx);
             if (idx === 3) {
-              sMode.value = 3;
-              sheetY.value = withSpring(0, OPEN_SPRING);
-              runOnJS(markOpen)();
+              sArmed.value = 1;
+              runOnJS(armNow)();
             }
           }
         })
         .onUpdate((e) => {
           'worklet';
-          if (sMode.value === 3) return;
-          const idx = Math.floor((e.absoluteX - playRowLeft) / (PLAY_TILE + PLAY_GAP));
-          if (idx >= 0 && idx < 4 && idx + 1 > sLit.value) {
-            sLit.value = idx + 1;
-            runOnJS(traceBeat)(idx);
-            if (idx === 3) {
-              // the fourth tile LAUNCHES — the first trace of the day wins
-              sMode.value = 3;
-              sheetY.value = withSpring(0, OPEN_SPRING);
-              runOnJS(markOpen)();
+          if (!sArmed.value) {
+            const idx = Math.floor((e.absoluteX - pm.left) / (pm.tile + pm.gap));
+            if (idx >= 0 && idx < 4 && idx + 1 > sLit.value) {
+              sLit.value = idx + 1;
+              runOnJS(traceBeat)(idx);
+              if (idx === 3) {
+                sArmed.value = 1;
+                runOnJS(armNow)();
+              }
             }
+            return;
+          }
+          if (sMode.value === 3) return;
+          // stage 2: the classic pull — top edge rides the finger
+          sheetY.value = Math.min(closedY, Math.max(0, e.absoluteY));
+          const past = closedY - sheetY.value > height * 0.22 ? 1 : 0;
+          if (past !== sDetent.value) {
+            sDetent.value = past;
+            if (past) runOnJS(detentIn)();
+            else runOnJS(detentOut)();
+          }
+        })
+        .onEnd((e) => {
+          'worklet';
+          sDetent.value = 0;
+          if (!sArmed.value || sMode.value === 3) return;
+          const risen = closedY - sheetY.value;
+          if (risen > height * 0.22 || e.velocityY < -900) {
+            sMode.value = 3;
+            sheetY.value = withSpring(0, { ...OPEN_SPRING, velocity: e.velocityY });
+            runOnJS(markOpen)();
+          } else {
+            sheetY.value = withSpring(closedY, { ...PARK_SPRING, velocity: e.velocityY });
           }
         }),
-    [width, sheetOpen, played, markOpen, traceBeat]
+    [width, height, closedY, sheetOpen, played, markOpen, traceBeat, armNow, detentIn, detentOut]
   );
 
   // close drag (home owns sheetY): the round pauses ONLY when the close
@@ -626,7 +656,7 @@ export default function HomeScreen() {
               style={[styles.peekFace, { height: peekH }, faceStyle]}>
               {frostLive && <DockFrost tint={theme.mode === 'dark' ? 'dark' : 'light'} />}
               <View style={[styles.dockInner, { paddingBottom: Math.max(insets.bottom, 14) }]}>
-                <CountdownDock played={played} sLit={sLit} />
+                <CountdownDock played={played} sLit={sLit} armed={armed} tile={pm.tile} gap={pm.gap} />
               </View>
               {__DEV__ && getDiagnostics() && (
                 <Text style={styles.devBand}>

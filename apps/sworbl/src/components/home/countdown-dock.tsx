@@ -18,7 +18,13 @@ function nextIn(): string {
   return `${h}:${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
-export function CountdownDock({ played, sLit }: { played: boolean; sLit?: SharedValue<number> }) {
+export function CountdownDock({ played, sLit, armed, tile, gap }: {
+  played: boolean;
+  sLit?: SharedValue<number>;
+  armed?: boolean; // PLAY traced → the chevron takes over (swipe unlocked)
+  tile?: number;
+  gap?: number;
+}) {
   const theme = useTheme();
   const [clock, setClock] = useState(nextIn);
   useEffect(() => {
@@ -45,13 +51,14 @@ export function CountdownDock({ played, sLit }: { played: boolean; sLit?: Shared
         </View>
       ) : (
         <View key="trace" style={styles.face}>
-          {sLit ? (
-            // TRACE TO PLAY — the launch IS the game's first trace (owner)
-            <TracePlay sLit={sLit} theme={theme} />
+          {sLit && !armed ? (
+            // stage 1: TRACE PLAY — the door teaches the game's verb
+            <TracePlay sLit={sLit} theme={theme} tile={tile ?? 48} gap={gap ?? 8} />
           ) : (
+            // stage 2 (armed): the chevron — swipe up launches
             <>
               <Animated.Text style={[styles.chev, bobStyle]}>︿</Animated.Text>
-              <Text style={[styles.swipeLabel, { color: theme.ink }]}>swipe up to play</Text>
+              <Text style={[styles.swipeLabel, { color: theme.ink }]}>swipe up to start</Text>
             </>
           )}
         </View>
