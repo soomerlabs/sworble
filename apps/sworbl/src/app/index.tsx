@@ -315,6 +315,11 @@ export default function HomeScreen() {
   const nudgeBeat = useCallback(() => {
     haptic.soft();
   }, []);
+  // THE SUCCESS BEAT (owner): fires when the pull crosses the commit line —
+  // the moment the launch is won — not back at the Y
+  const commitBeat = useCallback(() => {
+    haptic.good();
+  }, []);
   // stage 1 complete: PLAY lit → the row morphs to the chevron, swipe unlocks.
   // No swipe within the window → DISARM: the chevron gives way and the tiles
   // melt back in a reverse cascade (owner: the return must feel gratifying).
@@ -338,7 +343,8 @@ export default function HomeScreen() {
   }, []);
   const armNow = useCallback(() => {
     if (traceIdle.current) clearTimeout(traceIdle.current);
-    haptic.good();
+    // (no success haptic here — the Y is just the last tick; SUCCESS moved
+    // to the swipe's commit line, where the launch is actually won, owner)
     sArmed.value = 1; // RESYNC: the worklet flag must agree with the UI —
     // a disarm between the Y tick and this timer had split them
     setArmed(true);
@@ -406,8 +412,13 @@ export default function HomeScreen() {
           // stage 2: the pull preserves the grab offset — continuous from
           // wherever the sheet was resting (assist rise included)
           sheetY.value = Math.min(closedY, Math.max(0, e.absoluteY - sGrab.value));
-          // (the mid-swipe detent tick was owner-removed — the ONLY beat on
-          // the way up is the dock landing; the close drag keeps its detent)
+          // SUCCESS at the commit line (owner): one beat, exactly when the
+          // pull crosses the point where releasing launches. sDetent is the
+          // once-per-pull latch; onEnd resets it.
+          if (!sDetent.value && closedY - sheetY.value > height * 0.22) {
+            sDetent.value = 1;
+            runOnJS(commitBeat)();
+          }
         })
         .onEnd((e) => {
           'worklet';
@@ -416,6 +427,10 @@ export default function HomeScreen() {
           const risen = closedY - sheetY.value;
           if (risen > height * 0.22 || e.velocityY < -900) {
             sMode.value = 3;
+            // a fast flick can commit BELOW the line — the success beat
+            // still belongs to the commit, so fire it if the pull never
+            // crossed (sDetent still holds the once-only latch)
+            if (!sDetent.value) runOnJS(commitBeat)();
             sheetY.value = withSpring(0, { ...OPEN_SPRING, velocity: e.velocityY });
             runOnJS(markOpen)();
           } else if (risen > 12) {
@@ -429,7 +444,7 @@ export default function HomeScreen() {
           // to start" over a dead gesture, owner bug). The 4s idle timer
           // still melts an unused arm.
         }),
-    [width, height, closedY, sheetOpen, played, markOpen, traceBeat, nudgeBeat, armSoon, disarm]
+    [width, height, closedY, sheetOpen, played, markOpen, traceBeat, nudgeBeat, commitBeat, armSoon, disarm]
   );
 
   // close drag (home owns sheetY): the round pauses ONLY when the close
