@@ -137,6 +137,17 @@ const ASSIST_RISE = 0; // assist rise retired (owner) — constant kept for the 
 // all") — a hand-flipped constant is deterministic.
 const USE_MASKED_FROST = false;
 
+// the storm's six blob hues at their xPct anchors (storm.native BLOBS) —
+// the pending beacon's spill picks up the SAME color at the SAME spot
+const BEACON_HUES = [
+  { x: 1, c: 'rgba(167,139,250,0.5)' }, // violet
+  { x: 19, c: 'rgba(91,200,245,0.5)' }, // blue
+  { x: 38, c: 'rgba(95,214,168,0.5)' }, // green
+  { x: 55, c: 'rgba(245,143,184,0.5)' }, // pink
+  { x: 74, c: 'rgba(245,184,74,0.5)' }, // gold
+  { x: 91, c: 'rgba(245,138,102,0.5)' }, // orange
+] as const;
+
 // APPLE LIQUID GLASS (owner ask): iOS 26's real UIGlassEffect for the band —
 // checked ONCE at module load (native availability can't change mid-run).
 // Anywhere it's absent (older iOS, Android, web) the BlurView frost stands.
@@ -833,19 +844,21 @@ export default function HomeScreen() {
                 },
               ]}
             />
-            {/* the beacon rides ABOVE the dark throw: aurora-colored light
-                spilling over the lip while the day is unplayed */}
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.shadowStrip,
-                {
-                  boxShadow:
-                    '0 -10px 48px rgba(137,113,255,0.55), 0 -4px 24px rgba(91,200,245,0.28)',
-                },
-                beaconStyle,
-              ]}
-            />
+            {/* the beacon rides ABOVE the dark throw: light spilling over the
+                lip while the day is unplayed — one glow segment PER AURORA
+                BLOB, same color at the same x, so the spill matches the
+                weather underneath (owner) */}
+            <Animated.View pointerEvents="none" style={[styles.shadowStrip, beaconStyle]}>
+              {BEACON_HUES.map((h) => (
+                <View
+                  key={h.x}
+                  style={[
+                    styles.beaconSeg,
+                    { left: `${h.x - 8}%`, boxShadow: `0 -10px 46px ${h.c}` },
+                  ]}
+                />
+              ))}
+            </Animated.View>
             <View style={styles.sheetClip}>
             {/* the GAME layer (opaque) — transparent at peek so the frost
                 below can sample home */}
@@ -948,6 +961,14 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     zIndex: 20,
+  },
+  // one per aurora blob: a thin carrier whose shadow IS the colored spill
+  beaconSeg: {
+    position: 'absolute',
+    top: 0,
+    width: '16%',
+    height: 18,
+    borderRadius: 18,
   },
   lipLight: {
     position: 'absolute',
