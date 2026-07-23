@@ -178,9 +178,13 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 26,
+    marginBottom: 2,
   },
   pageWrap: {
-    gap: 18,
+    // the champion's crown + confetti reach ABOVE the podium row — without
+    // this air they crowd the title (owner: "crammed!")
+    paddingTop: 22,
+    gap: 22,
   },
   list: {
     gap: 7,

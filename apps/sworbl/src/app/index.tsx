@@ -44,8 +44,10 @@ const SHEET_SPRING = { mass: 0.7, damping: 20, stiffness: 180 };
 
 const twistLabel = (a: string) => ARCHETYPE_LABEL[a] ?? null;
 
-// the six blank hint slots (20a): staggered widths, NO letter-count leak
-const HINT_SLOT_W = [62, 58, 64, 60, 58, 62];
+// the six blank hint slots: staggered widths, NO letter-count leak — sized
+// to MATCH the game board's clue-fan ghost pills (owner: home skeletons were
+// bigger than the real pills they foreshadow; r9, ~26px tall, gap 7)
+const HINT_SLOT_W = [52, 48, 56, 50, 48, 54];
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
