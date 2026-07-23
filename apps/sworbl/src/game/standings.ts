@@ -38,6 +38,29 @@ export function standingsStub(dayKey: string): LbEntry[] {
   return entries.sort((a, b) => b.score - a.score);
 }
 
+// ALL-TIME stub board — one stable seeded field (not day-keyed) with
+// season-scale scores; replaced by the real aggregate when Supabase lands
+export function standingsAllTime(): LbEntry[] {
+  const rnd = engine.core.mulberry32(engine.core.hashSeed('lbAllTime') >>> 0);
+  const pool = [...POOL];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    const t = pool[i];
+    pool[i] = pool[j];
+    pool[j] = t;
+  }
+  const n = Math.min(pool.length, 18 + Math.floor(rnd() * 8));
+  const entries: LbEntry[] = [];
+  for (let i = 0; i < n; i++) {
+    entries.push({
+      name: pool[i],
+      score: Math.round(12000 + Math.pow(rnd(), 1.5) * 38000),
+      solved: true,
+    });
+  }
+  return entries.sort((a, b) => b.score - a.score);
+}
+
 // your rank in the field (1-based); ties break in your favor
 export function rankFor(entries: LbEntry[], myScore: number): number {
   return entries.filter((e) => e.score > myScore).length + 1;

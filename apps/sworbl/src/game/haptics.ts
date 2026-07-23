@@ -2,8 +2,23 @@
 // the chain grows — soft on the first letters, heavy as a long word lands.
 import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import engine from '@sworbl/engine';
+
+const HAPTICS_KEY = 'sworbl_rn_haptics';
+let enabled: boolean | null = null; // lazy — storage backing installs at boot
+
+export function hapticsEnabled(): boolean {
+  if (enabled === null) enabled = engine.store.getJSON(HAPTICS_KEY, true) !== false;
+  return enabled;
+}
+
+export function setHapticsEnabled(v: boolean): void {
+  enabled = v;
+  engine.store.setJSON(HAPTICS_KEY, v);
+}
 
 const native = Platform.OS !== 'web';
+const on = () => native && hapticsEnabled();
 
 const RAMP = [
   Haptics.ImpactFeedbackStyle.Soft, // 1
@@ -17,15 +32,15 @@ const RAMP = [
 
 export const haptic = {
   tick(chainLen = 1) {
-    if (native) Haptics.impactAsync(RAMP[Math.min(chainLen, RAMP.length) - 1]).catch(() => {});
+    if (on()) Haptics.impactAsync(RAMP[Math.min(chainLen, RAMP.length) - 1]).catch(() => {});
   },
   soft() {
-    if (native) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft).catch(() => {});
+    if (on()) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft).catch(() => {});
   },
   good() {
-    if (native) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    if (on()) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
   },
   bad() {
-    if (native) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    if (on()) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
   },
 };

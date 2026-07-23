@@ -95,7 +95,13 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     const returned = awake && !prevAwake.current && active;
     prevActive.current = active;
     prevAwake.current = awake;
-    if ((docked || returned) && awake && (phase === 'idle' || phase === 'paused')) arm();
+    if ((docked || returned) && awake && (phase === 'idle' || phase === 'paused')) {
+      // SETTLE BEAT (owner): the dock haptic lands, the sheet settles, THEN
+      // the count-in starts — arming on the same frame stacked the launch
+      // haptic on top of the "3" beat. Cleanup cancels if the sheet leaves.
+      const t = setTimeout(arm, 450);
+      return () => clearTimeout(t);
+    }
   }, [awake, active, phase, arm]);
 
   // SAFETY NET: a count-in may never survive a closed sheet, whatever path

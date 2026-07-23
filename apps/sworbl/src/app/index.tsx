@@ -7,7 +7,7 @@
 // into the superlatives pager after) → floating stepped podium + you-block →
 // swipe dock over the storm. Light + dark via the theme tokens.
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect } from 'expo-router';
@@ -229,7 +229,8 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.safe}>
         <AppBar
           theme={theme}
-          onSettings={__DEV__ ? () => router.push('/dev') : undefined}
+          onPerson={() => router.push('/profile')}
+          onSettings={() => router.push('/settings')}
         />
 
         <View style={styles.content}>
@@ -300,7 +301,9 @@ export default function HomeScreen() {
             />
           )}
 
-          <FloatingPodium theme={theme} entries={entries} you={you} />
+          <Pressable style={styles.podiumTap} onPress={() => router.push('/leaderboard')}>
+            <FloatingPodium theme={theme} entries={entries} you={you} />
+          </Pressable>
         </View>
 
         {/* the swipe-to-play GRAB ZONE is the dock area only (owner call) —
@@ -400,6 +403,9 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     gap: 8,
+  },
+  podiumTap: {
+    alignSelf: 'stretch',
   },
   hintSlot: {
     height: 33,

@@ -243,24 +243,27 @@ interface Props {
   theme: Theme;
   entries: LbEntry[]; // sorted desc
   you: { score: number; rank: number } | null; // null → "play to join"
+  showTitle?: boolean; // leaderboard renders its own big title
+  showFoot?: boolean; // leaderboard pins YOU in the LIST, not under the podium
 }
 
-export function FloatingPodium({ theme, entries, you }: Props) {
+export function FloatingPodium({ theme, entries, you, showTitle = true, showFoot = true }: Props) {
   const [first, second, third] = entries;
   if (!first) return null;
   return (
     <View style={styles.wrap}>
-      <Text style={[styles.title, { color: theme.sub }]}>standings</Text>
+      {showTitle && <Text style={[styles.title, { color: theme.sub }]}>standings</Text>}
       <View style={styles.row}>
         {third && <PodCol theme={theme} entry={third} place={3} />}
         <PodCol theme={theme} entry={first} place={1} />
         {second && <PodCol theme={theme} entry={second} place={2} />}
       </View>
-      {you ? (
-        <YouBlock theme={theme} score={you.score} rank={you.rank} />
-      ) : (
-        <Text style={[styles.join, { color: theme.faint }]}>play to join</Text>
-      )}
+      {showFoot &&
+        (you ? (
+          <YouBlock theme={theme} score={you.score} rank={you.rank} />
+        ) : (
+          <Text style={[styles.join, { color: theme.faint }]}>play to join</Text>
+        ))}
     </View>
   );
 }

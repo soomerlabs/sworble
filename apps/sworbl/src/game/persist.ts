@@ -63,7 +63,8 @@ export function finishDay(
   score: number,
   found: string[],
   sworb: SworbState,
-  bestWords: BestWord[] = []
+  bestWords: BestWord[] = [],
+  wordsPlayed: number = bestWords.length
 ): void {
   engine.store.set(K.DAILY_PREFIX + dayKey, score);
   engine.store.setJSON(K.FOUND_PREFIX + dayKey, found);
@@ -74,6 +75,10 @@ export function finishDay(
   });
   engine.store.set(K.DONE_PREFIX + dayKey, 1);
   clearRun(dayKey);
+  // lifetime stats append (profile screen) — idempotent by day, lazy import
+  // avoids a persist↔stats require cycle at module load
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('./stats').recordDay(dayKey, score, wordsPlayed, bestWords);
 }
 
 // ---- mid-run snapshot (RUN_PREFIX). RN's own versioned shape — the web's
