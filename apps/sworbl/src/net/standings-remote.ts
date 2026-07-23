@@ -94,16 +94,18 @@ interface Pending {
   solved: boolean;
   guesses: number;
   words: BestWord[];
+  mode?: 'regular' | 'hard'; // per-mode write policy (modes-spec)
 }
 
 export function enqueueSubmission(
   dayKey: string,
   score: number,
   sworb: SworbState,
-  words: BestWord[]
+  words: BestWord[],
+  mode: 'regular' | 'hard' = 'regular'
 ): void {
   const box = (engine.store.getJSON(OUTBOX_KEY, []) as Pending[]).filter((p) => p.day !== dayKey);
-  box.push({ day: dayKey, score, solved: sworb.solved, guesses: sworb.guessesUsed, words });
+  box.push({ day: dayKey, score, solved: sworb.solved, guesses: sworb.guessesUsed, words, mode });
   engine.store.setJSON(OUTBOX_KEY, box);
   void drainOutbox(); // best effort now; boot/foreground retries the rest
 }
@@ -122,7 +124,10 @@ export async function drainOutbox(): Promise<void> {
       // edge function, which re-scores the words server-side and inserts
       // with the service role — clients lost direct INSERT.
       const { data, error } = await sb.functions.invoke('submit-score', {
-        body: { day: p.day, score: p.score, solved: p.solved, guesses: p.guesses, words: p.words },
+        body: {
+          day: p.day, score: p.score, solved: p.solved, guesses: p.guesses,
+          words: p.words, mode: p.mode ?? 'regular',
+        },
       });
       if (data?.ok) continue; // delivered (duplicates count — one-shot law)
       if (error) {

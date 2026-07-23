@@ -24,7 +24,10 @@ import { gameSurface } from '@/game/palette';
 import { useTheme } from '@/game/theme';
 import { dealDaily, bumpNextId } from '@/game/daily';
 import { type TileT } from '@/game/types';
-import { loadDay, saveProgress, finishDay, saveRun, type RunSnap, type BestWord } from '@/game/persist';
+import {
+  loadDay, loadDayWords, saveProgress, finishRound, recordSworb, saveRun,
+  type RunSnap, type BestWord,
+} from '@/game/persist';
 import { enqueueSubmission } from '@/net/standings-remote';
 import { loadLadder } from '@/game/hints';
 import { getDiagnostics, getShortRounds } from '@/game/dev-flags';
@@ -35,7 +38,7 @@ import Animated, {
 
 // TIME FUEL: three minutes given, the Seven if you earn it (engine.run.timeForWord)
 
-type Phase = 'idle' | 'countin' | 'live' | 'paused' | 'finale' | 'done';
+type Phase = 'idle' | 'countin' | 'live' | 'paused' | 'roundend' | 'finale' | 'done';
 
 export interface PlaySheetHandle {
   pauseForClose: () => void; // home calls this before sliding the sheet away
@@ -44,6 +47,9 @@ export interface PlaySheetHandle {
 
 interface PlaySheetProps {
   onClose: () => void;
+  // home bumps this to open the sheet STRAIGHT INTO the guess (modes-spec:
+  // the finale is decoupled — 6 guesses a day, spendable whenever)
+  guessIntent?: number;
   // the sheet is PRE-MOUNTED hidden at boot (drag must move an already-built
   // layer — mounting mid-gesture was the pull jank). The round only ARMS
   // (count-in starts) when `active` flips true at sheet-dock.
@@ -53,7 +59,7 @@ interface PlaySheetProps {
 }
 
 export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function PlaySheet(
-  { onClose, active, closeGesture },
+  { onClose, active, closeGesture, guessIntent },
   handleRef
 ) {
   const { width, height } = useWindowDimensions();
@@ -67,8 +73,19 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   const boardPanRef = useRef<PanGesture | undefined>(undefined);
   const glideRef = useRef<PanGesture | undefined>(undefined); // finale keyboard glide
 
-  const deal = useMemo(() => dealDaily(), []);
+  // REGULAR MODE (modes-spec): every round after the first deals a fresh
+  // board — the round number rides the run snapshot so resumes replay the
+  // same layout; found clues never re-seed
+  const deal = useMemo(() => {
+    const base = dealDaily();
+    if (!base) return null;
+    const d = loadDay(base.dayKey);
+    const round = d.run?.round ?? d.rounds.played + 1;
+    if (round <= 1 && d.found.length === 0) return base;
+    return dealDaily(new Date(), { round, excludeClues: d.found }) ?? base;
+  }, []);
   const boot = useMemo(() => (deal ? loadDay(deal.dayKey) : null), [deal]);
+  const roundN = boot?.run?.round ?? (boot ? boot.rounds.played + 1 : 1);
   const route = boot?.route ?? 'fresh';
 
   // a resumed run re-enters through the pause cover; a killed finale re-enters the finale
@@ -90,6 +107,15 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     setCountInMounted(true);
     setPhase('countin');
   }, []);
+  // GUESS INTENT (modes-spec): home opens the sheet straight into the
+  // finale — no round, no count-in. The dock-arm effect's cleanup clears
+  // its pending timer when phase leaves idle, so the two cannot race.
+  const lastGuessIntent = useRef(guessIntent ?? 0);
+  useEffect(() => {
+    if (!active || guessIntent == null || guessIntent === lastGuessIntent.current) return;
+    lastGuessIntent.current = guessIntent;
+    if (phase === 'idle' || phase === 'paused') setPhase('finale');
+  }, [active, guessIntent, phase]);
   // the count-in beat the STEPPER renders (count-in itself is headless now)
   const [countStep, setCountStep] = useState<'3' | '2' | '1' | null>(null);
   // seeded from the INITIAL prop: mounting already-active (state restoration
@@ -200,9 +226,13 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
       if (left <= 0) {
         clearInterval(h);
         clockRef.current = clockPause(clockRef.current, Date.now());
-        // let 0:00 LAND for a beat before the board morphs (owner: the jump
-        // straight to the guess state read as a glitch)
-        morph = setTimeout(() => setPhase('finale'), 1000);
+        // let 0:00 LAND for a beat, then the ROUND ENDS (modes-spec): the
+        // round banks (best-round keeps the max, clues merge, submission
+        // rides the outbox) and the round-end cover offers the guess
+        morph = setTimeout(() => {
+          bankRoundRef.current();
+          setPhase('roundend');
+        }, 1000);
       }
     }, 250);
     return () => {
@@ -217,7 +247,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   const snapLive = useCallback(() => {
     if (!deal) return;
     const snap: RunSnap = {
-      client: 'rn', v: 1, day: deal.dayKey, phase: 'live',
+      client: 'rn', v: 1, day: deal.dayKey, phase: 'live', round: roundN,
       tiles: boardTilesRef.current.map(({ id, letter, col, row, ci, boost }) => ({ id, letter, col, row, ci, boost })),
       queueIdx: queueIdxRef.current,
       score, found,
@@ -270,7 +300,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
       if (!deal) return;
       finaleRestore.current = s;
       const snap: RunSnap = {
-        client: 'rn', v: 1, day: deal.dayKey, phase: 'finale',
+        client: 'rn', v: 1, day: deal.dayKey, phase: 'finale', round: roundN,
         tiles: boardTilesRef.current.map(({ id, letter, col, row, ci, boost }) => ({ id, letter, col, row, ci, boost })),
         queueIdx: queueIdxRef.current,
         score, found,
@@ -353,27 +383,34 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   }, [phase, pause, onClose]);
   useImperativeHandle(handleRef, () => ({ pauseForClose, rearm }), [pauseForClose, rearm]);
 
+  // REGULAR: the round banks at clock-out — day score = best round + bonus
+  const bankRound = useCallback(() => {
+    if (!deal) return;
+    const dayScore = finishRound(deal.dayKey, score, found, wordsRef.current);
+    const d = loadDay(deal.dayKey);
+    enqueueSubmission(
+      deal.dayKey,
+      dayScore,
+      d.sworb ?? { guessesUsed: 0, solved: false, bonus: 0 },
+      loadDayWords(deal.dayKey),
+      'regular'
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deal, score, found]);
+  const bankRoundRef = useRef(bankRound);
+  bankRoundRef.current = bankRound;
+
   const onFinaleDone = useCallback(
     (r: { solved: boolean; guessesUsed: number; bonus: number }) => {
       setResult(r);
       const finalScore = score + (r.bonus > 0 ? r.bonus : 0);
       if (r.bonus > 0) setScore(finalScore);
-      // the day ends exactly once: result written, then the DONE lock (clears the run)
+      // REGULAR (modes-spec): the sworb outcome records, the day does NOT
+      // lock — rounds keep playing; the derived day score rides the outbox
       if (deal) {
-        finishDay(
-          deal.dayKey,
-          finalScore,
-          found,
-          { guessesUsed: r.guessesUsed, solved: r.solved, bonus: r.bonus },
-          wordsRef.current
-        );
-        // the day rides to the server when it can (offline → outbox retries)
-        enqueueSubmission(
-          deal.dayKey,
-          finalScore,
-          { guessesUsed: r.guessesUsed, solved: r.solved, bonus: r.bonus },
-          wordsRef.current
-        );
+        const sworb = { guessesUsed: r.guessesUsed, solved: r.solved, bonus: r.bonus };
+        const dayScore = recordSworb(deal.dayKey, sworb);
+        enqueueSubmission(deal.dayKey, dayScore, sworb, loadDayWords(deal.dayKey), 'regular');
       }
       // owner loop: solved or failed, the sheet CLOSES — home is the reveal.
       // The close WAITS for the celebration beat (confetti / quick fail exit),
@@ -508,7 +545,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
                   size={tile}
                   gap={gap}
                   initialTiles={initialTiles}
-                  initialFound={boot?.run?.found}
+                  initialFound={boot?.run?.found ?? boot?.found}
                   initialScore={boot?.run?.score}
                   secsLeft={phase === 'live' ? remaining : undefined}
                   onScore={setScore}
@@ -550,6 +587,35 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
               )}
             </Animated.View>
           )}
+          {phase === 'roundend' && deal && (() => {
+            const d = loadDay(deal.dayKey);
+            const sworbPending = !d.sworb?.solved && (d.sworb?.guessesUsed ?? 0) < 6;
+            return (
+              <View style={styles.doneWrap}>
+                <Text style={[styles.roundEndTitle, { color: gs.ink }]}>
+                  round {d.rounds.played} banked
+                </Text>
+                <Text style={[styles.roundEndScore, { color: gs.ink }]}>
+                  {score.toLocaleString()}
+                </Text>
+                <Text style={[styles.roundEndSub, { color: gs.sub }]}>
+                  best today · {d.rounds.bestRound.toLocaleString()}
+                </Text>
+                {sworbPending && (
+                  <Pressable onPress={() => setPhase('finale')} style={styles.guessBtn}>
+                    <Text style={styles.guessBtnText}>
+                      GUESS THE WORD · {6 - (d.sworb?.guessesUsed ?? 0)} left
+                    </Text>
+                  </Pressable>
+                )}
+                <Pressable onPress={onClose} style={styles.homeLink}>
+                  <Text style={styles.homeLinkText}>
+                    {sworbPending ? 'later — home ›' : 'home ›'}
+                  </Text>
+                </Pressable>
+              </View>
+            );
+          })()}
           {phase === 'done' && deal && result && (
             <View style={styles.doneWrap}>
               <ResultView
@@ -576,6 +642,36 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
 const styles = StyleSheet.create({
   root: {
     flex: 1, // surface painted by index's themed game layer
+  },
+  roundEndTitle: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 15,
+    letterSpacing: 0.6,
+  },
+  roundEndScore: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 44,
+    fontVariant: ['tabular-nums'],
+    marginTop: 2,
+  },
+  roundEndSub: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 13,
+    marginBottom: 14,
+  },
+  guessBtn: {
+    backgroundColor: '#8971FF',
+    borderRadius: 14,
+    borderCurve: 'continuous',
+    paddingVertical: 12,
+    paddingHorizontal: 22,
+    boxShadow: '0 4px 0 #6A54D8',
+  },
+  guessBtnText: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 14,
+    letterSpacing: 1,
+    color: '#FFFFFF',
   },
   safe: {
     flex: 1,

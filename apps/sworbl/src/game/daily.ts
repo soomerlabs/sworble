@@ -73,7 +73,15 @@ export function activeClues(core: string[], extras: string[], found: string[]): 
   return act;
 }
 
-export function dealDaily(now = new Date()): DailyDeal | null {
+// REGULAR MODE (modes-spec): every round after the first deals a FRESH
+// board — same day, same word, same remaining clues, new letter layout.
+// round 1 keeps the day's original seed (continuity with hard + history).
+export interface DealOpts {
+  round?: number; // 1-based; >1 varies the letter queue + clue placement
+  excludeClues?: string[]; // the day's already-found clues never re-seed
+}
+
+export function dealDaily(now = new Date(), opts: DealOpts = {}): DailyDeal | null {
   const dayKey = getDevDay() ?? engine.core.dayKey(now);
   // SERVER-DRIVEN DAILIES (owner): a cached remote spec WINS for its day;
   // the bundle is the offline fallback — parseEntry sees one merged map
@@ -82,10 +90,15 @@ export function dealDaily(now = new Date()): DailyDeal | null {
   const entry = engine.daily.parseEntry(source, dayKey);
   if (!entry) return null;
 
-  // two-pass clue seed, seeded from the day (web newGame's exact call)
-  const rngFactory = () => engine.core.mulberry32(engine.core.hashSeed(dayKey + '|sworb'));
+  const round = Math.max(1, opts.round ?? 1);
+  const rTag = round > 1 ? '|r' + round : '';
+  const exclude = new Set(opts.excludeClues ?? []);
+  const clueSource = entry.themeWords.filter((w: string) => !exclude.has(w));
+
+  // two-pass clue seed, seeded from the day+round (web newGame's exact call)
+  const rngFactory = () => engine.core.mulberry32(engine.core.hashSeed(dayKey + rTag + '|sworb'));
   const cand = engine.seed.seedClueLettersTwoPass({
-    clues: entry.themeWords,
+    clues: clueSource.length ? clueSource : entry.themeWords,
     cols: COLS,
     rows: ROWS,
     rngFactory,
@@ -94,7 +107,7 @@ export function dealDaily(now = new Date()): DailyDeal | null {
 
   // deterministic letter queue: fills the non-clue cells at deal time, then
   // feeds refills for the whole round (FRIENDLY on-ramp + 3 full bags)
-  const qr = engine.core.mulberry32(engine.core.hashSeed(dayKey) ^ 0x51ac1e);
+  const qr = engine.core.mulberry32(engine.core.hashSeed(dayKey + rTag) ^ 0x51ac1e);
   const queue: string[] = engine.core
     .shuffledBag(engine.core.FRIENDLY, qr)
     .concat(

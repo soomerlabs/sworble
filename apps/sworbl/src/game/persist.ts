@@ -18,6 +18,11 @@ export interface BestWord {
   pts: number;
 }
 
+export interface DayRounds {
+  played: number; // rounds finished today
+  bestRound: number; // the single best round's word points (THE score base)
+}
+
 export interface DayState {
   route: 'consumed' | 'resume' | 'finale' | 'fresh';
   score: number;
@@ -25,6 +30,16 @@ export interface DayState {
   sworb: SworbState | null;
   run: RunSnap | null;
   bestWords: BestWord[]; // top-5 by points — the home superlatives
+  rounds: DayRounds; // REGULAR mode (modes-spec): replayable rounds
+}
+
+const ROUNDS_KEY = 'sworbl_rn_rounds_'; // + dayKey
+
+export function loadRounds(dayKey: string): DayRounds {
+  const v = engine.store.getJSON(ROUNDS_KEY + dayKey, null) as DayRounds | null;
+  return v && typeof v.played === 'number'
+    ? { played: v.played, bestRound: Number(v.bestRound) || 0 }
+    : { played: 0, bestRound: 0 };
 }
 
 export function loadDay(dayKey: string): DayState {
@@ -47,7 +62,57 @@ export function loadDay(dayKey: string): DayState {
     run,
     bestWords: (engine.store.getJSON(K.SEVEN_PREFIX + dayKey, { words: [] }) as { words: BestWord[] })
       .words,
+    rounds: loadRounds(dayKey),
   };
+}
+
+// REGULAR MODE (modes-spec, owner rulings): a round ENDS but the day does
+// NOT — clues accumulate, words merge, and the day's score derives as
+// bestRound + solve bonus. Never sets the DONE lock (that's hard's law).
+// Returns the derived day score.
+export function finishRound(
+  dayKey: string,
+  roundScore: number,
+  found: string[],
+  roundWords: BestWord[]
+): number {
+  const r = loadRounds(dayKey);
+  const rounds: DayRounds = {
+    played: r.played + 1,
+    bestRound: Math.max(r.bestRound, roundScore),
+  };
+  engine.store.setJSON(ROUNDS_KEY + dayKey, rounds);
+  engine.store.setJSON(K.FOUND_PREFIX + dayKey, found);
+  // merge the round's words into the day's full list (best pts per word)
+  const all = new Map<string, number>();
+  for (const w of loadDayWords(dayKey)) all.set(w.word, w.pts);
+  for (const w of roundWords) all.set(w.word, Math.max(all.get(w.word) ?? 0, w.pts));
+  const merged: BestWord[] = [...all.entries()].map(([word, pts]) => ({ word, pts }));
+  engine.store.setJSON(DAY_WORDS_KEY + dayKey, merged);
+  engine.store.setJSON(K.SEVEN_PREFIX + dayKey, {
+    words: [...merged].sort((a, b) => b.pts - a.pts).slice(0, 5),
+  });
+  const sworb = engine.store.getJSON(K.SWORB_PREFIX + dayKey, null) as SworbState | null;
+  const dayScore = rounds.bestRound + (sworb?.solved ? sworb.bonus : 0);
+  engine.store.set(K.DAILY_PREFIX + dayKey, dayScore);
+  clearRun(dayKey);
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('./stats').recordDay(dayKey, dayScore, merged.length, merged);
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('./lexicon').recordWords(roundWords);
+  return dayScore;
+}
+
+// the sworb outcome lands (solve or final miss) OUTSIDE a round's end —
+// re-derives the day score with the bonus locked in. Returns it.
+export function recordSworb(dayKey: string, sworb: SworbState): number {
+  engine.store.setJSON(K.SWORB_PREFIX + dayKey, sworb);
+  const rounds = loadRounds(dayKey);
+  const dayScore = rounds.bestRound + (sworb.solved ? sworb.bonus : 0);
+  engine.store.set(K.DAILY_PREFIX + dayKey, dayScore);
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('./stats').recordDay(dayKey, dayScore, loadDayWords(dayKey).length, loadDayWords(dayKey));
+  return dayScore;
 }
 
 // live progress — cheap synchronous writes on change (MMKV/localStorage both sync)
@@ -115,6 +180,7 @@ export interface RunSnap {
   words?: BestWord[]; // spelled-word history — superlatives survive kills
   boardElapsedMs: number;
   earnedMs: number; // time-fuel bank — rides the snapshot so resumes keep it
+  round?: number; // REGULAR mode: which round this snapshot belongs to
   // finale-phase carry (empty while live):
   guessesUsed: number;
   rows: { letters: string[]; colors: string[] }[];
@@ -188,5 +254,7 @@ export function resetDay(dayKey: string): void {
     K.HINT_TOKENS_PREFIX, K.SEVEN_PREFIX, K.THEME_PREFIX, K.TIME_PREFIX, K.ATT_PREFIX,
   ].filter(Boolean);
   for (const p of prefixes) engine.store.remove(p + dayKey);
+  engine.store.remove(ROUNDS_KEY + dayKey);
+  engine.store.remove(DAY_WORDS_KEY + dayKey);
   bumpResetNonce(); // the mounted sheet must remount — no zombie phases
 }

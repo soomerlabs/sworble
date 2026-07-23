@@ -8,7 +8,7 @@
 // swipe dock over the storm. Light + dark via the theme tokens.
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Share, Platform, useWindowDimensions, RefreshControl,
+  View, Text, Pressable, StyleSheet, ScrollView, Share, Platform, useWindowDimensions, RefreshControl,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -95,9 +95,13 @@ export default function HomeScreen() {
 
   const stats = useMemo(() => loadStats(), [day]); // re-read when the day state moves
   const streak = useMemo(() => streakDays(stats), [stats]);
-  const played = day?.route === 'consumed';
-  const solved = played && !!day?.sworb?.solved;
+  const played = day?.route === 'consumed'; // legacy one-shot / future hard
+  const solved = !!day?.sworb?.solved; // regular: solve reveals the hero mid-day
   const inProgress = day?.route === 'resume' || day?.route === 'finale';
+  // REGULAR MODE (modes-spec): the day is a living thing — rounds banked,
+  // clue bank growing, the guess spendable anytime
+  const dayInProgress = (day?.rounds.played ?? 0) > 0;
+  const sworbPending = !solved && (day?.sworb?.guessesUsed ?? 0) < 6;
 
   // standings, LIVE-FIRST (owner: cold launch flashed fake names): the
   // cached real field renders instantly; the fresh answer swaps in silently.
@@ -144,10 +148,9 @@ export default function HomeScreen() {
     () => remote?.entries ?? (deal ? standingsStub(deal.dayKey) : []),
     [remote, deal]
   );
-  const myScore = played ? (day?.score ?? 0) : inProgress ? (day?.run?.score ?? 0) : 0;
-  const you = played || (inProgress && myScore > 0)
-    ? { score: myScore, rank: rankFor(entries, myScore) }
-    : null;
+  // the derived day score (bestRound + solve bonus) IS your standing
+  const myScore = day?.score ?? 0;
+  const you = myScore > 0 ? { score: myScore, rank: rankFor(entries, myScore) } : null;
   // ONE combined order (owner): you spliced at your true rank — the podium
   // takes 1-3 (you can BE on it), the list takes 4-10, and past-10 you ride
   // below an ellipsis. Unplayed → a dashed ghost row instead.
@@ -312,6 +315,16 @@ export default function HomeScreen() {
     sReveal.value = withDelay(240, withTiming(1, { duration: 650, easing: Easing.out(Easing.quad) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deal]);
+  // GUESS FROM HOME (modes-spec): open the sheet STRAIGHT into the finale
+  const [guessIntent, setGuessIntent] = useState(0);
+  const openForGuess = useCallback(() => {
+    setGuessIntent((n) => n + 1);
+    sMode.value = 3;
+    sheetY.value = withSpring(0, OPEN_SPRING);
+    markOpen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markOpen]);
+
   // the DETENT: a tick the instant the pull crosses the commit threshold —
   // the hand learns "release now and it opens" without reading anything.
   // RATE-LIMITED (owner: slow-drag jank synced with haptics): a hover at the
@@ -708,7 +721,7 @@ export default function HomeScreen() {
             <DateHeader
               theme={theme}
               dayKey={deal.dayKey}
-              score={played && you ? you.score : null}
+              score={myScore > 0 ? myScore : null}
               streak={streak}
               onInfo={!played ? () => router.push('/how-to') : undefined}
               onShare={() =>
@@ -729,9 +742,27 @@ export default function HomeScreen() {
             />
           )}
 
-          <HeroWord theme={theme} deal={deal} played={played} solved={solved} width={width} />
+          <HeroWord theme={theme} deal={deal} played={played || solved} solved={solved} width={width} />
 
-          {played && deal && (
+          {/* DAY IN PROGRESS (modes-spec): the living day — best round,
+              clue bank, and the guess door (6 a day, spend anytime) */}
+          {!played && dayInProgress && deal && (
+            <View style={styles.dayStatusRow}>
+              <Text style={[styles.dayStatusText, { color: theme.sub }]}>
+                best round {(day?.rounds.bestRound ?? 0).toLocaleString()} ·{' '}
+                {day?.found.length ?? 0} clue{(day?.found.length ?? 0) === 1 ? '' : 's'}
+              </Text>
+              {sworbPending && (
+                <Pressable onPress={openForGuess} hitSlop={8} style={styles.guessPill}>
+                  <Text style={styles.guessPillText}>
+                    GUESS · {6 - (day?.sworb?.guessesUsed ?? 0)} left
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          )}
+
+          {(played || dayInProgress) && deal && (
             <View style={styles.pagerWrap}>
             <SuperlativesPager
               theme={theme}
@@ -782,11 +813,12 @@ export default function HomeScreen() {
             <Animated.View
               style={[styles.gameLayer, { backgroundColor: gameSurface(theme.mode).bg }, gameStyle]}>
               <PlaySheet
-                key={`${deal.dayKey}:${devSnap.nonce}`}
+                key={`${deal.dayKey}:${devSnap.nonce}:${day?.rounds.played ?? 0}`}
                 ref={sheetRef}
                 onClose={closeSheet}
                 active={sheetOpen}
                 closeGesture={closeDrag}
+                guessIntent={guessIntent}
               />
             </Animated.View>
             {/* TAIL BRIDGE: whisper aurora tint under the crest's glow —
@@ -944,6 +976,29 @@ const styles = StyleSheet.create({
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 13,
     color: '#8971FF',
+  },
+  dayStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: -8,
+  },
+  dayStatusText: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 12,
+  },
+  guessPill: {
+    backgroundColor: '#8971FF',
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 13,
+    boxShadow: '0 3px 0 #6A54D8',
+  },
+  guessPillText: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 10.5,
+    letterSpacing: 1,
+    color: '#FFFFFF',
   },
   shareChip: {
     width: 30,
