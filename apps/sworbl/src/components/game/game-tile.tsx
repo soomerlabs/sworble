@@ -21,9 +21,11 @@ import Animated, {
 import { PALETTE, INK, type GameSurface } from '@/game/palette';
 import { COLS, ROWS, type TileT, type TraceTile } from '@/game/types';
 
-// softer entry, still a hard-ish landing (owner: falls needed smoothing —
-// the old curve slammed off the line with a visible first-frame jump)
-const FALL_EASE = Easing.bezier(0.3, 0.02, 0.65, 0.6);
+// FOSSIL-EXACT falls (owner unhappy with two rounds of hand-tuning — the
+// web IS the reference): bezier(0.45,0.02,0.7,0.5), dur max(.32,min(.6,
+// dist/1100)), per-COLUMN ripple 30ms. Spawn: ALL refill tiles enter from
+// 1.6 cells above the roof (web), not stacked by depth.
+const FALL_EASE = Easing.bezier(0.45, 0.02, 0.7, 0.5);
 
 interface Props {
   tile: TileT;
@@ -45,7 +47,7 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
   const lift = Math.max(3, Math.round(size * 0.08));
   const rad = Math.round(size * 0.2);
 
-  const y = useSharedValue(tile.spawnDrop ? -(tile.spawnDrop + 1) * cell : targetY);
+  const y = useSharedValue(tile.spawnDrop ? -1.6 * cell : targetY);
   const scale = useSharedValue(1);
   const squashY = useSharedValue(1);
   const opacity = useSharedValue(1);
@@ -54,17 +56,15 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
   useEffect(() => {
     const dist = Math.abs(targetY - y.value);
     if (dist < 1) return;
-    // TIMED GAME (owner): smooth ≠ slow — the soft curve carries the polish,
-    // the numbers stay urgent
-    const dur = Math.max(300, Math.min(520, (dist / 1300) * 1000));
-    const delay = tile.spawnDrop ? tile.spawnDrop * 32 : tile.col * 14;
+    const dur = Math.max(320, Math.min(600, (dist / 1100) * 1000));
+    const delay = tile.col * 30; // web: one per-column ripple, refill or shift alike
     y.value = withDelay(
       delay,
       withTiming(targetY, { duration: dur, easing: FALL_EASE }, (fin) => {
         'worklet';
         if (fin) {
           squashY.value = withSequence(
-            withTiming(0.88, { duration: 60 }),
+            withTiming(0.85, { duration: 60 }),
             withTiming(1, { duration: 110 })
           );
         }

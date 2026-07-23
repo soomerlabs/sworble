@@ -342,6 +342,9 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   }, [phase, arm, onRelease]);
   // the PAUSE BUTTON (owner: "pause to do something and come back"): stays ON
   // the gameboard — letters conceal (anti-stare), tap-to-resume re-arms 3·2·1
+  // a TOGGLE, and deliberately total (owner hit a dead board where nothing
+  // responded — this button must be an escape hatch from EVERY state):
+  // live→pause · countin→disarm · paused→instant resume · idle→ceremony
   const pauseInPlace = useCallback(() => {
     if (phase === 'live') {
       pause();
@@ -349,8 +352,12 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
       setCountInMounted(false);
       setCountStep(null);
       setPhase('idle');
+    } else if (phase === 'paused') {
+      onRelease();
+    } else if (phase === 'idle') {
+      arm();
     }
-  }, [phase, pause]);
+  }, [phase, pause, onRelease, arm]);
   useImperativeHandle(handleRef, () => ({ pauseForClose, rearm }), [pauseForClose, rearm]);
 
   const onFinaleDone = useCallback(
@@ -402,6 +409,11 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     <View style={styles.root}>
       {phase !== 'idle' && <Storm width={width} height={Math.min(280, height * 0.32)} />}
       <View style={[styles.safe, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        {__DEV__ && (
+          <Text style={styles.devPhase}>
+            {phase}·{route}
+          </Text>
+        )}
         <View style={styles.top}>
           {onBoard && phase !== 'finale' && (
             // tap = pause · DEV-ONLY shortcut: long-press → straight to the finale
@@ -630,6 +642,16 @@ const styles = StyleSheet.create({
   pauseGhost: {
     width: 34,
     height: 34,
+  },
+  devPhase: {
+    position: 'absolute',
+    top: 4,
+    left: 8,
+    zIndex: 50,
+    fontSize: 9,
+    fontFamily: 'Fredoka_600SemiBold',
+    color: '#F5B84A',
+    opacity: 0.7,
   },
   pausedCoverWrap: {
     position: 'absolute',
