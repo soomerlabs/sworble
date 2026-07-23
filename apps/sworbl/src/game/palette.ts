@@ -54,7 +54,7 @@ export const GAME_DARK: GameSurface = {
   line: '#3A3A44',
   ink: '#EDEFF7',
   sub: '#9DA2B3',
-  timer: '#5FD6A8',
+  timer: '#EDEFF7', // plain ink (owner: no green — white on dark, black on light)
   timerLow: '#FF8A8E',
   overlay: 'rgba(16,16,20,0.55)',
 };
@@ -69,7 +69,7 @@ export const GAME_LIGHT: GameSurface = {
   line: '#D3D6E0',
   ink: '#1F1442',
   sub: '#6E7180',
-  timer: '#1E8A62', // mint family, dark enough to read on #EDEFF7
+  timer: '#1F1442', // plain ink (owner: no green — white on dark, black on light)
   timerLow: '#C43B44',
   overlay: 'rgba(237,239,247,0.6)',
 };
