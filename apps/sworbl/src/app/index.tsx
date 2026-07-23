@@ -577,17 +577,21 @@ export default function HomeScreen() {
           peek face and the game crossfade during travel. */}
       {deal && (
         <GestureDetector gesture={openDrag}>
-          <Animated.View
-            style={[
-              styles.sheet,
-              sheetStyle,
-              {
-                boxShadow:
-                  theme.mode === 'dark'
-                    ? '0 -12px 40px rgba(0,0,0,0.55)'
-                    : '0 -12px 36px rgba(31,20,66,0.28)',
-              },
-            ]}>
+          <Animated.View style={[styles.sheet, sheetStyle]}>
+            {/* shadow on a THIN carrier, not the full-screen layer — iOS
+                recomputes a pathless layer shadow EVERY FRAME of movement
+                (the Apple-sheet smoothness gap, owner) */}
+            <View
+              style={[
+                styles.shadowStrip,
+                {
+                  boxShadow:
+                    theme.mode === 'dark'
+                      ? '0 -12px 40px rgba(0,0,0,0.55)'
+                      : '0 -12px 36px rgba(31,20,66,0.28)',
+                },
+              ]}
+            />
             <View style={styles.sheetClip}>
             {/* the GAME layer (opaque) — transparent at peek so the frost
                 below can sample home */}
@@ -665,6 +669,15 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     zIndex: 20,
+  },
+  shadowStrip: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 24,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
   },
   sheetClip: {
     flex: 1,
