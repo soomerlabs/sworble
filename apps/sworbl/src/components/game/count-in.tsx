@@ -7,18 +7,19 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import Animated, { ZoomIn, FadeOut } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
-import { PALETTE, INK } from '@/game/palette';
+import { PALETTE, INK, GAME_DARK, type GameSurface } from '@/game/palette';
 import { haptic } from '@/game/haptics';
 
 interface Props {
   onRelease: () => void; // board unlocks + wakes (engine GO beat)
   onUnmount: () => void;
+  gs?: GameSurface;
 }
 
 // 3 violet · 2 gold · 1 green — green hands off to the board turning on
 const BEAT_PAL: Record<string, number> = { '3': 0, '2': 4, '1': 2 };
 
-export function CountIn({ onRelease, onUnmount }: Props) {
+export function CountIn({ onRelease, onUnmount, gs = GAME_DARK }: Props) {
   const [step, setStep] = useState<string>('3');
   const [out, setOut] = useState(false);
 
@@ -60,7 +61,9 @@ export function CountIn({ onRelease, onUnmount }: Props) {
   const pal = PALETTE[BEAT_PAL[step] ?? 0];
 
   return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.wrap, out && styles.out]}>
+    <View
+      pointerEvents="none"
+      style={[StyleSheet.absoluteFill, styles.wrap, { backgroundColor: gs.overlay }, out && styles.out]}>
       {!out && (
         <Animated.View
           key={step}
@@ -81,7 +84,6 @@ const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(16,16,20,0.55)',
     borderRadius: 18,
     zIndex: 10,
   },

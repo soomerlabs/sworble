@@ -10,7 +10,7 @@ import Animated, {
   withDelay, Easing, type EntryExitAnimationFunction,
 } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
-import { PALETTE, CARD, tileColorFor } from '@/game/palette';
+import { PALETTE, CARD, tileColorFor, GAME_DARK, type GameSurface } from '@/game/palette';
 import { scoreWord } from '@/game/dict';
 
 export interface StepperVerdict {
@@ -34,6 +34,7 @@ interface Props {
   traceWord: string; // live chain, lowercase ('' when idle)
   verdict: StepperVerdict | null;
   sworb?: SworbFace | null; // finale: the stepper hosts the guess (fossil sworb face)
+  gs?: GameSurface; // scheme surface (defaults dark)
 }
 
 // THE MISS TUMBLE (web chipFall + _bannerMiss): rejected chips lean drunk in
@@ -180,7 +181,7 @@ function Chips({ word, red }: { word: string; red?: boolean }) {
   );
 }
 
-export function StepperCard({ width, traceWord, verdict, sworb }: Props) {
+export function StepperCard({ width, traceWord, verdict, sworb, gs = GAME_DARK }: Props) {
   const tracing = traceWord.length > 0;
   const mult = tracing ? engine.core.lenMult(traceWord.length) : 0;
   const pts = tracing && traceWord.length >= 3 ? scoreWord(traceWord) : 0;
@@ -203,7 +204,7 @@ export function StepperCard({ width, traceWord, verdict, sworb }: Props) {
   if (sworb) {
     const bs = Math.min(34, Math.floor((width - 60) / Math.max(1, sworb.slots.length)) - 5);
     return (
-      <View style={[styles.card, { width }]}>
+      <View style={[styles.card, { width, backgroundColor: gs.card, boxShadow: `0 4px 0 ${gs.cardEdge}` }]}>
         <Animated.View key="sworb" entering={FadeIn.duration(300)} style={styles.face}>
         <Animated.View style={[styles.sworbRow, shakeStyle]}>
           {sworb.slots.map((l, i) => {
@@ -247,7 +248,7 @@ export function StepperCard({ width, traceWord, verdict, sworb }: Props) {
   }
 
   return (
-    <View style={[styles.card, { width }]}>
+    <View style={[styles.card, { width, backgroundColor: gs.card, boxShadow: `0 4px 0 ${gs.cardEdge}` }]}>
       <Animated.View key="spell" exiting={FadeOut.duration(200)} style={styles.face}>
       {/* the banner: live chain chips, a landed verdict, or the idle line */}
       {verdict ? (
@@ -270,7 +271,7 @@ export function StepperCard({ width, traceWord, verdict, sworb }: Props) {
       ) : tracing ? (
         <Chips word={traceWord} />
       ) : (
-        <Text style={styles.idle}>swipe to spell</Text>
+        <Text style={[styles.idle, { color: gs.sub }]}>swipe to spell</Text>
       )}
 
       {/* pay badge (web payBadgeStyle): ×mult · running pts, only while tracing */}

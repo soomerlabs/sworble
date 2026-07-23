@@ -12,7 +12,8 @@ import { GameTile } from './game-tile';
 import TraceConnector from './trace-connector';
 import { ClueFan } from './clue-fan';
 import { COLS, ROWS, type TileT, type TraceTile } from '@/game/types';
-import { PALETTE, CARD } from '@/game/palette';
+import { PALETTE, CARD, gameSurface, type GameSurface } from '@/game/palette';
+import { useTheme } from '@/game/theme';
 import { settle, restampBroken, landsInMs, type DailyDeal } from '@/game/daily';
 import { dict, prefixMap, scoreWord } from '@/game/dict';
 import { beginW, moveW, type TraceCtx } from '@/game/trace';
@@ -54,6 +55,8 @@ interface Props {
 export function GameBoard({
   deal, size, gap, initialTiles, initialFound, initialScore, secsLeft, onScore, onClues, onTiles, onWordSpelled, mercySecs, gestureRef, finale, concealed,
 }: Props) {
+  // LIGHT MODE (owner): one stable surface object per scheme — memo-safe props
+  const gs = gameSurface(useTheme().mode);
   const inFinale = !!finale;
   const cell = size + gap;
   const boardW = COLS * cell - gap;
@@ -543,7 +546,7 @@ export function GameBoard({
   return (
     <View style={{ alignItems: 'center' }}>
       {/* THE STEPPER (web hopperCard) — ABOVE the board; hosts the GUESS in the finale */}
-      <StepperCard width={boardW + 24} traceWord={trace.word} verdict={verdict} sworb={sworbFace} />
+      <StepperCard width={boardW + 24} traceWord={trace.word} verdict={verdict} sworb={sworbFace} gs={gs} />
 
       {/* THE BOARD CARD (web boardCardStyle): tiles live ON a card with sunken
           cell wells — not floating on the screen background. breathStyle:
@@ -555,6 +558,8 @@ export function GameBoard({
             {
               width: boardW + 24,
               paddingBottom: 12 + Math.max(3, Math.round(size * 0.08)),
+              backgroundColor: gs.card,
+              boxShadow: `0 6px 0 ${gs.cardEdge}`,
             },
           ]}>
         {/* clip window: masks refills falling from above, PADDED 12px on ALL
@@ -585,6 +590,7 @@ export function GameBoard({
                   borderRadius: Math.round(size * 0.2),
                   left: (i % COLS) * cell,
                   top: Math.floor(i / COLS) * cell,
+                  backgroundColor: gs.well,
                 },
               ]}
             />
@@ -610,6 +616,7 @@ export function GameBoard({
               nopeSeq={nope.seqs.get(t.id) ?? 0}
               nopeTotal={nope.total}
               concealed={!!concealed}
+              gs={gs}
             />
           ))}
           {devFlash && (
@@ -634,6 +641,7 @@ export function GameBoard({
           </View>
           {inFinale && fin && (
             <BoardKeyboard
+              gs={gs}
               size={size}
               gap={gap}
               full={fSlots.length > 0 && fSlots.every(Boolean)}
@@ -647,7 +655,7 @@ export function GameBoard({
         </View>
         </Animated.View>
 
-      <ClueFan clues={deal.clues} found={found} nudged={ladder.nudged} />
+      <ClueFan clues={deal.clues} found={found} nudged={ladder.nudged} gs={gs} />
       {audit && <DevClueAudit clues={deal.clues} found={found} onTap={devProve} />}
     </View>
   );

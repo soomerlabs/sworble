@@ -18,7 +18,7 @@ import Animated, {
   interpolateColor,
   type SharedValue,
 } from 'react-native-reanimated';
-import { PALETTE, INK, MONO_DARK, MONO_INK } from '@/game/palette';
+import { PALETTE, INK, type GameSurface } from '@/game/palette';
 import { COLS, ROWS, type TileT, type TraceTile } from '@/game/types';
 
 const FALL_EASE = Easing.bezier(0.45, 0.02, 0.7, 0.5); // accelerate, hard stop
@@ -33,9 +33,10 @@ interface Props {
   nopeSeq: number; // this tile's position in the rejected word
   nopeTotal: number; // rejected word length (drain sweeps head→back)
   concealed: boolean; // letters only exist while YOUR clock runs (anti-stare)
+  gs: GameSurface; // scheme surface (STABLE module object — memo-safe)
 }
 
-function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nopeTotal, concealed }: Props) {
+function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nopeTotal, concealed, gs }: Props) {
   const cell = size + gap;
   const x = tile.col * cell;
   const targetY = tile.row * cell;
@@ -177,7 +178,7 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
   // the red BLENDS in and drains out (web rjArrive/rjDrainOut are color
   // transitions) — the old `> 0.5` test snapped mid-drain, the reported jank
   const ledgeStyle = useAnimatedStyle(() => {
-    const base = sLit.value ? pal.edge : MONO_DARK.edge;
+    const base = sLit.value ? pal.edge : gs.mono.edge;
     return {
       backgroundColor:
         sRed.value > 0 ? interpolateColor(sRed.value, [0, 1], [base, '#8C2328']) : base,
@@ -185,14 +186,14 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, nope, nopeSeq, nop
     };
   });
   const faceStyle = useAnimatedStyle(() => {
-    const base = sLit.value ? pal.bg : MONO_DARK.bg;
+    const base = sLit.value ? pal.bg : gs.mono.bg;
     return {
       backgroundColor:
         sRed.value > 0 ? interpolateColor(sRed.value, [0, 1], [base, '#E5484D']) : base,
     };
   });
   const letterStyle = useAnimatedStyle(() => {
-    const base = sLit.value ? INK : MONO_INK;
+    const base = sLit.value ? INK : gs.monoInk;
     return {
       color: sRed.value > 0 ? interpolateColor(sRed.value, [0, 1], [base, '#FFFFFF']) : base,
       opacity: sLetterO.value,
@@ -249,7 +250,8 @@ export const GameTile = React.memo(
   GameTileInner,
   (a, b) =>
     a.tile === b.tile && a.size === b.size && a.gap === b.gap &&
-    a.clearingSeq === b.clearingSeq && a.nope === b.nope && a.concealed === b.concealed
+    a.clearingSeq === b.clearingSeq && a.nope === b.nope && a.concealed === b.concealed &&
+    a.gs === b.gs
 );
 
 const styles = StyleSheet.create({

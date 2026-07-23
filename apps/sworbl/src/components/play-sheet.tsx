@@ -21,7 +21,8 @@ import { ResultView } from '@/components/game/result-view';
 import { ScoreHeader } from '@/components/game/score-header';
 import { Brand } from '@/components/brand';
 import Storm from '@/components/game/storm';
-import { BG_DARK } from '@/game/palette';
+import { gameSurface } from '@/game/palette';
+import { useTheme } from '@/game/theme';
 import { dealDaily, bumpNextId } from '@/game/daily';
 import { type TileT } from '@/game/types';
 import { loadDay, saveProgress, finishDay, saveRun, type RunSnap, type BestWord } from '@/game/persist';
@@ -55,6 +56,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   handleRef
 ) {
   const { width, height } = useWindowDimensions();
+  const gs = gameSurface(useTheme().mode);
   // useSafeAreaInsets is SYNCHRONOUS — SafeAreaView reflows a frame late, which
   // jitters the top bar every time the sheet mounts mid-drag (owner report)
   const insets = useSafeAreaInsets();
@@ -370,20 +372,24 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
           {/* score lives in the ScoreHeader rail only (it showed twice) —
               the corner is the PAUSE button, the visible face of swipe-down */}
           {onBoard && phase !== 'finale' ? (
-            <Pressable onPress={pauseInPlace} hitSlop={12} style={styles.pauseBtn}>
-              <View style={styles.pauseBar} />
-              <View style={styles.pauseBar} />
+            <Pressable
+              onPress={pauseInPlace}
+              hitSlop={12}
+              style={[styles.pauseBtn, { backgroundColor: gs.mono.bg, boxShadow: `0 2px 0 ${gs.mono.edge}` }]}>
+              <View style={[styles.pauseBar, { backgroundColor: gs.sub }]} />
+              <View style={[styles.pauseBar, { backgroundColor: gs.sub }]} />
             </Pressable>
           ) : onBoard ? (
             <View style={styles.pauseGhost} />
           ) : (
-            <Text style={styles.score}>{score.toLocaleString()}</Text>
+            <Text style={[styles.score, { color: gs.ink }]}>{score.toLocaleString()}</Text>
           )}
         </View>
 
         {onBoard && (
           <View style={styles.scoreHdrWrap}>
             <ScoreHeader
+              gs={gs}
               score={score}
               target={TUNING.PAR_TARGET}
               marks={{ second: TUNING.PAR_SECOND, third: TUNING.PAR_THIRD }}
@@ -438,12 +444,12 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
                 />
               </View>
               {countInMounted && phase === 'countin' && (
-                <CountIn onRelease={onRelease} onUnmount={() => setCountInMounted(false)} />
+                <CountIn gs={gs} onRelease={onRelease} onUnmount={() => setCountInMounted(false)} />
               )}
               {active && (phase === 'paused' || phase === 'idle') && (
                 <Pressable style={styles.pausedCover} onPress={rearm}>
-                  <Text style={styles.pausedTitle}>paused</Text>
-                  <Text style={styles.pausedSub}>tap to resume</Text>
+                  <Text style={[styles.pausedTitle, { color: gs.ink }]}>paused</Text>
+                  <Text style={[styles.pausedSub, { color: gs.sub }]}>tap to resume</Text>
                 </Pressable>
               )}
             </Animated.View>
@@ -473,8 +479,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
 
 const styles = StyleSheet.create({
   root: {
-    flex: 1,
-    backgroundColor: BG_DARK,
+    flex: 1, // surface painted by index's themed game layer
   },
   safe: {
     flex: 1,

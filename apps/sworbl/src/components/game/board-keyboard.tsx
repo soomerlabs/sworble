@@ -7,9 +7,10 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { PALETTE, INK, MONO_DARK, MONO_INK } from '@/game/palette';
+import { PALETTE, INK, GAME_DARK, type GameSurface } from '@/game/palette';
 
 interface Props {
+  gs?: GameSurface;
   size: number; // tile size — keys ARE tiles
   gap: number;
   full: boolean; // all slots typed → the submit key goes mint GUESS
@@ -45,7 +46,7 @@ function Key({
   );
 }
 
-export function BoardKeyboard({ size, gap, full, onKey, onBackspace, onSubmit }: Props) {
+export function BoardKeyboard({ gs = GAME_DARK, size, gap, full, onKey, onBackspace, onSubmit }: Props) {
   const cell = size + gap;
   const rows: React.ReactNode[] = [];
   // rows 0-4: A-Z alphabetical, candy by index (fossil: PALETTE[i % 6])
@@ -84,14 +85,14 @@ export function BoardKeyboard({ size, gap, full, onKey, onBackspace, onSubmit }:
         onPress={() => onKey('z')}
       />
       <Key
-        w={wide} h={size} bg={MONO_DARK.bg} edge={MONO_DARK.edge} ink={MONO_INK}
+        w={wide} h={size} bg={gs.mono.bg} edge={gs.mono.edge} ink={gs.monoInk}
         label="⌫" fontSize={Math.round(size * 0.44)}
         onPress={onBackspace}
       />
       <Key
         w={wide} h={size}
-        bg={full ? '#5FD6A8' : MONO_DARK.bg}
-        edge={full ? '#38AD7F' : MONO_DARK.edge}
+        bg={full ? '#5FD6A8' : gs.mono.bg}
+        edge={full ? '#38AD7F' : gs.mono.edge}
         ink={full ? INK : '#6E6E7A'}
         label={full ? 'GUESS' : '⏎'}
         fontSize={full ? Math.round(size * 0.3) : Math.round(size * 0.44)}

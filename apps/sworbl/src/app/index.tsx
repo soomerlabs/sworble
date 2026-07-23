@@ -288,10 +288,13 @@ export default function HomeScreen() {
   // the collapsed FACE (frost + swipe-to-play) and the GAME crossfade as the
   // sheet travels — single-layer opacities, compositing-cheap
   const faceStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(sheetY.value, [closedY - 160, closedY - 24], [0, 1], Extrapolation.CLAMP),
+    opacity: interpolate(sheetY.value, [closedY - 170, closedY - 50], [0, 1], Extrapolation.CLAMP),
   }));
+  // the game SURFACE must exist from the FIRST pixel of travel — a late ramp
+  // left the sheet's body clear glass below the frost band during the pull
+  // (owner: "blur cut off and there's just clear")
   const gameStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(sheetY.value, [closedY - 260, closedY - 90], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(sheetY.value, [closedY - 130, closedY - 12], [1, 0], Extrapolation.CLAMP),
   }));
   // MATCHED-GEOMETRY grabber (owner round 2: face keeps the ^; the PILL is
   // the sheet's grabber, materializing on the same travel path as you pull —

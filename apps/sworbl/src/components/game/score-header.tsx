@@ -7,18 +7,20 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { GAME_DARK, type GameSurface } from '@/game/palette';
 
 interface Props {
   score: number;
   target: number; // today's #1 — the crown at the track's end
   marks?: { second: number; third: number }; // podium cut lines on the track
   width: number; // the shared rail (boardW + 24)
+  gs?: GameSurface;
 }
 
 const EASE_MS = 500; // web: width 0.5s cubic-bezier(0.22,1,0.36,1)
 const KNOB = 17;
 
-export function ScoreHeader({ score, target, marks, width }: Props) {
+export function ScoreHeader({ score, target, marks, width, gs = GAME_DARK }: Props) {
   const ratio = Math.min(1, target > 0 ? score / target : 0);
   // NUMERIC widths — Reanimated tweens numbers, not '%' strings (the header
   // silently broke on device with the string version)
@@ -38,9 +40,9 @@ export function ScoreHeader({ score, target, marks, width }: Props) {
 
   return (
     <View style={[styles.row, { width }]}>
-      <Text style={styles.score}>{score.toLocaleString()}</Text>
+      <Text style={[styles.score, { color: gs.ink }]}>{score.toLocaleString()}</Text>
       <View style={styles.track}>
-        <View style={styles.dashLine} />
+        <View style={[styles.dashLine, { borderColor: gs.line }]} />
         {/* podium cut marks: pass 3rd → you're ON the board; 2nd → chasing the crown */}
         {marks &&
           ([
@@ -58,7 +60,7 @@ export function ScoreHeader({ score, target, marks, width }: Props) {
             );
           })}
         <Animated.View style={[styles.fill, fillStyle]} />
-        <Animated.View style={[styles.knob, knobStyle]} />
+        <Animated.View style={[styles.knob, { backgroundColor: gs.bg, borderColor: gs.line }, knobStyle]} />
       </View>
       <View style={styles.targetWrap}>
         <Text style={styles.crown}>♛</Text>

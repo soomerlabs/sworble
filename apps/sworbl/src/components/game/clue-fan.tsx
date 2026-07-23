@@ -6,7 +6,7 @@
 //           match the home skeletons exactly.
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { PALETTE, INK } from '@/game/palette';
+import { PALETTE, INK, GAME_DARK, type GameSurface } from '@/game/palette';
 
 // fixed stagger (same rhythm as home's pre-play skeletons) — width must
 // never derive from the hidden word
@@ -19,9 +19,10 @@ interface Props {
   // letter shows only on the clue the starter nudge revealed (earned intel,
   // so it persists into the finale too)
   nudged?: string | null;
+  gs?: GameSurface;
 }
 
-export function ClueFan({ clues, found, nudged }: Props) {
+export function ClueFan({ clues, found, nudged, gs = GAME_DARK }: Props) {
   return (
     <View style={styles.fan}>
       {clues.map((clue, i) => {
@@ -33,7 +34,10 @@ export function ClueFan({ clues, found, nudged }: Props) {
           return (
             <View
               key={clue}
-              style={[styles.pill, styles.pillGhost, styles.pillBlank, { width: GHOST_W[i % GHOST_W.length] }]}
+              style={[
+                styles.pill, styles.pillGhost, styles.pillBlank,
+                { width: GHOST_W[i % GHOST_W.length], borderColor: gs.line },
+              ]}
             />
           );
         }
@@ -44,9 +48,9 @@ export function ClueFan({ clues, found, nudged }: Props) {
               styles.pill,
               isFound
                 ? { backgroundColor: pal.bg, boxShadow: `0 2px 0 ${pal.edge}` }
-                : styles.pillGhost,
+                : [styles.pillGhost, { borderColor: gs.line }],
             ]}>
-            <Text style={[styles.pillText, isFound ? { color: INK } : styles.ghostText]}>
+            <Text style={[styles.pillText, isFound ? { color: INK } : { color: gs.sub }]}>
               {isFound
                 ? clue.toUpperCase()
                 : clue[0] + ' ' + '· '.repeat(clue.length - 1).trim()}

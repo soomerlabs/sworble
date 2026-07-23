@@ -6,6 +6,7 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing,
 } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
+import { useTheme } from '@/game/theme';
 
 function nextIn(): string {
   const ms = engine.core.msToNextDay(new Date());
@@ -16,6 +17,7 @@ function nextIn(): string {
 }
 
 export function CountdownDock({ played }: { played: boolean }) {
+  const theme = useTheme();
   const [clock, setClock] = useState(nextIn);
   useEffect(() => {
     if (!played) return;
@@ -36,14 +38,14 @@ export function CountdownDock({ played }: { played: boolean }) {
     <View pointerEvents="none" style={styles.wrap}>
       {played ? (
         <>
-          <Text style={styles.nextLabel}>next sworbl in</Text>
-          <Text style={styles.nextClock}>{clock}</Text>
+          <Text style={[styles.nextLabel, { color: theme.sub }]}>next sworbl in</Text>
+          <Text style={[styles.nextClock, { color: theme.ink }]}>{clock}</Text>
         </>
       ) : (
         <>
           {/* the ^ (owner: pill tried, chevron won) */}
           <Animated.Text style={[styles.chev, bobStyle]}>︿</Animated.Text>
-          <Text style={styles.swipeLabel}>swipe up to play</Text>
+          <Text style={[styles.swipeLabel, { color: theme.ink }]}>swipe up to play</Text>
         </>
       )}
     </View>
