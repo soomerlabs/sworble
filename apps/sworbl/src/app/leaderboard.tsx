@@ -3,7 +3,7 @@
 // stepped podium, the ranked list with the player's row pinned INLINE
 // (indigo), and the NEXT SWORBL IN countdown. Stub fields until Supabase.
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Share } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Share, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import engine from '@sworbl/engine';
@@ -12,6 +12,7 @@ import { ScreenBar } from '@/components/screen-bar';
 import { ScreenHeader } from '@/components/screen-header';
 import { FloatingPodium } from '@/components/home/floating-podium';
 import { CountdownDock } from '@/components/home/countdown-dock';
+import { Floaters } from '@/components/home/floaters';
 import { useTheme, ACCENT, ACCENT_EDGE } from '@/game/theme';
 import { PALETTE, tileColorFor } from '@/game/palette';
 import { standingsStub, standingsAllTime, rankFor, type LbEntry } from '@/game/standings';
@@ -62,6 +63,7 @@ function Row({
 
 export default function LeaderboardScreen() {
   const theme = useTheme();
+  const dims = useWindowDimensions();
   const [page, setPage] = useState(0); // 0 daily · 1 all-time
   const dayKey = engine.core.dayKey(new Date());
   const name = getPlayerName();
@@ -123,6 +125,8 @@ export default function LeaderboardScreen() {
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
       <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
+      {/* the home screen's drifting candy tiles — every screen breathes (owner) */}
+      <Floaters width={dims.width} height={dims.height} />
       <SafeAreaView style={styles.safe}>
         <ScreenBar theme={theme} action={{ symbol: 'square.and.arrow.up', fallback: '↗', onPress: share }} />
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

@@ -2,12 +2,13 @@
 // grammar; grows into the full tutorial later). Reached from the ⓘ in the
 // home header's right slot (pre-play only — the score lives there after).
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
 import { ScreenBar } from '@/components/screen-bar';
 import { ScreenHeader } from '@/components/screen-header';
+import { Floaters } from '@/components/home/floaters';
 import { useTheme, ACCENT, CLUE_GREEN } from '@/game/theme';
 import { PALETTE } from '@/game/palette';
 
@@ -36,9 +37,12 @@ const STEPS: { pal: number; title: string; body: string }[] = [
 
 export default function HowToScreen() {
   const theme = useTheme();
+  const dims = useWindowDimensions();
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
       <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
+      {/* the home screen's drifting candy tiles — every screen breathes (owner) */}
+      <Floaters width={dims.width} height={dims.height} />
       <SafeAreaView style={styles.safe}>
         <ScreenBar theme={theme} />
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

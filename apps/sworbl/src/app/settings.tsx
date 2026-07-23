@@ -4,6 +4,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Pressable, Switch,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -12,6 +13,7 @@ import Constants from 'expo-constants';
 
 import { ScreenBar } from '@/components/screen-bar';
 import { ScreenHeader } from '@/components/screen-header';
+import { Floaters } from '@/components/home/floaters';
 import { useTheme, useThemeMode, setThemeMode, ACCENT, type ThemeMode } from '@/game/theme';
 import { hapticsEnabled, setHapticsEnabled, haptic } from '@/game/haptics';
 
@@ -23,12 +25,15 @@ const MODES: { key: ThemeMode; label: string }[] = [
 
 export default function SettingsScreen() {
   const theme = useTheme();
+  const dims = useWindowDimensions();
   const mode = useThemeMode();
   const [haptics, setHaptics] = useState(hapticsEnabled());
 
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
       <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
+      {/* the home screen's drifting candy tiles — every screen breathes (owner) */}
+      <Floaters width={dims.width} height={dims.height} />
       <SafeAreaView style={styles.safe}>
         <ScreenBar theme={theme} />
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

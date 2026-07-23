@@ -18,9 +18,10 @@ function nextIn(): string {
   return `${h}:${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
-export function CountdownDock({ played, sLit, armed, tile, gap }: {
+export function CountdownDock({ played, sLit, sPoke, armed, tile, gap }: {
   played: boolean;
   sLit?: SharedValue<number>;
+  sPoke?: SharedValue<number>; // out-of-sequence tap → that tile shakes its head
   armed?: boolean; // PLAY traced → the chevron takes over (swipe unlocked)
   tile?: number;
   gap?: number;
@@ -71,7 +72,10 @@ export function CountdownDock({ played, sLit, armed, tile, gap }: {
               morph both directions, owner) */}
           {sLit && (
             <View style={styles.pose}>
-              <TracePlay sLit={sLit} theme={theme} tile={tile ?? 48} gap={gap ?? 8} armed={!!armed} />
+              <TracePlay
+                sLit={sLit} sPoke={sPoke} theme={theme} tile={tile ?? 48} gap={gap ?? 8}
+                armed={!!armed}
+              />
             </View>
           )}
           <Animated.View style={[styles.pose, chevPose]} pointerEvents="none">

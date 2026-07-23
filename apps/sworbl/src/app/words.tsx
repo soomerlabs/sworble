@@ -3,7 +3,7 @@
 // on the board (solver-proven; refill-born words that never lived on the
 // dealt board shake instead — honest, like everything else here).
 import React, { useMemo, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import engine from '@sworbl/engine';
@@ -11,6 +11,7 @@ import engine from '@sworbl/engine';
 import { ScreenBar } from '@/components/screen-bar';
 import { ScreenHeader } from '@/components/screen-header';
 import { DevFlash } from '@/components/game/dev-clue-audit';
+import { Floaters } from '@/components/home/floaters';
 import { useTheme, ACCENT, ACCENT_EDGE, CLUE_GREEN } from '@/game/theme';
 import { loadLexicon, titleFor, nextTitle } from '@/game/lexicon';
 import { gameSurface } from '@/game/palette';
@@ -22,6 +23,7 @@ const RENDER_CAP = 250; // the collection can grow huge — cap the list render
 
 export default function WordsScreen() {
   const theme = useTheme();
+  const dims = useWindowDimensions();
   const [tab, setTab] = useState<0 | 1>(0); // 0 today · 1 collection
   const lexicon = useMemo(() => {
     const lex = loadLexicon();
@@ -74,6 +76,8 @@ export default function WordsScreen() {
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
       <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
+      {/* the home screen's drifting candy tiles — every screen breathes (owner) */}
+      <Floaters width={dims.width} height={dims.height} />
       <SafeAreaView style={styles.safe}>
         <ScreenBar theme={theme} />
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

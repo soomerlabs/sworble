@@ -293,6 +293,7 @@ export default function HomeScreen() {
   // the assist-raised sheet SNAPPED to the finger on the first pull frame)
   const sArmed = useSharedValue(0); // PLAY traced → swipe unlocked
   const sGlow = useSharedValue(0); // aurora intensity: muted → FULL GLOW on arm (owner)
+  const sPoke = useSharedValue(-1); // out-of-sequence tap: counter*4 + tileIdx
   const [armed, setArmed] = useState(false);
   const sSquash = useSharedValue(1); // candy squash when the sheet docks at full
   const sDetent = useSharedValue(0); // 1 once the pull crosses the commit line
@@ -393,6 +394,10 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
+  // the wrong-tile head-shake's whisper of a haptic (tap path only)
+  const nudgeBeat = useCallback(() => {
+    haptic.soft();
+  }, []);
   // stage 1 complete: PLAY lit → the row morphs to the chevron, swipe unlocks.
   // No swipe within the window → DISARM: the chevron gives way and the tiles
   // melt back in a reverse cascade (owner: the return must feel gratifying).
@@ -448,6 +453,12 @@ export default function HomeScreen() {
               sArmed.value = 1; // input locks NOW; the ceremony follows the tick
               runOnJS(armSoon)();
             }
+          } else if (idx >= 0 && idx < 4) {
+            // wrong tile: SEEN, not taken — it shakes its head (owner: "if
+            // i just hit LA i'd expect to see it react"). Tap path only; a
+            // drag sweeping across tiles must not rattle the row.
+            sPoke.value = (Math.floor(Math.max(0, sPoke.value) / 4) + 1) * 4 + idx;
+            runOnJS(nudgeBeat)();
           }
         })
         .onUpdate((e) => {
@@ -502,7 +513,7 @@ export default function HomeScreen() {
             runOnJS(disarm)(); // released without committing → PLAY melts back NOW
           }
         }),
-    [width, height, closedY, sheetOpen, played, markOpen, traceBeat, armSoon, disarm, detentIn, detentOut]
+    [width, height, closedY, sheetOpen, played, markOpen, traceBeat, nudgeBeat, armSoon, disarm, detentIn, detentOut]
   );
 
   // close drag (home owns sheetY): the round pauses ONLY when the close
@@ -595,6 +606,15 @@ export default function HomeScreen() {
   const stormGlowStyle = useAnimatedStyle(() => ({
     opacity: 0.45 + sGlow.value * 0.55,
     transform: [{ scale: 1 + sGlow.value * 0.08 }],
+  }));
+  // THE INVISIBLE PARK (owner): at rest the sheet does NOT read as a layer —
+  // no frost, no shadow, no lip. The aurora floats on home itself. Pulling
+  // up MATERIALIZES the sheet: its dressing fades in over the first stretch
+  // of travel, so the weather "fades into the sheet".
+  const materializeStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      sheetY.value, [closedY - 110, closedY - 20], [1, 0], Extrapolation.CLAMP
+    ),
   }));
   // PENDING BEACON (owner: "peeps need to know something is pending — THE
   // GAME"): while the round waits, colored light breathes off the band's
@@ -831,17 +851,18 @@ export default function HomeScreen() {
             {/* shadow on a THIN carrier, not the full-screen layer — iOS
                 recomputes a pathless layer shadow EVERY FRAME of movement
                 (the Apple-sheet smoothness gap, owner) */}
-            <View
+            <Animated.View
               style={[
                 styles.shadowStrip,
                 {
-                  // owner: the band must read DEFINITIVELY on top of home —
-                  // deeper throw + a tight contact line under the lip
+                  // the deep throw belongs to the MATERIALIZED sheet only —
+                  // at park it's gone (invisible-park, owner)
                   boxShadow:
                     theme.mode === 'dark'
                       ? '0 -18px 56px rgba(0,0,0,0.72), 0 -2px 10px rgba(0,0,0,0.5)'
                       : '0 -18px 48px rgba(31,20,66,0.4), 0 -2px 10px rgba(31,20,66,0.22)',
                 },
+                materializeStyle,
               ]}
             />
             {/* the beacon rides ABOVE the dark throw: light spilling over the
@@ -882,25 +903,31 @@ export default function HomeScreen() {
               <Animated.View pointerEvents="none" style={[styles.bandStorm, stormGlowStyle]}>
                 <Storm width={width} height={peekH} zoom={2.2} />
               </Animated.View>
-              {frostLive && <DockFrost tint={theme.mode === 'dark' ? 'dark' : 'light'} />}
-              {/* the LIP: a light-catch hairline on the band's top edge —
-                  with the deep shadow it sells "this floats OVER home" */}
-              <View
+              {/* frost + lip only exist on the MATERIALIZED sheet — at park
+                  the aurora floats naked on home (invisible-park, owner) */}
+              <Animated.View
                 pointerEvents="none"
-                style={[
-                  styles.lipLight,
-                  {
-                    backgroundColor:
-                      theme.mode === 'dark' ? 'rgba(255,255,255,0.13)' : 'rgba(255,255,255,0.9)',
-                  },
-                ]}
-              />
+                style={[StyleSheet.absoluteFill, materializeStyle]}>
+                {frostLive && <DockFrost tint={theme.mode === 'dark' ? 'dark' : 'light'} />}
+                <View
+                  style={[
+                    styles.lipLight,
+                    {
+                      backgroundColor:
+                        theme.mode === 'dark' ? 'rgba(255,255,255,0.13)' : 'rgba(255,255,255,0.9)',
+                    },
+                  ]}
+                />
+              </Animated.View>
               <View
                 style={[
                   styles.dockInner,
                   { flex: 0, height: peekH, paddingBottom: Math.max(insets.bottom, 14) },
                 ]}>
-                <CountdownDock played={played} sLit={sLit} armed={armed} tile={pm.tile} gap={pm.gap} />
+                <CountdownDock
+                  played={played} sLit={sLit} sPoke={sPoke} armed={armed}
+                  tile={pm.tile} gap={pm.gap}
+                />
               </View>
               {__DEV__ && devSnap.diag && (
                 <Text style={styles.devBand}>

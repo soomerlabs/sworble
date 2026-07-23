@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 
 import { ScreenBar } from '@/components/screen-bar';
 import { ScreenHeader } from '@/components/screen-header';
+import { Floaters } from '@/components/home/floaters';
 import { useTheme, CLUE_GREEN } from '@/game/theme';
 import { PALETTE, tileColorFor } from '@/game/palette';
 import { loadStats, historyGrid, streakDays } from '@/game/stats';
@@ -34,7 +35,7 @@ function sinceLine(firstDay: string | null): string {
 
 export default function ProfileScreen() {
   const theme = useTheme();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const stats = useMemo(() => loadStats(), []);
   const [name, setName] = useState(getPlayerName());
   const [editing, setEditing] = useState(false);
@@ -71,6 +72,8 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
       <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
+      {/* the home screen's drifting candy tiles — every screen breathes (owner) */}
+      <Floaters width={width} height={height} />
       <SafeAreaView style={styles.safe}>
         <ScreenBar theme={theme} />
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

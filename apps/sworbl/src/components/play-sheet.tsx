@@ -20,7 +20,6 @@ import { type FinaleRestore } from '@/components/game/finale';
 import { ResultView } from '@/components/game/result-view';
 import { ScoreHeader } from '@/components/game/score-header';
 import { Brand } from '@/components/brand';
-import Storm from '@/components/game/storm';
 import { gameSurface } from '@/game/palette';
 import { useTheme } from '@/game/theme';
 import { dealDaily, bumpNextId } from '@/game/daily';
@@ -411,7 +410,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   return (
     <GestureDetector gesture={fullClose}>
     <View style={styles.root}>
-      {phase !== 'idle' && <Storm width={width} height={Math.min(280, height * 0.32)} />}
+      {/* (aurora removed from the gameboard — owner: it lives in the band) */}
       <View style={[styles.safe, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         {__DEV__ && getDiagnostics() && (
           <Text style={styles.devPhase}>

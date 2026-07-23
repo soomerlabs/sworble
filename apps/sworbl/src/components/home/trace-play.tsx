@@ -7,8 +7,8 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, {
-  useAnimatedStyle, useSharedValue, withDelay, withTiming, withSequence, Easing,
-  type SharedValue,
+  useAnimatedStyle, useAnimatedReaction, useSharedValue, withDelay, withTiming, withSequence,
+  Easing, type SharedValue,
 } from 'react-native-reanimated';
 import { PALETTE, INK, tileColorFor, gameSurface } from '@/game/palette';
 import { type Theme } from '@/game/theme';
@@ -28,8 +28,9 @@ export function playMetrics(width: number) {
 const FLY_EASE = Easing.bezier(0.5, 0, 0.8, 0.5); // the word-flight curve
 const FALL_EASE = Easing.bezier(0.45, 0.02, 0.7, 0.5); // the board's gravity
 
-function PlayTile({ ch, i, sLit, theme, tile, armed }: {
-  ch: string; i: number; sLit: SharedValue<number>; theme: Theme; tile: number; armed: boolean;
+function PlayTile({ ch, i, sLit, sPoke, theme, tile, armed }: {
+  ch: string; i: number; sLit: SharedValue<number>; sPoke?: SharedValue<number>;
+  theme: Theme; tile: number; armed: boolean;
 }) {
   const pal = PALETTE[tileColorFor(ch, i)];
   const gs = gameSurface(theme.mode);
@@ -66,9 +67,29 @@ function PlayTile({ ch, i, sLit, theme, tile, armed }: {
       );
     }
   }, [armed]);
+  // OUT-OF-SEQUENCE TAP (owner: "if i just hit LA i'd expect to see it
+  // react") — the tapped tile shakes its head: seen, but the door starts
+  // at P. sPoke encodes (counter*4 + tileIndex); only the named tile moves.
+  const nudgeX = useSharedValue(0);
+  useAnimatedReaction(
+    () => sPoke?.value ?? -1,
+    (cur, prev) => {
+      if (cur < 0 || cur === prev || cur % 4 !== i) return;
+      nudgeX.value = withSequence(
+        withTiming(-4, { duration: 50 }),
+        withTiming(4, { duration: 70 }),
+        withTiming(-2.5, { duration: 60 }),
+        withTiming(0, { duration: 70 })
+      );
+    }
+  );
   const flight = useAnimatedStyle(() => ({
     opacity: flyO.value,
-    transform: [{ translateY: flyY.value }, { scale: flyS.value }],
+    transform: [
+      { translateY: flyY.value },
+      { translateX: nudgeX.value },
+      { scale: flyS.value },
+    ],
   }));
   const ledgeStyle = useAnimatedStyle(() => ({
     backgroundColor: sLit.value > i ? pal.edge : gs.mono.edge,
@@ -99,14 +120,17 @@ function PlayTile({ ch, i, sLit, theme, tile, armed }: {
   );
 }
 
-export function TracePlay({ sLit, theme, tile, gap, armed = false }: {
-  sLit: SharedValue<number>; theme: Theme; tile: number; gap: number; armed?: boolean;
+export function TracePlay({ sLit, sPoke, theme, tile, gap, armed = false }: {
+  sLit: SharedValue<number>; sPoke?: SharedValue<number>; theme: Theme;
+  tile: number; gap: number; armed?: boolean;
 }) {
   return (
     <View style={styles.wrap}>
       <View style={[styles.row, { gap }]}>
         {PLAY_WORD.map((ch, i) => (
-          <PlayTile key={ch} ch={ch} i={i} sLit={sLit} theme={theme} tile={tile} armed={armed} />
+          <PlayTile
+            key={ch} ch={ch} i={i} sLit={sLit} sPoke={sPoke} theme={theme} tile={tile} armed={armed}
+          />
         ))}
       </View>
       {/* no label — the tiles SAY play, and two swipe messages was one too
