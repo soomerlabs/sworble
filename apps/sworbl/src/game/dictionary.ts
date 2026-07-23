@@ -4,7 +4,6 @@
 // at boot — validation runs on the starter until the swap lands (seconds).
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Platform } from 'react-native';
 import { applyFullDictionary } from './dict';
 
 export async function loadFullDictionary(): Promise<number> {
@@ -13,10 +12,11 @@ export async function loadFullDictionary(): Promise<number> {
     await asset.downloadAsync(); // no-op when already bundled locally
     const uri = asset.localUri || asset.uri;
     if (!uri) return 0;
-    const text =
-      Platform.OS === 'web'
-        ? await (await fetch(uri)).text()
-        : await FileSystem.readAsStringAsync(uri);
+    // dev-mode native serves assets over http (Metro) — read file:// via the
+    // filesystem, anything else via fetch (the Invalid-URL bug on device)
+    const text = uri.startsWith('file://')
+      ? await FileSystem.readAsStringAsync(uri)
+      : await (await fetch(uri)).text();
     return applyFullDictionary(text);
   } catch (e) {
     // starter dictionary keeps the game fully playable — log and move on

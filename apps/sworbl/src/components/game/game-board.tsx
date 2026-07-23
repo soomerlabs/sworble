@@ -3,7 +3,7 @@
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useSharedValue, useAnimatedReaction, runOnJS } from 'react-native-reanimated';
+import { useSharedValue, useAnimatedReaction, runOnJS, runOnUI } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 import { GameTile } from './game-tile';
 import TraceConnector from './trace-connector';
@@ -62,6 +62,8 @@ export function GameBoard({
   // ---- HINT AIDS: token bank + sonar ping (engine decides, board acts) ----
   const [tokens, setTokens] = useState<TokenState>(() => loadTokens(deal.dayKey));
   const [ping, setPing] = useState<{ key: number; x: number; y: number; color: string } | null>(null);
+  // NOPE (web nopeTiles): the rejected word's tiles shake it off red in place
+  const [nope, setNope] = useState<{ key: number; ids: Set<number> }>({ key: 0, ids: new Set() });
   const pingKeyRef = useRef(0);
   const tilesMirror = useRef(tiles);
   tilesMirror.current = tiles;
@@ -179,6 +181,18 @@ export function GameBoard({
     [size, gap]
   );
 
+  // FIRST-TOUCH WARMUP: worklets compile lazily on first invocation — running
+  // them once with dead coordinates at mount means the first real finger never
+  // pays the compile cost (the "board slow to respond on first load" report)
+  useEffect(() => {
+    runOnUI(() => {
+      'worklet';
+      beginW({ x: -9999, y: -9999 }, ctx);
+      moveW({ x: -9999, y: -9999 }, ctx);
+      ctx.lastPt.value = null;
+    })();
+  }, []);
+
   // ---- discrete JS-side events ----
   const onTraceChange = useCallback((len: number, word: string, ci: number, grew: boolean, p: TraceTile[]) => {
     setTrace({ word, ci });
@@ -207,6 +221,7 @@ export function GameBoard({
       if (!deal || ids.length < 3) return;
       if (!dict().has(word)) {
         setVerdict({ word: word.toUpperCase(), ok: false });
+        setNope((n) => ({ key: n.key + 1, ids: new Set(ids) })); // board shakes it off red
         setTimeout(() => setVerdict(null), 900);
         haptic.bad();
         return;
@@ -307,9 +322,6 @@ export function GameBoard({
 
   return (
     <View style={{ alignItems: 'center' }}>
-      {/* THE STEPPER (web hopperCard): the strip the traced word builds on */}
-      <StepperCard width={boardW + 24} traceWord={trace.word} verdict={verdict} />
-
       {/* THE BOARD CARD (web boardCardStyle): tiles live ON a card with sunken
           cell wells — not floating on the screen background */}
       <GestureDetector gesture={pan}>
@@ -321,7 +333,9 @@ export function GameBoard({
               paddingBottom: 12 + Math.max(3, Math.round(size * 0.08)),
             },
           ]}>
-        <View style={{ width: boardW, height: boardH }}>
+        {/* overflow hidden: refills fall in from ABOVE the board and must stay
+            masked until they enter (web boardCard clip) */}
+        <View style={{ width: boardW, height: boardH, overflow: 'hidden' }}>
           {Array.from({ length: COLS * ROWS }, (_, i) => (
             <View
               key={`bgc${i}`}
@@ -345,6 +359,7 @@ export function GameBoard({
               gap={gap}
               sPath={sPath}
               clearing={clearingIds.has(t.id)}
+              nope={nope.ids.has(t.id) ? nope.key : 0}
             />
           ))}
           <TraceConnector
@@ -369,6 +384,11 @@ export function GameBoard({
         </View>
       </GestureDetector>
 
+      {/* THE STEPPER — below the blocks (owner call): the traced word builds here */}
+      <View style={{ marginTop: 11 }}>
+        <StepperCard width={boardW + 24} traceWord={trace.word} verdict={verdict} />
+      </View>
+
       {tokens.count > 0 && (
         <Text style={styles.tokenLine}>✦ hint ready — tap a dashed clue</Text>
       )}
@@ -384,11 +404,7 @@ const styles = StyleSheet.create({
     padding: 12,
     alignItems: 'center',
     // the card's own candy ledge (web: 0 6px 0 --card-edge)
-    shadowColor: CARD.edge,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
+    boxShadow: `0 6px 0 ${CARD.edge}`,
   },
   cellWell: {
     position: 'absolute',

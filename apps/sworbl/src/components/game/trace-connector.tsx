@@ -30,7 +30,7 @@ export default function TraceConnector({ jsPath, size, gap, width, height }: Pro
         points={points}
         fill="none"
         stroke={PALETTE[p[p.length - 1].ci % PALETTE.length].bg}
-        strokeOpacity={0.7}
+        strokeOpacity={0.55}
         strokeWidth={Math.max(6, size * 0.13)}
         strokeDasharray="1 9"
         strokeLinecap="round"

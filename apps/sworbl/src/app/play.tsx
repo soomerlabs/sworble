@@ -6,6 +6,8 @@
 // display) — resume RE-ARMS the count-in, never jumps to a running clock.
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { AppState, StyleSheet, Text, View, Pressable, useWindowDimensions } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import {
@@ -187,6 +189,24 @@ export default function PlayScreen() {
     return () => sub.remove();
   }, [pause]);
 
+  // swipe the sheet DOWN (from the top bar — never fights board traces):
+  // pauses + snapshots, then slides back home. The board sheet closes the way
+  // it opened (owner: "swipe to close the board and it'll pause the game")
+  const closeBoard = useCallback(() => {
+    pause();
+    router.back();
+  }, [pause]);
+  const closeSwipe = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetY(30)
+        .onEnd((e) => {
+          'worklet';
+          if (e.translationY > 70 && Math.abs(e.translationX) < 90) runOnJS(closeBoard)();
+        }),
+    [closeBoard]
+  );
+
   const onFinaleDone = useCallback(
     (r: { solved: boolean; guessesUsed: number; bonus: number }) => {
       setResult(r);
@@ -217,6 +237,7 @@ export default function PlayScreen() {
       <StatusBar style="light" />
       <Storm width={width} height={Math.min(280, height * 0.32)} />
       <SafeAreaView style={styles.safe}>
+        <GestureDetector gesture={closeSwipe}>
         <View style={styles.top}>
           <Text style={styles.brand}>sworbl</Text>
           {onBoard && (
@@ -243,6 +264,7 @@ export default function PlayScreen() {
           )}
           <Text style={styles.score}>{score.toLocaleString()}</Text>
         </View>
+        </GestureDetector>
 
         <View style={styles.center}>
           {!deal && (

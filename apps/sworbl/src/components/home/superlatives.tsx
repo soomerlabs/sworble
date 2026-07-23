@@ -17,7 +17,7 @@ export function Superlatives({ words }: { words: BestWord[] }) {
           }
           const pal = PALETTE[tileColorFor(w.word[0], i)];
           return (
-            <View key={w.word + i} style={[styles.pill, { backgroundColor: pal.bg, shadowColor: pal.edge }, styles.solid]}>
+            <View key={w.word + i} style={[styles.pill, { backgroundColor: pal.bg, boxShadow: `0 2px 0 ${pal.edge}` }]}>
               <Text style={styles.pillText}>
                 {w.word.toUpperCase()} <Text style={styles.pts}>+{w.pts}</Text>
               </Text>
@@ -59,12 +59,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderStyle: 'dashed',
     borderColor: '#2E2E38',
-  },
-  solid: {
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 2,
   },
   pillText: {
     fontFamily: 'Fredoka_600SemiBold',

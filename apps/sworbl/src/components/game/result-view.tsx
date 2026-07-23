@@ -33,7 +33,7 @@ export function ResultView({ word, definition, solved, guessesUsed, score, bonus
                 styles.block,
                 { width: bs, height: bs * 1.14, borderRadius: Math.round(bs * 0.25) },
                 pal
-                  ? { backgroundColor: pal.bg, shadowColor: pal.edge, ...styles.solid }
+                  ? { backgroundColor: pal.bg, boxShadow: `0 3px 0 ${pal.edge}` }
                   : styles.grayBlock,
               ]}>
               <Text
@@ -65,13 +65,7 @@ const styles = StyleSheet.create({
   verdict: { fontFamily: 'Fredoka_600SemiBold', fontSize: 16, color: '#9DA2B3' },
   row: { flexDirection: 'row', gap: 6 },
   block: { alignItems: 'center', justifyContent: 'center' },
-  solid: {
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 3,
-  },
-  grayBlock: { backgroundColor: '#3A3A44', shadowColor: '#26262E', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 1, shadowRadius: 0 },
+  grayBlock: { backgroundColor: '#3A3A44', boxShadow: '0 3px 0 #26262E' },
   blockText: { fontFamily: 'Fredoka_600SemiBold', includeFontPadding: false },
   defCard: {
     backgroundColor: 'rgba(167,139,250,0.12)',

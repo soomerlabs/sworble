@@ -40,7 +40,7 @@ function Chips({ word, red }: { word: string; red?: boolean }) {
                 height: hs,
                 borderRadius: Math.round(hs * 0.27),
                 backgroundColor: red ? '#E5484D' : pal.bg,
-                shadowColor: red ? '#8C2328' : pal.edge,
+                boxShadow: `0 2px 0 ${red ? '#8C2328' : pal.edge}`,
               },
             ]}>
             <Text style={[styles.chipText, { fontSize: Math.round(hs * 0.55) }]}>
@@ -97,11 +97,7 @@ const styles = StyleSheet.create({
     marginBottom: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: CARD.edge,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 3,
+    boxShadow: `0 4px 0 ${CARD.edge}`,
   },
   bannerRow: {
     flexDirection: 'row',
@@ -115,10 +111,6 @@ const styles = StyleSheet.create({
   chip: {
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 2,
   },
   chipText: {
     fontFamily: 'Fredoka_600SemiBold',
@@ -148,10 +140,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    shadowColor: 'rgba(0,0,0,0.25)',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
+    boxShadow: '0 2px 0 rgba(0,0,0,0.25)',
   },
   payMult: {
     fontFamily: 'Fredoka_600SemiBold',

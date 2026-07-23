@@ -119,7 +119,7 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone 
           styles.block,
           { width: bs, height: bs * 1.14, borderRadius: Math.round(bs * 0.25) },
           pal && !isHint
-            ? { backgroundColor: pal.bg, shadowColor: pal.edge, ...styles.blockSolid }
+            ? { backgroundColor: pal.bg, boxShadow: `0 3px 0 ${pal.edge}` }
             : isHint
               ? styles.blockHint
               : styles.blockEmpty,
@@ -209,12 +209,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 6 },
   activeRow: { marginTop: 2 },
   block: { alignItems: 'center', justifyContent: 'center' },
-  blockSolid: {
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 3,
-  },
   blockEmpty: { borderWidth: 2.5, borderStyle: 'dashed', borderColor: '#3A3A44' },
   blockHint: { borderWidth: 2.5, borderStyle: 'dashed', borderColor: '#CE9022' },
   blockText: { fontFamily: 'Fredoka_600SemiBold', includeFontPadding: false },

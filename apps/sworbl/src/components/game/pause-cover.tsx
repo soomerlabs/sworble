@@ -53,11 +53,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    shadowColor: '#5A43C9',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 3,
+    boxShadow: '0 4px 0 #5A43C9',
   },
   ctaText: {
     fontFamily: 'Fredoka_600SemiBold',

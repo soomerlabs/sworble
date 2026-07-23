@@ -43,7 +43,7 @@ export default function TraceConnector({ sPath, size, gap, width, height }: Prop
         path={d}
         style="stroke"
         color={color}
-        opacity={0.7}
+        opacity={0.55}
         strokeWidth={Math.max(6, size * 0.13)}
         strokeCap="round"
         strokeJoin="round">

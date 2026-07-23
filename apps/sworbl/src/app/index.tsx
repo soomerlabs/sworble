@@ -66,6 +66,11 @@ export default function HomeScreen() {
         <SafeAreaView style={styles.safe}>
           {/* date + score, spanning the screen (v18 top strip) */}
           <View style={styles.top}>
+            {__DEV__ && (
+              <Pressable onPress={() => router.push('/dev')} style={styles.gear} hitSlop={10}>
+                <Text style={styles.gearText}>⚙</Text>
+              </Pressable>
+            )}
             <Text style={styles.date}>{dateLine}</Text>
             <View style={styles.scoreCard}>
               <Text style={styles.scoreLabel}>{played ? 'TODAY' : 'SWORBL OF THE DAY'}</Text>
@@ -89,7 +94,7 @@ export default function HomeScreen() {
                         styles.heroBlock,
                         {
                           width: bs, height: bs * 1.14, borderRadius: Math.round(bs * 0.25),
-                          backgroundColor: pal.bg, shadowColor: pal.edge,
+                          backgroundColor: pal.bg, boxShadow: `0 3px 0 ${pal.edge}`,
                         },
                       ]}>
                       <Text style={[styles.heroText, { fontSize: Math.round(bs * 0.52) }]}>
@@ -163,6 +168,16 @@ const styles = StyleSheet.create({
     letterSpacing: 1.4,
     color: '#5A5A66',
   },
+  gear: {
+    position: 'absolute',
+    right: 18,
+    top: 10,
+    zIndex: 5,
+  },
+  gearText: {
+    fontSize: 18,
+    color: '#5A5A66',
+  },
   scoreCard: {
     alignSelf: 'stretch',
     alignItems: 'center',
@@ -201,17 +216,11 @@ const styles = StyleSheet.create({
   heroBlock: {
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 3,
   },
   heroGhost: {
     borderWidth: 2.5,
     borderStyle: 'dashed',
     borderColor: '#2E2E38',
-    shadowOpacity: 0,
-    elevation: 0,
   },
   heroText: {
     fontFamily: 'Fredoka_600SemiBold',
@@ -231,11 +240,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 26,
     paddingVertical: 12,
-    shadowColor: '#5A43C9',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 3,
+    boxShadow: '0 4px 0 #5A43C9',
   },
   playText: {
     fontFamily: 'Fredoka_600SemiBold',

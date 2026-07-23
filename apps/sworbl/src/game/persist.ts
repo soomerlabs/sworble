@@ -125,3 +125,13 @@ export function loadRun(dayKey: string): RunSnap | null {
 export function clearRun(dayKey: string): void {
   engine.store.remove(K.RUN_PREFIX + dayKey);
 }
+
+// DEV: wipe every per-day key for a day — "restart today's contest" without
+// reinstalling. The K registry is the single source of per-day prefixes.
+export function resetDay(dayKey: string): void {
+  const prefixes = [
+    K.DAILY_PREFIX, K.FOUND_PREFIX, K.DONE_PREFIX, K.RUN_PREFIX, K.SWORB_PREFIX,
+    K.HINT_TOKENS_PREFIX, K.SEVEN_PREFIX, K.THEME_PREFIX, K.TIME_PREFIX, K.ATT_PREFIX,
+  ].filter(Boolean);
+  for (const p of prefixes) engine.store.remove(p + dayKey);
+}

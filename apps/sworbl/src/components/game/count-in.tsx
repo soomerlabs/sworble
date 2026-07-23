@@ -44,7 +44,9 @@ export function CountIn({ onRelease, onUnmount }: Props) {
         key={step}
         entering={ZoomIn.springify().mass(0.6).damping(12)}
         exiting={FadeOut.duration(140)}
-        style={[styles.digit, { color: pal.bg, textShadowColor: pal.edge }]}>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RN 0.86's
+        // string textShadow prop isn't in Reanimated's style types yet
+        style={[styles.digit, { color: pal.bg, textShadow: `0 4px 0 ${pal.edge}` } as any]}>
         {step}
       </Animated.Text>
     </View>
@@ -65,7 +67,5 @@ const styles = StyleSheet.create({
   digit: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 96,
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 0,
   },
 });
