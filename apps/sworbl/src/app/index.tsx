@@ -207,6 +207,8 @@ export default function HomeScreen() {
     sMode.value = 0;
     sArmed.value = 0;
     setArmed(false); // the door re-locks: tomorrow starts with a fresh trace
+    if (armIdle.current) clearTimeout(armIdle.current);
+    if (meltTick.current) clearInterval(meltTick.current);
   }, []);
   const closeSheet = useCallback(() => {
     sheetRef.current?.pauseForClose();
@@ -231,6 +233,7 @@ export default function HomeScreen() {
   // pull UP from the dock: the sheet (pre-mounted, hidden) rides the finger —
   // pure transform on the UI thread, nothing mounts mid-gesture.
   const markOpen = useCallback(() => {
+    if (armIdle.current) clearTimeout(armIdle.current); // launched — no disarm
     setSheetOpen(true);
     if (deal) saveSheetOpen(deal.dayKey); // reclaim-proof: the sheet remembers
     haptic.soft(); // the dock beat — launching the game from the bottom
@@ -256,12 +259,31 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
-  // stage 1 complete: PLAY lit → the row morphs to the chevron, swipe unlocks
+  // stage 1 complete: PLAY lit → the row morphs to the chevron, swipe unlocks.
+  // No swipe within the window → DISARM: the chevron gives way and the tiles
+  // melt back in a reverse cascade (owner: the return must feel gratifying).
+  const armIdle = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const meltTick = useRef<ReturnType<typeof setInterval> | null>(null);
+  const disarm = useCallback(() => {
+    sArmed.value = 0;
+    setArmed(false);
+    if (meltTick.current) clearInterval(meltTick.current);
+    meltTick.current = setInterval(() => {
+      if (sLit.value <= 0) {
+        if (meltTick.current) clearInterval(meltTick.current);
+        return;
+      }
+      sLit.value = sLit.value - 1; // Y…A…L…P unlight one by one
+    }, 90);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const armNow = useCallback(() => {
     if (traceIdle.current) clearTimeout(traceIdle.current);
     haptic.good();
     setArmed(true);
-  }, []);
+    if (armIdle.current) clearTimeout(armIdle.current);
+    armIdle.current = setTimeout(disarm, 4000);
+  }, [disarm]);
   const pm = playMetrics(width);
   // TWO-STAGE DOOR (owner): trace P·L·A·Y to unlock, then the chevron —
   // swipe up launches. The trace teaches the verb; the swipe starts the day.
@@ -272,7 +294,10 @@ export default function HomeScreen() {
         .minDistance(4)
         .onBegin((e) => {
           'worklet';
-          if (sArmed.value) return;
+          if (sArmed.value) {
+            runOnJS(armNow)(); // touching while armed refreshes the window
+            return;
+          }
           const idx = Math.floor((e.absoluteX - pm.left) / (pm.tile + pm.gap));
           if (idx >= 0 && idx < 4 && idx + 1 > sLit.value) {
             sLit.value = idx + 1;

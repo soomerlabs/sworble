@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing,
+  useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSpring, Easing,
 } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 import { type SharedValue } from 'react-native-reanimated';
@@ -33,6 +33,22 @@ export function CountdownDock({ played, sLit, armed, tile, gap }: {
     return () => clearInterval(h);
   }, [played]);
 
+  // the ARM POSE: 0 = PLAY tiles · 1 = chevron. A sprung crossfade (shared
+  // values, never layout animations) — tiles drift up and give way as the
+  // chevron springs in from below; the reverse plays on disarm.
+  const sPose = useSharedValue(armed ? 1 : 0);
+  useEffect(() => {
+    sPose.value = withSpring(armed ? 1 : 0, { mass: 0.6, damping: 16, stiffness: 220 });
+  }, [armed]);
+  const tilesPose = useAnimatedStyle(() => ({
+    opacity: 1 - sPose.value,
+    transform: [{ translateY: sPose.value * -10 }, { scale: 1 - sPose.value * 0.06 }],
+  }));
+  const chevPose = useAnimatedStyle(() => ({
+    opacity: sPose.value,
+    transform: [{ translateY: (1 - sPose.value) * 14 }, { scale: 0.9 + sPose.value * 0.1 }],
+  }));
+
   const bob = useSharedValue(0);
   useEffect(() => {
     bob.value = withRepeat(withTiming(1, { duration: 850, easing: Easing.inOut(Easing.sin) }), -1, true);
@@ -50,17 +66,18 @@ export function CountdownDock({ played, sLit, armed, tile, gap }: {
           <Text style={[styles.nextClock, { color: theme.ink }]}>{clock}</Text>
         </View>
       ) : (
-        <View key="trace" style={styles.face}>
-          {sLit && !armed ? (
-            // stage 1: TRACE PLAY — the door teaches the game's verb
-            <TracePlay sLit={sLit} theme={theme} tile={tile ?? 48} gap={gap ?? 8} />
-          ) : (
-            // stage 2 (armed): the chevron — swipe up launches
-            <>
-              <Animated.Text style={[styles.chev, bobStyle]}>︿</Animated.Text>
-              <Text style={[styles.swipeLabel, { color: theme.ink }]}>swipe up to start</Text>
-            </>
+        <View key="trace" style={[styles.face, { height: (tile ?? 48) + 32 }]}>
+          {/* BOTH faces stay mounted — the pose crossfades them (gratifying
+              morph both directions, owner) */}
+          {sLit && (
+            <Animated.View style={[styles.pose, tilesPose]}>
+              <TracePlay sLit={sLit} theme={theme} tile={tile ?? 48} gap={gap ?? 8} />
+            </Animated.View>
           )}
+          <Animated.View style={[styles.pose, chevPose]} pointerEvents="none">
+            <Animated.Text style={[styles.chev, bobStyle]}>︿</Animated.Text>
+            <Text style={[styles.swipeLabel, { color: theme.ink }]}>swipe up to start</Text>
+          </Animated.View>
         </View>
       )}
     </View>
@@ -73,6 +90,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   face: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  pose: {
+    position: 'absolute',
     alignItems: 'center',
     gap: 2,
   },
