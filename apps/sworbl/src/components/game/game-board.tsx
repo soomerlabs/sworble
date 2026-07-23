@@ -14,7 +14,7 @@ import { settle, restampBroken, landsInMs, type DailyDeal } from '@/game/daily';
 import { dict, prefixMap, scoreWord } from '@/game/dict';
 import { beginW, moveW, type TraceCtx } from '@/game/trace';
 import { haptic } from '@/game/haptics';
-import { loadTokens, saveTokens, type TokenState } from '@/game/hints';
+import { loadLadder, saveLadder, NUDGE_AT_WORDS, FREE_CLUE_AT_WORDS, FINALE_FLOOR, type HintLadder } from '@/game/hints';
 import { PingRings } from './ping-rings';
 import { StepperCard } from './stepper-card';
 
@@ -61,8 +61,8 @@ export function GameBoard({
     onTiles && onTiles(tiles, deal.getQueueIdx());
   }, [tiles]);
 
-  // ---- HINT AIDS: token bank + sonar ping (engine decides, board acts) ----
-  const [tokens, setTokens] = useState<TokenState>(() => loadTokens(deal.dayKey));
+  // ---- HINT LADDER (owner 2026-07-23): blank pills; earned, validated grants ----
+  const [ladder, setLadder] = useState<HintLadder>(() => loadLadder(deal.dayKey));
   const [ping, setPing] = useState<{ key: number; x: number; y: number; color: string } | null>(null);
   // NOPE (web nopeTiles): the rejected word's tiles shake it off red in place
   const [nope, setNope] = useState<{ key: number; seqs: Map<number, number>; total: number }>({
@@ -74,8 +74,8 @@ export function GameBoard({
   const clearingMirror = useRef(clearingIds);
   clearingMirror.current = clearingIds;
   useEffect(() => {
-    saveTokens(deal.dayKey, tokens);
-  }, [deal.dayKey, tokens]);
+    saveLadder(deal.dayKey, ladder);
+  }, [deal.dayKey, ladder]);
 
   // fire the ping at a clue's STARTING tile (compass, not answer).
   // VALIDATED AT GIVE-TIME (owner bug catch): a clue's path can be temporarily
@@ -104,46 +104,37 @@ export function GameBoard({
     [cell, size]
   );
 
-  // spend: tap a ghost pill while a token is banked. If THAT clue is in a
-  // broken-path window, the token is NOT consumed (error haptic instead) —
-  // the next refill's re-stamp restores it.
-  const onGhostTap = useCallback(
-    (clue: string, slot: number) => {
-      if (tokens.count <= 0) return;
-      if (firePing(clue, slot)) {
-        setTokens((t) => ({ ...t, count: t.count - 1 }));
-      } else {
-        haptic.bad();
-      }
-    },
-    [tokens.count, firePing]
-  );
-
-  // mercy pulse: crossing 2:00 with ≤2 clues found auto-pings, token-free
-  const prevSecsRef = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    if (secsLeft === undefined) return;
-    const prev = prevSecsRef.current;
-    prevSecsRef.current = secsLeft;
-    if (prev === undefined) return;
-    if (
-      engine.daily.mercyPulseShouldFire({
-        alreadyFired: tokens.mercyFired,
-        prevSecsLeft: prev,
-        secsLeft,
-        cluesFound: found.length,
-        thresholdSecs: mercySecs,
-      })
-    ) {
-      // mercy targets the first unfound clue that is PROVABLY findable right
-      // now — never a broken-path clue (validated-at-give-time rule)
-      for (const clue of deal.clues) {
-        if (found.includes(clue)) continue;
-        if (firePing(clue, deal.clues.indexOf(clue))) break;
-      }
-      setTokens((t) => ({ ...t, mercyFired: true }));
+  // a clue is grantable only if the solver proves it on the LIVE board
+  const findableUnfound = useCallback((): string | null => {
+    const live = tilesMirror.current.filter((t: TileT) => !clearingMirror.current.has(t.id));
+    for (const clue of deal.clues) {
+      if (foundRef.current.includes(clue)) continue;
+      if (engine.solver.findWord(live, { word: clue, expand: engine.core.expandLetter, diag: true }))
+        return clue;
     }
-  }, [secsLeft]);
+    return null;
+  }, [deal]);
+
+  // free-clue grant: bank a provably-findable clue outright (full intel)
+  const grantFreeClue = useCallback((): boolean => {
+    const clue = findableUnfound();
+    if (!clue) return false;
+    setFound((cur) => (cur.includes(clue) ? cur : [...cur, clue]));
+    firePing(clue, deal.clues.indexOf(clue));
+    setVerdict({ word: clue.toUpperCase(), ok: true, clue });
+    setTimeout(() => setVerdict(null), 1400);
+    haptic.good();
+    return true;
+  }, [findableUnfound, firePing, deal]);
+
+  // FINALE FLOOR: the clock is dying — enter the guess round with at least 2
+  useEffect(() => {
+    if (secsLeft === undefined || secsLeft > 0) return;
+    if (ladder.floorGiven) return;
+    setLadder((l) => ({ ...l, floorGiven: true }));
+    let need = FINALE_FLOOR - foundRef.current.length;
+    while (need > 0 && grantFreeClue()) need--;
+  }, [secsLeft, ladder.floorGiven, grantFreeClue]);
 
   // ---- UI-thread state (tier-2) ----
   const sGrid = useSharedValue<(TraceTile | null)[][]>([]);
@@ -256,18 +247,23 @@ export function GameBoard({
           : { word: word.toUpperCase(), pts, ok: true }
       );
       if (res.isNew) setFound(res.banked);
-      // token earn (engine one-per-round + threshold rules)
-      setTokens((tk) => {
-        const words = tk.words + 1;
-        const ev = engine.daily.hintTokenEvents({
-          wordsSpelledThisRound: words,
-          cluesFound: res.banked.length,
-          cluesTotal: deal.clues.length,
-          tokensEarnedAlready: tk.granted,
-        });
-        return ev.grant
-          ? { ...tk, words, count: tk.count + 1, granted: tk.granted + 1 }
-          : { ...tk, words };
+      // HINT LADDER steps (validated at give-time):
+      setLadder((l) => {
+        const words = l.words + 1;
+        let next = { ...l, words };
+        // starter nudge: 3 words, still clueless → one first letter + ping
+        if (!l.nudged && words >= NUDGE_AT_WORDS && res.banked.length === 0) {
+          const clue = findableUnfound();
+          if (clue) {
+            next = { ...next, nudged: clue };
+            firePing(clue, deal.clues.indexOf(clue));
+          }
+        }
+        // the 7-word free clue: full intel for the guess round
+        if (!l.freeGiven && words >= FREE_CLUE_AT_WORDS && res.banked.length < deal.clues.length) {
+          if (grantFreeClue()) next = { ...next, freeGiven: true };
+        }
+        return next;
       });
       setTimeout(() => setVerdict(null), 1200);
       haptic.good();
@@ -416,10 +412,7 @@ export function GameBoard({
         </View>
       </GestureDetector>
 
-      {tokens.count > 0 && (
-        <Text style={styles.tokenLine}>✦ hint ready — tap a dashed clue</Text>
-      )}
-      <ClueFan clues={deal.clues} found={found} tokenReady={tokens.count > 0} onGhostTap={onGhostTap} />
+      <ClueFan clues={deal.clues} found={found} nudged={ladder.nudged} />
     </View>
   );
 }
@@ -439,13 +432,6 @@ const styles = StyleSheet.create({
     // sunken read (web: inset 0 3px 5px black) — top-edge shade approximation
     borderTopWidth: 3,
     borderTopColor: 'rgba(0,0,0,0.35)',
-  },
-  tokenLine: {
-    marginTop: 12,
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 12.5,
-    letterSpacing: 0.4,
-    color: '#F5B84A',
   },
   noDay: {
     padding: 32,

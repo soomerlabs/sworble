@@ -41,6 +41,7 @@ interface Props {
   entry: { sworb: string };
   clues: string[];
   found: string[];
+  nudged?: string | null;
   size: number;
   restore?: FinaleRestore;
   onProgress?: (s: FinaleRestore) => void;
@@ -109,7 +110,7 @@ function Key({
   );
 }
 
-export function Finale({ entry, clues, found, size, restore, onProgress, onDone, gestureRef }: Props) {
+export function Finale({ entry, clues, found, nudged, size, restore, onProgress, onDone, gestureRef }: Props) {
   const { width } = useWindowDimensions();
   const foundCount = found.length;
   const clueTotal = clues.length;
@@ -237,7 +238,7 @@ export function Finale({ entry, clues, found, size, restore, onProgress, onDone,
       {/* bottom group: the fan docks ON TOP of the keyboard (owner) */}
       <View>
         <Animated.View style={styles.fanDock}>
-          <ClueFan clues={clues} found={found} conceal />
+          <ClueFan clues={clues} found={found} nudged={nudged} />
         </Animated.View>
 
         {/* THE KEYBOARD */}

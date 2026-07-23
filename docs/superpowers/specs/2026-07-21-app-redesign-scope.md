@@ -117,7 +117,20 @@ are tuning knobs (apps/sworbl/src/game/tuning.ts until the settings sheet exists
 DECLINED alternatives: fixed 7:00 (session too costly / lull), time bonuses ON TOP of 7:00
 (rich-get-richer + longer sessions), finish-early button (superseded — fuel self-terminates).
 
-## HINT AIDS + MONETIZATION SEAM (owner-locked 2026-07-22; spend effect revised 2026-07-23)
+## HINT LADDER (owner redesign 2026-07-23 — supersedes the aids below for the RN app)
+Pills start BLANK (no free first letters — unearned/unprovable intel was unfair). Every grant
+is VALIDATED AT GIVE-TIME (solver-proven findable on the live board). The ladder:
+1. STARTER NUDGE — 3 words spelled with 0 clues found → ONE provable clue reveals its first
+   letter (persists on the pill, incl. into the finale) + sonar ping at its proven location.
+2. FREE CLUE — 7 words spelled with clues still unfound → one provable clue auto-BANKS
+   (full word; finale intel — "you'll need something for the guess round").
+3. FINALE FLOOR — entering the finale with <2 found → top up to 2 (validated on final board).
+Retired in RN: always-on first letters, the token economy, tap-to-ping, the mercy pulse.
+OPEN (owner to confirm): should the nudge letter be transient ("then it goes away") vs
+persistent (shipped)? Should floor/free clues count toward the guess-bonus foundCount
+(currently: yes — they are fully banked)?
+
+## HINT AIDS + MONETIZATION SEAM (owner-locked 2026-07-22; spend effect revised 2026-07-23) [WEB-ERA — superseded above for RN]
 Chosen aids (all free): ghost pills show FIRST LETTER always; EARNED HINT — spell ~7 words while
 clues remain unfound → earn a hint token; tapping a ghost pill spends a token → **SONAR PING on
 the clue's STARTING TILE** (revised from full-path glow, owner call 2026-07-23: "a compass, not

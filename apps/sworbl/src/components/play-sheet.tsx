@@ -25,6 +25,7 @@ import { BG_DARK } from '@/game/palette';
 import { dealDaily, bumpNextId } from '@/game/daily';
 import { type TileT } from '@/game/types';
 import { loadDay, saveProgress, finishDay, saveRun, type RunSnap, type BestWord } from '@/game/persist';
+import { loadLadder } from '@/game/hints';
 import { TUNING } from '@/game/tuning';
 import Animated, {
   ZoomIn, FadeOut, useSharedValue, useAnimatedStyle, withSequence, withTiming, withSpring,
@@ -346,7 +347,6 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
                   initialFound={boot?.run?.found}
                   initialScore={boot?.run?.score}
                   secsLeft={phase === 'live' ? remaining : undefined}
-                  mercySecs={TUNING.MERCY_SECS}
                   onScore={setScore}
                   onClues={setFound}
                   onTiles={onTiles}
@@ -367,6 +367,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
               restore={finaleRestore.current}
               onProgress={onFinaleProgress}
               onDone={onFinaleDone}
+              nudged={loadLadder(deal.dayKey).nudged}
               gestureRef={glideRef}
             />
           )}
