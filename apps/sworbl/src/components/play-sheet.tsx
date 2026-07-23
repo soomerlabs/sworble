@@ -79,10 +79,12 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   // the app's foreground state — arming must never happen while backgrounded
   const [awake, setAwake] = useState(true);
 
-  // ARM is EDGE-TRIGGERED (owner bug: close-drag pauses at first movement,
-  // and a level-triggered arm started the count-in mid-drag): a count-in
-  // starts only when the sheet ARRIVES — fresh dock or foreground return —
-  // never merely because the sheet is still open.
+  // COUNT-IN POLICY (owner ruling 2026-07-24, overrides the old engine
+  // "resume re-arms" law): the 3·2·1 is a FIRST-START ceremony only. A
+  // paused round lands on the paused cover and a tap starts play INSTANTLY —
+  // fair by construction (letters exist only once the clock runs; the radial
+  // wake is the reaction ramp). Arming is still EDGE-TRIGGERED (dock /
+  // foreground arrival), never level-triggered.
   const arm = useCallback(() => {
     setCountInMounted(true);
     setPhase('countin');
@@ -103,11 +105,14 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     prevAwake.current = awake;
     if ((docked || returned) && awake && (phase === 'idle' || phase === 'paused')) {
       setArriveKey((k) => k + 1); // the board sets itself as the sheet lands
-      // SETTLE BEAT (owner): the dock haptic lands, the sheet settles, THEN
-      // the count-in starts — arming on the same frame stacked the launch
-      // haptic on top of the "3" beat. Cleanup cancels if the sheet leaves.
-      const t = setTimeout(arm, 450);
-      return () => clearTimeout(t);
+      if (phase === 'idle') {
+        // FRESH round: the ceremony. SETTLE BEAT first (owner): dock haptic
+        // lands, sheet settles, THEN 3·2·1. Cleanup cancels if the sheet leaves.
+        const t = setTimeout(arm, 450);
+        return () => clearTimeout(t);
+      }
+      // PAUSED round: no auto-anything — the paused cover is already showing;
+      // the player taps when THEY'RE ready and play starts instantly.
     }
   }, [awake, active, phase, arm]);
 
@@ -298,8 +303,12 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     }
   }, [phase, pause]);
   const rearm = useCallback(() => {
-    if (phase === 'idle' || phase === 'paused') arm();
-  }, [phase, arm]);
+    if (phase === 'paused') {
+      onRelease(); // instant start (owner: "hit play and it just starts up")
+    } else if (phase === 'idle') {
+      arm(); // never actually started — the ceremony still applies
+    }
+  }, [phase, arm, onRelease]);
   // the PAUSE BUTTON (owner: "pause to do something and come back"): stays ON
   // the gameboard — letters conceal (anti-stare), tap-to-resume re-arms 3·2·1
   const pauseInPlace = useCallback(() => {
