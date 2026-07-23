@@ -2,8 +2,8 @@
 // 2×2 stat cards (BEST green · AVG · GAMES · WORDS FOUND), YOUR BEST word
 // as candy letter blocks with its pay badge, runner-up word pills, and the
 // 9-week PLAY HISTORY heat grid. All device-local stats (stats.ts).
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
@@ -12,7 +12,10 @@ import { ScreenHeader } from '@/components/screen-header';
 import { useTheme, CLUE_GREEN } from '@/game/theme';
 import { PALETTE, tileColorFor } from '@/game/palette';
 import { loadStats, historyGrid, streakDays } from '@/game/stats';
-import { getPlayerName } from '@/game/player';
+import { getPlayerName, setPlayerName } from '@/game/player';
+import { ensurePlayer } from '@/net/supabase';
+import { toast } from '@/components/toast';
+import { haptic } from '@/game/haptics';
 import { lexiconCount, titleFor } from '@/game/lexicon';
 
 const HEAT_DARK = ['#1b1a22', '#3d3557', '#8a72d6', '#B485FF'];
@@ -29,8 +32,18 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const stats = useMemo(() => loadStats(), []);
-  const name = getPlayerName();
+  const [name, setName] = useState(getPlayerName());
   const collected = useMemo(() => lexiconCount(), []);
+  const commitName = () => {
+    const before = getPlayerName();
+    const saved = setPlayerName(name);
+    setName(saved);
+    if (saved !== before) {
+      void ensurePlayer(saved); // standings rename on next fetch
+      toast(`you're ${saved} now`, { title: 'name changed', pal: 2 });
+      haptic.good();
+    }
+  };
   const avatarPal = PALETTE[tileColorFor(name[0]?.toLowerCase() ?? 'p', 0)];
   const grid = useMemo(() => historyGrid(stats), [stats]);
   const heat = theme.mode === 'dark' ? HEAT_DARK : HEAT_LIGHT;
@@ -67,6 +80,22 @@ export default function ProfileScreen() {
               </View>
             }
           />
+
+          {/* identity edit — the name lives where the identity lives */}
+          <View style={[styles.nameRow, { backgroundColor: theme.card }]}>
+            <Text style={[styles.nameLabel, { color: theme.faint }]}>NAME</Text>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              onBlur={commitName}
+              onSubmitEditing={commitName}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={10}
+              returnKeyType="done"
+              style={[styles.nameInput, { color: theme.ink }]}
+            />
+          </View>
 
           {/* 2×2 stat cards */}
           <View style={styles.cards}>
@@ -189,6 +218,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#1F1442',
     includeFontPadding: false,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 14,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+  },
+  nameLabel: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 8.5,
+    letterSpacing: 1.3,
+  },
+  nameInput: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 15,
+    textAlign: 'right',
+    minWidth: 140,
+    padding: 0,
   },
   cards: {
     flexDirection: 'row',
