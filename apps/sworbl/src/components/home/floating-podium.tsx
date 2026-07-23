@@ -17,6 +17,14 @@ import { type LbEntry } from '@/game/standings';
 
 const EASE = Easing.inOut(Easing.sin);
 
+// module-level worklet — helpers must NEVER be defined inside the animated
+// style closures: the React Compiler hoists them into plain JS functions and
+// the UI runtime then calls a remote function (the boot crash)
+function lerp(a: number, b: number, f: number): number {
+  'worklet';
+  return a + (b - a) * f;
+}
+
 // web podFloatA: gentle orbit with counter-rotation (3s)
 function useFloatA() {
   const t = useSharedValue(0);
@@ -27,7 +35,6 @@ function useFloatA() {
     const p = t.value;
     // 0/25/50/75/100% → (0,0,0) (-3.5,-2,-2°) (0,-4,0) (3.5,-2,2°) (0,0,0)
     const seg = p * 4;
-    const lerp = (a: number, b: number, f: number) => a + (b - a) * f;
     let x = 0, y = 0, r = 0;
     if (seg < 1) { x = lerp(0, -3.5, seg); y = lerp(0, -2, seg); r = lerp(0, -2, seg); }
     else if (seg < 2) { x = lerp(-3.5, 0, seg - 1); y = lerp(-2, -4, seg - 1); r = lerp(-2, 0, seg - 1); }
@@ -69,7 +76,6 @@ function useFloatC() {
   }, []);
   return useAnimatedStyle(() => {
     const p = t.value;
-    const lerp = (a: number, b: number, f: number) => a + (b - a) * f;
     let r = 0, y = 0;
     if (p < 1) { r = lerp(0, 3.5, p); y = lerp(0, -2, p); }
     else if (p < 2) { r = lerp(3.5, -3.5, p - 1); y = lerp(-2, -3, p - 1); }
