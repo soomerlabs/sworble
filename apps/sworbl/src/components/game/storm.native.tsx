@@ -70,35 +70,29 @@ function DriftBlock({ b, width, height }: { b: (typeof DRIFT_BLOCKS)[number]; wi
   );
 }
 
-export default function Storm({ width, height = 260, focusW, focusH }: {
+export default function Storm({ width, height = 260 }: {
   width: number; height?: number; zoom?: number; // zoom kept for API parity
-  focusW?: number; // the PLAY row's width — the eclipse WRAPS the door (owner)
-  focusH?: number; // the PLAY tile height
+  focusW?: number; focusH?: number; // accepted for parity; the door owns its
+  // own halo now (play-halo) — the band is pure ambient weather
 }) {
   const spin = useSpin(42000); // the corona turns, glacially
   const flareSpin = useSpin(67000); // the off-axis bloom orbits slower
   const breath = useDrift(9000); // the whole eclipse breathes
 
-  // the eclipse WRAPS the PLAY row (owner): the corona is an elliptical
-  // halo hugging the door, the body is the pill the tiles rest on
+  // pure ambient: a wide soft corona breathing behind the whole band —
+  // the DOOR owns its own exact halo now (play-halo.tsx)
   const cx = width / 2;
-  const cy = height * 0.62; // the row's altitude in the 3-band canvas
-  const bodyW = (focusW ?? width * 0.5) + 44;
-  const bodyH = (focusH ?? 52) + 36;
-  const CORONA_R = Math.max(bodyW, bodyH) / 2 + 26;
-  // squash the spinning circle into the ellipse that rings the pill
-  const ringSX = (bodyW / 2 + 30) / CORONA_R;
-  const ringSY = (bodyH / 2 + 30) / CORONA_R;
+  const cy = height * 0.62;
+  const CORONA_R = height * 0.4;
 
   const glowOpacity = useDerivedValue(() => 0.8 + breath.value * 0.2);
   const coronaSpin = useDerivedValue(() => [
-    { scaleX: ringSX },
-    { scaleY: ringSY },
+    { scaleX: Math.max(1.4, width / (CORONA_R * 2)) },
     { rotate: spin.value * Math.PI * 2 },
   ]);
   const flareT = useDerivedValue(() => [
-    { translateX: cx + Math.cos(flareSpin.value * Math.PI * 2) * (bodyW / 2 + 18) },
-    { translateY: cy + Math.sin(flareSpin.value * Math.PI * 2) * (bodyH / 2 + 14) },
+    { translateX: cx + Math.cos(flareSpin.value * Math.PI * 2) * CORONA_R * 0.9 },
+    { translateY: cy + Math.sin(flareSpin.value * Math.PI * 2) * CORONA_R * 0.4 },
   ]);
 
   return (
@@ -124,18 +118,6 @@ export default function Storm({ width, height = 260, focusW, focusH }: {
                 />
               </Circle>
             </Group>
-          </Group>
-          {/* THE BODY: the dark pill the PLAY tiles rest on — soft-edged
-              so it melts into the corona, never a hard rim */}
-          <Group layer={<Paint><Blur blur={5} /></Paint>}>
-            <RoundedRect
-              x={cx - bodyW / 2}
-              y={cy - bodyH / 2}
-              width={bodyW}
-              height={bodyH}
-              r={bodyH * 0.42}
-              color="#0D0D12"
-            />
           </Group>
           {/* OUR BLOCKS: sharp candy tiles adrift in the light */}
           {DRIFT_BLOCKS.map((b, i) => (

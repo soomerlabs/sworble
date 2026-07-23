@@ -11,7 +11,6 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import Storm from '@/components/game/storm';
-import { playMetrics } from '@/components/home/trace-play';
 import { bootWindow } from './home-motion';
 
 interface Props {
@@ -58,13 +57,7 @@ export function StormCrest({ sheetY, sGlow, sBoot, sReveal, closedY, width, peek
         { height: stormH, top: -Math.round(peekH * 1.4) },
         stormRideStyle,
       ]}>
-      <Storm
-        width={width}
-        height={stormH}
-        zoom={2.2}
-        focusW={playMetrics(width).rowW}
-        focusH={playMetrics(width).tile}
-      />
+      <Storm width={width} height={stormH} zoom={2.2} />
     </Animated.View>
   );
 }

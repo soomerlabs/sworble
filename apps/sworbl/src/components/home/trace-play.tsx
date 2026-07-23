@@ -11,6 +11,7 @@ import Animated, {
   Easing, type SharedValue,
 } from 'react-native-reanimated';
 import { PALETTE, INK, tileColorFor, gameSurface } from '@/game/palette';
+import { PlayHalo } from './play-halo';
 import { type Theme } from '@/game/theme';
 
 export const PLAY_WORD = ['p', 'l', 'a', 'y'] as const;
@@ -132,9 +133,14 @@ export function TracePlay({ sLit, sPoke, theme, tile, gap, armed = false }: {
   sLit: SharedValue<number>; sPoke?: SharedValue<number>; theme: Theme;
   tile: number; gap: number; armed?: boolean;
 }) {
+  const rowW = tile * 4 + gap * 3;
   return (
     <View style={styles.wrap}>
       <View style={[styles.row, { gap }]}>
+        {/* THE ECLIPSE, owned by the door: a spinning spectrum disc behind
+            the row — exact geometry, so the light rings the tiles and shows
+            through the gaps between them (owner) */}
+        <PlayHalo rowW={rowW} rowH={tile + Math.max(3, Math.round(tile * 0.08)) + 1} />
         {PLAY_WORD.map((ch, i) => (
           <PlayTile
             key={ch} ch={ch} i={i} sLit={sLit} sPoke={sPoke} theme={theme} tile={tile} armed={armed}
