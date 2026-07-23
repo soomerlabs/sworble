@@ -223,6 +223,7 @@ export default function HomeScreen() {
     sGlow.value = 0;
     setArmed(false); // the door re-locks: fresh swipe next time
     if (armIdle.current) clearTimeout(armIdle.current);
+    if (armSoonTimer.current) clearTimeout(armSoonTimer.current);
   }, []);
   const closeSettled = useCallback(() => {
     closingRef.current = false;
@@ -305,6 +306,7 @@ export default function HomeScreen() {
   // melt back in a reverse cascade (owner: the return must feel gratifying).
   const armIdle = useRef<ReturnType<typeof setTimeout> | null>(null);
   const disarm = useCallback(() => {
+    if (armSoonTimer.current) clearTimeout(armSoonTimer.current); // no zombie arms
     sArmed.value = 0;
     sGlow.value = withTiming(0, { duration: 420 }); // the weather calms back down
     setArmed(false);
@@ -312,13 +314,19 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [closedY]);
   // the Y's tick must LAND before the arm thump (owner: fast traces stacked
-  // both haptics on one beat) — the arm statement waits one clear moment
+  // both haptics on one beat) — the arm statement waits one clear moment.
+  // The timer is HELD so a disarm can cancel it (an uncancelled armNow
+  // re-armed the UI after a disarm — the zombie chevron over a dead swipe)
+  const armSoonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const armSoon = useCallback(() => {
-    setTimeout(() => armNowRef.current(), 170);
+    if (armSoonTimer.current) clearTimeout(armSoonTimer.current);
+    armSoonTimer.current = setTimeout(() => armNowRef.current(), 170);
   }, []);
   const armNow = useCallback(() => {
     if (traceIdle.current) clearTimeout(traceIdle.current);
     haptic.good();
+    sArmed.value = 1; // RESYNC: the worklet flag must agree with the UI —
+    // a disarm between the Y tick and this timer had split them
     setArmed(true);
     // the aurora IGNITES with the arm (owner: "turns on when you swipe to
     // play and glows with intensity") — muted weather until the door opens
@@ -396,10 +404,16 @@ export default function HomeScreen() {
             sMode.value = 3;
             sheetY.value = withSpring(0, { ...OPEN_SPRING, velocity: e.velocityY });
             runOnJS(markOpen)();
-          } else {
+          } else if (risen > 12) {
+            // a real pull that gave up → PLAY melts back NOW
             sheetY.value = withSpring(closedY, { ...PARK_SPRING, velocity: e.velocityY });
-            runOnJS(disarm)(); // released without committing → PLAY melts back NOW
+            runOnJS(disarm)();
           }
+          // risen ≤ 12: the finger lifting off the TRACE itself (a drag
+          // across P·L·A·Y activates the pan, so its lift fires onEnd) —
+          // the arm must SURVIVE that lift or the chevron lies ("swipe up
+          // to start" over a dead gesture, owner bug). The 4s idle timer
+          // still melts an unused arm.
         }),
     [width, height, closedY, sheetOpen, played, markOpen, traceBeat, nudgeBeat, armSoon, disarm]
   );
