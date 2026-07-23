@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSpring, Easing,
+  useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSpring, withDelay, Easing,
 } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 import { type SharedValue } from 'react-native-reanimated';
@@ -38,15 +38,15 @@ export function CountdownDock({ played, sLit, armed, tile, gap }: {
   // chevron springs in from below; the reverse plays on disarm.
   const sPose = useSharedValue(armed ? 1 : 0);
   useEffect(() => {
-    sPose.value = withSpring(armed ? 1 : 0, { mass: 0.6, damping: 16, stiffness: 220 });
+    // arm: the chevron arrives AFTER the word has flown (the tiles own their
+    // exit); disarm: it leaves at once so the rain lands on a clear stage
+    sPose.value = armed
+      ? withDelay(320, withSpring(1, { mass: 0.6, damping: 15, stiffness: 240 }))
+      : withSpring(0, { mass: 0.6, damping: 18, stiffness: 260 });
   }, [armed]);
-  const tilesPose = useAnimatedStyle(() => ({
-    opacity: 1 - sPose.value,
-    transform: [{ translateY: sPose.value * -10 }, { scale: 1 - sPose.value * 0.06 }],
-  }));
   const chevPose = useAnimatedStyle(() => ({
     opacity: sPose.value,
-    transform: [{ translateY: (1 - sPose.value) * 14 }, { scale: 0.9 + sPose.value * 0.1 }],
+    transform: [{ translateY: (1 - sPose.value) * 16 }, { scale: 0.85 + sPose.value * 0.15 }],
   }));
 
   const bob = useSharedValue(0);
@@ -70,9 +70,9 @@ export function CountdownDock({ played, sLit, armed, tile, gap }: {
           {/* BOTH faces stay mounted — the pose crossfades them (gratifying
               morph both directions, owner) */}
           {sLit && (
-            <Animated.View style={[styles.pose, tilesPose]}>
-              <TracePlay sLit={sLit} theme={theme} tile={tile ?? 48} gap={gap ?? 8} />
-            </Animated.View>
+            <View style={styles.pose}>
+              <TracePlay sLit={sLit} theme={theme} tile={tile ?? 48} gap={gap ?? 8} armed={!!armed} />
+            </View>
           )}
           <Animated.View style={[styles.pose, chevPose]} pointerEvents="none">
             <Animated.Text style={[styles.chev, bobStyle]}>︿</Animated.Text>

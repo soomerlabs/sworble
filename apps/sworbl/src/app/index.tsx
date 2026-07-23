@@ -217,7 +217,6 @@ export default function HomeScreen() {
     sArmed.value = 0;
     setArmed(false); // the door re-locks: fresh swipe next time
     if (armIdle.current) clearTimeout(armIdle.current);
-    if (meltTick.current) clearInterval(meltTick.current);
   }, []);
   const closeSettled = useCallback(() => {
     closingRef.current = false;
@@ -269,18 +268,10 @@ export default function HomeScreen() {
   // No swipe within the window → DISARM: the chevron gives way and the tiles
   // melt back in a reverse cascade (owner: the return must feel gratifying).
   const armIdle = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const meltTick = useRef<ReturnType<typeof setInterval> | null>(null);
   const disarm = useCallback(() => {
     sArmed.value = 0;
     setArmed(false);
-    if (meltTick.current) clearInterval(meltTick.current);
-    meltTick.current = setInterval(() => {
-      if (sLit.value <= 0) {
-        if (meltTick.current) clearInterval(meltTick.current);
-        return;
-      }
-      sLit.value = sLit.value - 1; // Y…A…L…P unlight one by one
-    }, 90);
+    sLit.value = 0; // the tiles RAIN BACK IN gray (trace-play owns the fall)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const armNow = useCallback(() => {

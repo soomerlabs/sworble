@@ -4,9 +4,12 @@
 // face-on-ledge candy construction at mini scale — gray like a masked board,
 // igniting to candy exactly like tracing on the real thing. Pure display:
 // home owns the gesture and drives sLit (0-4).
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle, useSharedValue, withDelay, withTiming, withSequence, Easing,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { PALETTE, INK, tileColorFor, gameSurface } from '@/game/palette';
 import { type Theme } from '@/game/theme';
 
@@ -22,13 +25,51 @@ export function playMetrics(width: number) {
   return { tile, gap, rowW, left: (width - rowW) / 2 };
 }
 
-function PlayTile({ ch, i, sLit, theme, tile }: {
-  ch: string; i: number; sLit: SharedValue<number>; theme: Theme; tile: number;
+const FLY_EASE = Easing.bezier(0.5, 0, 0.8, 0.5); // the word-flight curve
+const FALL_EASE = Easing.bezier(0.45, 0.02, 0.7, 0.5); // the board's gravity
+
+function PlayTile({ ch, i, sLit, theme, tile, armed }: {
+  ch: string; i: number; sLit: SharedValue<number>; theme: Theme; tile: number; armed: boolean;
 }) {
   const pal = PALETTE[tileColorFor(ch, i)];
   const gs = gameSurface(theme.mode);
   const LIFT = Math.max(3, Math.round(tile * 0.08));
   const RAD = Math.round(tile * 0.2);
+
+  // ARM: the lit word FLIES upward in swipe order (the game's own commit
+  // move). DISARM: gray tiles RAIN BACK IN like a refill.
+  const flyY = useSharedValue(0);
+  const flyO = useSharedValue(1);
+  const flyS = useSharedValue(1);
+  useEffect(() => {
+    if (armed) {
+      const d = i * 55;
+      flyY.value = withDelay(d, withTiming(-44, { duration: 260, easing: FLY_EASE }));
+      flyS.value = withDelay(d, withTiming(0.45, { duration: 260, easing: FLY_EASE }));
+      flyO.value = withDelay(d + 170, withTiming(0, { duration: 90 }));
+    } else {
+      const d = 120 + i * 55;
+      flyY.value = -1.6 * tile;
+      flyS.value = 1;
+      flyO.value = withDelay(d, withTiming(1, { duration: 40 }));
+      flyY.value = withDelay(
+        d,
+        withTiming(0, { duration: 300, easing: FALL_EASE }, (fin) => {
+          'worklet';
+          if (fin) {
+            flyS.value = withSequence(
+              withTiming(0.94, { duration: 60 }),
+              withTiming(1, { duration: 110 })
+            );
+          }
+        })
+      );
+    }
+  }, [armed]);
+  const flight = useAnimatedStyle(() => ({
+    opacity: flyO.value,
+    transform: [{ translateY: flyY.value }, { scale: flyS.value }],
+  }));
   const ledgeStyle = useAnimatedStyle(() => ({
     backgroundColor: sLit.value > i ? pal.edge : gs.mono.edge,
   }));
@@ -40,7 +81,7 @@ function PlayTile({ ch, i, sLit, theme, tile }: {
     color: sLit.value > i ? INK : gs.monoInk,
   }));
   return (
-    <View style={{ width: tile, height: tile + LIFT + 1 }}>
+    <Animated.View style={[{ width: tile, height: tile + LIFT + 1 }, flight]}>
       <Animated.View
         style={[styles.ledge, ledgeStyle, { top: LIFT, width: tile, height: tile, borderRadius: RAD }]}
       />
@@ -54,18 +95,18 @@ function PlayTile({ ch, i, sLit, theme, tile }: {
           {ch.toUpperCase()}
         </Animated.Text>
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 }
 
-export function TracePlay({ sLit, theme, tile, gap }: {
-  sLit: SharedValue<number>; theme: Theme; tile: number; gap: number;
+export function TracePlay({ sLit, theme, tile, gap, armed = false }: {
+  sLit: SharedValue<number>; theme: Theme; tile: number; gap: number; armed?: boolean;
 }) {
   return (
     <View style={styles.wrap}>
       <View style={[styles.row, { gap }]}>
         {PLAY_WORD.map((ch, i) => (
-          <PlayTile key={ch} ch={ch} i={i} sLit={sLit} theme={theme} tile={tile} />
+          <PlayTile key={ch} ch={ch} i={i} sLit={sLit} theme={theme} tile={tile} armed={armed} />
         ))}
       </View>
       <Text style={[styles.label, { color: theme.ink }]}>swipe to play</Text>
