@@ -35,7 +35,14 @@ export function ScoreHeader({ score, target, marks, width, gs = GAME_DARK }: Pro
   // parked near the start while the fill is dormant (web: left 2%, faded)
   const knobStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateX: withTiming(Math.max(0.02 * trackW, ratio * trackW) - KNOB / 2, { duration: EASE_MS }) },
+      {
+        // clamped INSIDE the rail: at 0 the knob rests flush with the track's
+        // start, never poking past it (owner)
+        translateX: withTiming(
+          Math.min(Math.max(0, ratio * trackW - KNOB / 2), trackW - KNOB),
+          { duration: EASE_MS }
+        ),
+      },
     ],
     opacity: withTiming(score > 0 ? 1 : 0.45, { duration: EASE_MS }),
   }));
@@ -84,6 +91,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 2, // flush with the track's inset edges
   },
   score: {
     fontFamily: 'Fredoka_600SemiBold',
