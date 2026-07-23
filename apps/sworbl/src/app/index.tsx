@@ -17,6 +17,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   ZoomIn,
   useSharedValue,
+  useAnimatedReaction,
   useAnimatedStyle,
   withSpring,
   withTiming,
@@ -53,7 +54,7 @@ import { haptic } from '@/game/haptics';
 //   bounce (a bounce there fights the face crossfade and reads as jitter)
 // · every release INHERITS the finger's velocity — the spring continues the
 //   throw instead of restarting from rest (the dead-hand-off fix)
-const OPEN_SPRING = { mass: 0.8, damping: 24, stiffness: 210 };
+const OPEN_SPRING = { mass: 0.7, damping: 26, stiffness: 270 }; // snappier (owner)
 // park got its bounce back (owner: "like it took the hit") — one soft
 // overshoot, plus the landing squash below
 const PARK_SPRING = { mass: 0.9, damping: 25, stiffness: 210 };
@@ -354,12 +355,24 @@ export default function HomeScreen() {
   const faceStyle = useAnimatedStyle(() => ({
     opacity: interpolate(sheetY.value, [closedY - 170, closedY - 50], [0, 1], Extrapolation.CLAMP),
   }));
-  // the game SURFACE must exist from the FIRST pixel of travel — a late ramp
-  // left the sheet's body clear glass below the frost band during the pull
-  // (owner: "blur cut off and there's just clear")
+  // the game SURFACE must exist from the FIRST pixel of travel — and the
+  // fade window is deliberately SHORT: while it runs, the whole game subtree
+  // pays for an offscreen alpha group (the pull-fluidity tax the owner felt).
+  // 52px of travel, then the layer is solid and compositing is free.
   const gameStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(sheetY.value, [closedY - 130, closedY - 12], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(sheetY.value, [closedY - 60, closedY - 8], [1, 0], Extrapolation.CLAMP),
   }));
+  // LIVE BLUR GATE: a BlurView riding a moving sheet re-samples its backdrop
+  // every frame — long after the face has faded out. Past 180px of travel
+  // the frost unmounts entirely (30px hysteresis so it can't flicker).
+  const [frostLive, setFrostLive] = useState(true);
+  useAnimatedReaction(
+    () => sheetY.value > closedY - 180,
+    (near, prev) => {
+      if (near !== prev) runOnJS(setFrostLive)(near);
+    },
+    [closedY]
+  );
   // MATCHED-GEOMETRY grabber (owner round 2: face keeps the ^; the PILL is
   // the sheet's grabber, materializing on the same travel path as you pull —
   // it rises from the chevron's home to its perch and recolors on the way)
@@ -609,7 +622,7 @@ export default function HomeScreen() {
             <Animated.View
               pointerEvents="none"
               style={[styles.peekFace, { height: peekH }, faceStyle]}>
-              <DockFrost tint={theme.mode === 'dark' ? 'dark' : 'light'} />
+              {frostLive && <DockFrost tint={theme.mode === 'dark' ? 'dark' : 'light'} />}
               <View style={[styles.dockInner, { paddingBottom: Math.max(insets.bottom, 14) }]}>
                 <CountdownDock played={played} />
               </View>
