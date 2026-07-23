@@ -29,7 +29,7 @@ function lerp(a: number, b: number, f: number): number {
 function useFloatA() {
   const t = useSharedValue(0);
   useEffect(() => {
-    t.value = withRepeat(withTiming(1, { duration: 3000, easing: Easing.linear }), -1);
+    t.value = withDelay(650, withRepeat(withTiming(1, { duration: 3000, easing: Easing.linear }), -1));
   }, []);
   return useAnimatedStyle(() => {
     const p = t.value;
@@ -48,7 +48,7 @@ function useFloatA() {
 function useFloatB() {
   const y = useSharedValue(0);
   useEffect(() => {
-    y.value = withRepeat(
+    y.value = withDelay(350, withRepeat(
       withSequence(
         withTiming(-10, { duration: 1428, easing: EASE }), // 42%
         withTiming(-5, { duration: 544, easing: EASE }), // 58%
@@ -56,7 +56,7 @@ function useFloatB() {
         withTiming(0, { duration: 884, easing: EASE })
       ),
       -1
-    );
+    ));
   }, []);
   return useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
 }
@@ -65,14 +65,14 @@ function useFloatB() {
 function useFloatC() {
   const t = useSharedValue(0);
   useEffect(() => {
-    t.value = withRepeat(
+    t.value = withDelay(900, withRepeat(
       withSequence(
         withTiming(1, { duration: 1170, easing: EASE }), // 30%
         withTiming(2, { duration: 1248, easing: EASE }), // 62%
         withTiming(3, { duration: 1482, easing: EASE })
       ),
       -1
-    );
+    ));
   }, []);
   return useAnimatedStyle(() => {
     const p = t.value;
@@ -92,7 +92,7 @@ function Crown() {
 function Aura() {
   const s = useSharedValue(0.9);
   useEffect(() => {
-    s.value = withRepeat(withTiming(1.12, { duration: 1500, easing: EASE }), -1, true);
+    s.value = withDelay(500, withRepeat(withTiming(1.12, { duration: 1500, easing: EASE }), -1, true));
   }, []);
   const st = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
   return <Animated.View pointerEvents="none" style={[styles.aura, st]} />;
@@ -289,9 +289,17 @@ export function FloatingPodium({ theme, entries, you, showTitle = true, showFoot
     <View style={styles.wrap}>
       {showTitle && <Text style={[styles.title, { color: theme.sub }]}>standings</Text>}
       <View style={styles.row}>
-        {third ? <PodCol theme={theme} entry={third} place={3} /> : <GhostCol theme={theme} place={3} />}
-        <PodCol theme={theme} entry={first} place={1} />
-        {second ? <PodCol theme={theme} entry={second} place={2} /> : <GhostCol theme={theme} place={2} />}
+        {third ? (
+          <PodCol key="p3" theme={theme} entry={third} place={3} />
+        ) : (
+          <GhostCol key="g3" theme={theme} place={3} />
+        )}
+        <PodCol key="p1" theme={theme} entry={first} place={1} />
+        {second ? (
+          <PodCol key="p2" theme={theme} entry={second} place={2} />
+        ) : (
+          <GhostCol key="g2" theme={theme} place={2} />
+        )}
       </View>
       {showFoot &&
         (you ? (
