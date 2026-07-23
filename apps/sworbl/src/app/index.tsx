@@ -607,7 +607,9 @@ export default function HomeScreen() {
   const washStyle = useAnimatedStyle(() => {
     const travel = interpolate(sheetY.value, [0, closedY], [1, 0], Extrapolation.CLAMP);
     const build = interpolate(travel, [0.06, 0.32], [0, 1], Extrapolation.CLAMP);
-    const reveal = interpolate(travel, [0.78, 0.97], [1, 0], Extrapolation.CLAMP);
+    // hand the surface back BEFORE the animation ends (owner) — the board's
+    // real colors are already standing when the sheet docks
+    const reveal = interpolate(travel, [0.68, 0.9], [1, 0], Extrapolation.CLAMP);
     return { opacity: build * reveal };
   }, [closedY]);
   // the band pair (aurora + PLAY tiles) fades in as ONE at boot
@@ -855,10 +857,14 @@ export default function HomeScreen() {
                 closeGesture={closeDrag}
               />
             </Animated.View>
-            {/* the COLOR WASH: mid-pull the emerging sheet's face is pure
-                hue; it dissolves at the settle and the board's real surface
-                takes over (owner) */}
-            <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, washStyle]}>
+            {/* the COLOR WASH, from the AURORA LINE down (owner): the strip
+                above the glow stays the board's own clear surface; the hues
+                begin where the blur lives and run to the sheet's bottom.
+                The crest is drawn on top of this seam — its blurred body is
+                what melts surface into color. */}
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.washWrap, { top: Math.round(peekH * 0.7) }, washStyle]}>
               <LinearGradient
                 colors={[...WASH_HUES]}
                 start={{ x: 0.1, y: 0 }}
@@ -912,6 +918,14 @@ const styles = StyleSheet.create({
   },
   scrim: {
     backgroundColor: '#000000',
+  },
+  // the wash owns the sheet BELOW the aurora line only — the top strip
+  // stays the board's own surface (owner); anchored to the sheet's bottom
+  washWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   // the storm rides the sheet's TOP edge; scaling from that edge lets the
   // swell spread DOWN over the emerging board during the pull
