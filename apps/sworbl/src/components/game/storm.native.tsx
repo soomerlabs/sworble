@@ -170,9 +170,9 @@ export default function Storm({ width, height = 260 }: {
           {/* THE GOO BLOBS — the fossil recipe, the heroes: sharp source
               UNDER the goo'd copy (blur 11 → alpha ×30 −14), the whole
               composite inside a soft blur(10) so it sits IN the weather */}
-          <Group layer={<Paint><Blur blur={6} /></Paint>}>
+          <Group layer={<Paint><Blur blur={2} /></Paint>}>
             <BlobField width={width} height={height} />
-            <Group layer={<Paint><Blur blur={8} /><ColorMatrix matrix={GOO} /></Paint>}>
+            <Group layer={<Paint><Blur blur={5} /><ColorMatrix matrix={GOO} /></Paint>}>
               <BlobField width={width} height={height} />
             </Group>
           </Group>
