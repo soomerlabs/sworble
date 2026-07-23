@@ -45,13 +45,19 @@ interface Props {
   rows: StandingRow[]; // ranks 4-10 (you inline if you're in them)
   youOutside: StandingRow | null; // set when your rank is past the list
   ghost: boolean; // not played yet → dashed placeholder row
+  emptyRows?: number; // sparse field → dashed open seats (the field awaits)
 }
 
-export function StandingsList({ theme, rows, youOutside, ghost }: Props) {
+export function StandingsList({ theme, rows, youOutside, ghost, emptyRows = 0 }: Props) {
   return (
     <View style={styles.list}>
       {rows.map((r) => (
         <Row key={`${r.rank}-${r.name}`} r={r} theme={theme} />
+      ))}
+      {Array.from({ length: emptyRows }, (_, i) => (
+        <View key={`empty-${i}`} style={[styles.row, styles.emptyRow, { borderColor: theme.dashed }]}>
+          <Text style={[styles.rank, { color: theme.faint }]}>{rows.length + 4 + i}</Text>
+        </View>
       ))}
       {youOutside && (
         <>
@@ -88,6 +94,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 2,
     borderStyle: 'dashed',
+  },
+  emptyRow: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    minHeight: 40,
   },
   rank: {
     width: 16,

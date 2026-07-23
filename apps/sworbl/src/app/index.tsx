@@ -753,6 +753,7 @@ export default function HomeScreen() {
               // the dashed seat only when you're truly ABSENT from the field —
               // a podium #1 doesn't need a placeholder chair (owner)
               ghost={!you && !entries.some((e) => e.isMe)}
+              emptyRows={entries.length <= 3 ? 3 : 0}
             />
           </View>
         </ScrollView>

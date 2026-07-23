@@ -263,6 +263,25 @@ interface Props {
   showFoot?: boolean; // leaderboard pins YOU in the LIST, not under the podium
 }
 
+// a MISSING podium step: dashed '?' block, FLAT (fossil rule: only real
+// players float — ghosts hold the step and wait)
+function GhostCol({ theme, place }: { theme: Theme; place: 2 | 3 }) {
+  return (
+    <View style={[styles.col, { width: 70, marginTop: place === 2 ? 18 : 34 }]}>
+      <View
+        style={[
+          styles.block,
+          styles.ghostBlock,
+          { width: 50, height: 50, borderColor: theme.dashed },
+        ]}>
+        <Text style={[styles.blockLetter, { fontSize: 23, color: theme.dashed }]}>?</Text>
+      </View>
+      <Text style={[styles.name, { color: theme.faint }]}>—</Text>
+      <Text style={[styles.score, { color: theme.faint, fontSize: 12 }]}>· · ·</Text>
+    </View>
+  );
+}
+
 export function FloatingPodium({ theme, entries, you, showTitle = true, showFoot = true }: Props) {
   const [first, second, third] = entries;
   if (!first) return null;
@@ -270,9 +289,9 @@ export function FloatingPodium({ theme, entries, you, showTitle = true, showFoot
     <View style={styles.wrap}>
       {showTitle && <Text style={[styles.title, { color: theme.sub }]}>standings</Text>}
       <View style={styles.row}>
-        {third && <PodCol theme={theme} entry={third} place={3} />}
+        {third ? <PodCol theme={theme} entry={third} place={3} /> : <GhostCol theme={theme} place={3} />}
         <PodCol theme={theme} entry={first} place={1} />
-        {second && <PodCol theme={theme} entry={second} place={2} />}
+        {second ? <PodCol theme={theme} entry={second} place={2} /> : <GhostCol theme={theme} place={2} />}
       </View>
       {showFoot &&
         (you ? (
@@ -386,6 +405,11 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   ghostYou: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+  },
+  ghostBlock: {
     backgroundColor: 'transparent',
     borderWidth: 2,
     borderStyle: 'dashed',
