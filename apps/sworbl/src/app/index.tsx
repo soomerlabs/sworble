@@ -317,9 +317,10 @@ export default function HomeScreen() {
     haptic.soft();
   }, []);
   // THE SUCCESS BEAT (owner): fires when the pull crosses the commit line —
-  // the moment the launch is won — not back at the Y
+  // the moment the launch is won — not back at the Y. Hand-rolled spacing
+  // (owner: the canned Success pulses were too close together)
   const commitBeat = useCallback(() => {
-    haptic.good();
+    haptic.launch();
   }, []);
   // stage 1 complete: PLAY lit → the row morphs to the chevron, swipe unlocks.
   // No swipe within the window → DISARM: the chevron gives way and the tiles

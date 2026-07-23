@@ -40,6 +40,16 @@ export const haptic = {
   good() {
     if (on()) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
   },
+  // the LAUNCH success (owner: the canned Success double-pulse beats land
+  // too close — ~70ms apart and untunable). A hand-rolled pair: medium
+  // strike, a real breath, then the heavy landing.
+  launch() {
+    if (!on()) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setTimeout(() => {
+      if (on()) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+    }, 170);
+  },
   bad() {
     if (on()) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
   },
