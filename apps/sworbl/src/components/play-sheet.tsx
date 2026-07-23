@@ -156,19 +156,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // the logo CLICK: at the exact dock moment the sheet's brand snaps
-  // magnetically into home's slot — a tiny overshoot-settle (pairs with the
-  // dock haptic)
-  const brandScale = useSharedValue(1);
-  useEffect(() => {
-    if (active) {
-      brandScale.value = withSequence(
-        withTiming(1.12, { duration: 90 }),
-        withSpring(1, { mass: 0.5, damping: 11, stiffness: 320 })
-      );
-    }
-  }, [active]);
-  const brandClick = useAnimatedStyle(() => ({ transform: [{ scale: brandScale.value }] }));
+  // (the logo-click overshoot at dock was owner-removed — the brand sits still)
   const [score, setScore] = useState(boot?.run ? boot.run.score : route === 'consumed' ? boot!.score : 0);
   const [found, setFound] = useState<string[]>(boot?.run ? boot.run.found : boot ? boot.found : []);
   const [result, setResult] = useState<{ solved: boolean; guessesUsed: number; bonus: number } | null>(
@@ -443,9 +431,9 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
               </View>
             </Pressable>
           )}
-          <Animated.View style={[styles.brandCenter, brandClick]} pointerEvents="none">
+          <View style={styles.brandCenter} pointerEvents="none">
             <Brand ink={gs.ink} />
-          </Animated.View>
+          </View>
           {/* score lives in the ScoreHeader rail only (it showed twice) —
               the corner is the PAUSE button, the visible face of swipe-down */}
           {onBoard && phase !== 'finale' ? (
