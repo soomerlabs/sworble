@@ -6,11 +6,17 @@ import { useFonts, Fredoka_500Medium, Fredoka_600SemiBold } from '@expo-google-f
 import { useEffect } from 'react';
 
 import { initStorage } from '@/game/storage';
+import { loadFullDictionary } from '@/game/dictionary';
 
 SplashScreen.preventAutoHideAsync();
 // storage backing FIRST — everything downstream reads through the engine store
 // (MMKV on native via setBacking; localStorage on web needs no injection)
 initStorage();
+// full 135k dictionary swaps in behind the starter — fire-and-forget, off the
+// boot path; validation generosity upgrades within seconds of launch
+setTimeout(() => {
+  loadFullDictionary();
+}, 50);
 
 export default function RootLayout() {
   // sworbl is dark, always (the game's visual identity — not a scheme choice)
