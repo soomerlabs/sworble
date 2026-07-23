@@ -99,25 +99,30 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, flight, nope, nope
   // THE WAVE-NO (web rjArrive + tileDeflate + rjDrainOut): the whole word
   // turns red TOGETHER (0.26s blend), DEFLATES in unison (womp: 1.07→0.94→1),
   // then the red DRAINS OUT FROM THE HEAD backwards (35ms/tile, from 0.5s)
-  // SNAPPIER than the web fossil (owner: the round is timed — "get it over
-  // with"): shorter red hold, faster drain, tighter womp. Same shape, ~60% time.
+  // FOSSIL rjArrive/tileDeflate/rjDrainOut, owner-speed hold: the web's red
+  // arrives FROM THE CANDY COLOR (traced tiles are lit when rejected) — that,
+  // not a slow ramp, is why it never blinded. sNopeBase switches the blend
+  // base candy→mono invisibly while the tile is fully red, so the drain
+  // returns to mono exactly like rjDrainOut's rjb.
   const sRed = useSharedValue(0);
+  const sNopeBase = useSharedValue(1); // 0 = candy base (arrival) · 1 = mono (drain)
   const deflate = useSharedValue(1);
   useEffect(() => {
     if (!nope) return;
-    const drainDelay = 280 + (nopeTotal - 1 - nopeSeq) * 22;
+    const drainDelay = 280 + (nopeTotal - 1 - nopeSeq) * 35; // web stagger, our hold
+    sNopeBase.value = 0;
+    sNopeBase.value = withDelay(200, withTiming(1, { duration: 1 })); // swap mid-red
     sRed.value = withSequence(
-      // BLOOM, not blind (owner): the 65ms snap to full red flashed the whole
-      // word at once — eased arrival like the web's rjArrive transition
-      withTiming(1, { duration: 160, easing: Easing.out(Easing.quad) }),
-      withTiming(1, { duration: Math.max(0, drainDelay - 160) }),
-      withTiming(0, { duration: 260 }) // rjDrainOut, hurried
+      withTiming(1, { duration: 130, easing: Easing.out(Easing.quad) }), // candy→red
+      withTiming(1, { duration: Math.max(0, drainDelay - 130) }),
+      withTiming(0, { duration: 300, easing: Easing.bezier(0.3, 0, 0.35, 1) }) // rjDrainOut
     );
+    // tileDeflate, web-exact keyframe rhythm (0.46s: 1.07 → 0.94 → 1.005 → 1)
     deflate.value = withSequence(
-      withTiming(1.07, { duration: 70 }),
-      withTiming(0.94, { duration: 95 }),
-      withTiming(1.005, { duration: 80 }),
-      withTiming(1, { duration: 95 })
+      withTiming(1.07, { duration: 92, easing: Easing.bezier(0.3, 0.6, 0.4, 1) }),
+      withTiming(0.94, { duration: 129, easing: Easing.bezier(0.45, 0, 0.4, 1) }),
+      withTiming(1.005, { duration: 110, easing: Easing.bezier(0.3, 0, 0.3, 1) }),
+      withTiming(1, { duration: 129 })
     );
   }, [nope]);
 
@@ -195,24 +200,32 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, flight, nope, nope
   // the red BLENDS in and drains out (web rjArrive/rjDrainOut are color
   // transitions) — the old `> 0.5` test snapped mid-drain, the reported jank
   const ledgeStyle = useAnimatedStyle(() => {
-    const base = sLit.value ? pal.edge : gs.mono.edge;
+    const rest = sLit.value ? pal.edge : gs.mono.edge;
+    const base =
+      sRed.value > 0
+        ? interpolateColor(sNopeBase.value, [0, 1], [pal.edge, gs.mono.edge])
+        : rest;
     return {
       backgroundColor:
-        sRed.value > 0 ? interpolateColor(sRed.value, [0, 1], [base, '#8C2328']) : base,
+        sRed.value > 0 ? interpolateColor(sRed.value, [0, 1], [base, '#8C2328']) : rest,
       top: lift + (sLit.value === 2 ? 2 : sLit.value === 1 ? 1 : 0),
     };
   });
   const faceStyle = useAnimatedStyle(() => {
-    const base = sLit.value ? pal.bg : gs.mono.bg;
+    const rest = sLit.value ? pal.bg : gs.mono.bg;
+    const base =
+      sRed.value > 0 ? interpolateColor(sNopeBase.value, [0, 1], [pal.bg, gs.mono.bg]) : rest;
     return {
       backgroundColor:
-        sRed.value > 0 ? interpolateColor(sRed.value, [0, 1], [base, '#E5484D']) : base,
+        sRed.value > 0 ? interpolateColor(sRed.value, [0, 1], [base, '#E5484D']) : rest,
     };
   });
   const letterStyle = useAnimatedStyle(() => {
-    const base = sLit.value ? INK : gs.monoInk;
+    const rest = sLit.value ? INK : gs.monoInk;
+    const base =
+      sRed.value > 0 ? interpolateColor(sNopeBase.value, [0, 1], [INK, gs.monoInk]) : rest;
     return {
-      color: sRed.value > 0 ? interpolateColor(sRed.value, [0, 1], [base, '#FFFFFF']) : base,
+      color: sRed.value > 0 ? interpolateColor(sRed.value, [0, 1], [base, '#FFFFFF']) : rest,
       opacity: sLetterO.value,
     };
   });
