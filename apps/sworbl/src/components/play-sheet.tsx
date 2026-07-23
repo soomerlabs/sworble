@@ -4,12 +4,11 @@
 // Boot routes through the engine (consumed → resume → finale → fresh).
 // Clock model: accumulated boardElapsedMs (engine.run.remainingSecs derives the
 // display) — resume RE-ARMS the count-in, never jumps to a running clock.
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { AppState, StyleSheet, Text, View, Pressable, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   mkClock, clockStart, clockPause, clockElapsedMs, clockEffSecs, clockRemaining, clockGrant,
   type ClockState,
@@ -26,15 +25,28 @@ import { dealDaily, bumpNextId } from '@/game/daily';
 import { type TileT } from '@/game/types';
 import { loadDay, saveProgress, finishDay, saveRun, type RunSnap, type BestWord } from '@/game/persist';
 import { TUNING } from '@/game/tuning';
-import { router } from 'expo-router';
 import Animated, { ZoomIn, FadeOut } from 'react-native-reanimated';
 
 // TIME FUEL: three minutes given, the Seven if you earn it (engine.run.timeForWord)
 
 type Phase = 'countin' | 'live' | 'paused' | 'finale' | 'done';
 
-export default function PlayScreen() {
+export interface PlaySheetHandle {
+  pauseForClose: () => void; // home calls this before sliding the sheet away
+}
+
+interface PlaySheetProps {
+  onClose: () => void;
+}
+
+export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function PlaySheet(
+  { onClose },
+  handleRef
+) {
   const { width, height } = useWindowDimensions();
+  // useSafeAreaInsets is SYNCHRONOUS — SafeAreaView reflows a frame late, which
+  // jitters the top bar every time the sheet mounts mid-drag (owner report)
+  const insets = useSafeAreaInsets();
 
   const deal = useMemo(() => dealDaily(), []);
   const boot = useMemo(() => (deal ? loadDay(deal.dayKey) : null), [deal]);
@@ -189,13 +201,13 @@ export default function PlayScreen() {
     return () => sub.remove();
   }, [pause]);
 
-  // swipe the sheet DOWN (from the top bar — never fights board traces):
-  // pauses + snapshots, then slides back home. The board sheet closes the way
-  // it opened (owner: "swipe to close the board and it'll pause the game")
+  // home drives the sheet's motion; before it slides away it pauses the round
+  useImperativeHandle(handleRef, () => ({ pauseForClose: pause }), [pause]);
   const closeBoard = useCallback(() => {
     pause();
-    router.back();
-  }, [pause]);
+    onClose();
+  }, [pause, onClose]);
+  // top-bar swipe down still closes (never fights board traces)
   const closeSwipe = useMemo(
     () =>
       Gesture.Pan()
@@ -234,9 +246,8 @@ export default function PlayScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
       <Storm width={width} height={Math.min(280, height * 0.32)} />
-      <SafeAreaView style={styles.safe}>
+      <View style={[styles.safe, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <GestureDetector gesture={closeSwipe}>
         <View style={styles.top}>
           <Text style={styles.brand}>sworbl</Text>
@@ -326,16 +337,16 @@ export default function PlayScreen() {
                 score={score}
                 bonus={result.bonus}
               />
-              <Pressable onPress={() => router.replace('/')} style={styles.homeLink}>
+              <Pressable onPress={onClose} style={styles.homeLink}>
                 <Text style={styles.homeLinkText}>home ›</Text>
               </Pressable>
             </View>
           )}
         </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   root: {

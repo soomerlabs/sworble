@@ -33,10 +33,8 @@ export default function RootLayout() {
             headerShown: false,
             contentStyle: { backgroundColor: '#101014' },
             animation: 'fade',
-          }}>
-          {/* the board is a SHEET: swipe-up pulls it over home, back slides it down */}
-          <Stack.Screen name="play" options={{ animation: 'slide_from_bottom' }} />
-        </Stack>
+          }}
+        />
       </ThemeProvider>
     </GestureHandlerRootView>
   );

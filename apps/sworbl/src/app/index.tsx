@@ -1,52 +1,123 @@
-// HOME — the v18 design ported: word-light, storm-anchored. Date + score up
-// top, the hero word (candy when the day is done — the answer is NEVER gray on
-// home), the ghost clue fan, superlatives, and the countdown dock over the
-// storm (brewing before play, resting after). Swipe up or tap PLAY → /play.
-import React, { useMemo } from 'react';
+// HOME + THE PLAY SHEET. The board is not a page — it's a sheet you PULL UP
+// over home (web parity): it follows the finger both directions, home blurs
+// in proportion to how far the sheet has risen, release springs it open or
+// back down, and closing pauses the round first. v18 home underneath:
+// date + score, hero word (candy when done), ghost clue fan, superlatives,
+// countdown dock over the brewing/resting storm, floaters.
+import React, { useMemo, useRef, useState, useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-reanimated';
-import Animated, { ZoomIn } from 'react-native-reanimated';
+import Animated, {
+  ZoomIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  interpolate,
+  runOnJS,
+} from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
 
 import Storm from '@/components/game/storm';
 import { ClueFan } from '@/components/game/clue-fan';
 import { Floaters } from '@/components/home/floaters';
 import { CountdownDock } from '@/components/home/countdown-dock';
 import { Superlatives } from '@/components/home/superlatives';
+import { PlaySheet, type PlaySheetHandle } from '@/components/play-sheet';
 import { BG_DARK, PALETTE, INK, tileColorFor } from '@/game/palette';
 import { dealDaily } from '@/game/daily';
 import { loadDay, type DayState } from '@/game/persist';
+
+const SHEET_SPRING = { mass: 0.7, damping: 20, stiffness: 180 };
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
   const deal = useMemo(() => dealDaily(), []);
 
-  // re-read day state every time home regains focus (returning from /play)
-  const [day, setDay] = React.useState<DayState | null>(null);
-  useFocusEffect(
-    React.useCallback(() => {
-      if (deal) setDay(loadDay(deal.dayKey));
-    }, [deal])
-  );
+  // ---- day state (re-read on focus AND on sheet close) ----
+  const [day, setDay] = useState<DayState | null>(null);
+  const refreshDay = useCallback(() => {
+    if (deal) setDay(loadDay(deal.dayKey));
+  }, [deal]);
+  useFocusEffect(refreshDay);
 
   const played = day?.route === 'consumed';
   const solved = played && !!day?.sworb?.solved;
-  const toPlay = () => router.push('/play');
 
-  // swipe up anywhere → play (the v18 gesture; PLAY button is the visible affordance)
-  const swipeUp = useMemo(
+  // ---- THE SHEET: position rides the finger; blur rides the position ----
+  const sheetY = useSharedValue(height); // height = closed, 0 = open
+  const [sheetMounted, setSheetMounted] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false); // fully open → home drag disabled
+  const sheetRef = useRef<PlaySheetHandle>(null);
+
+  const openSheet = useCallback(() => {
+    setSheetMounted(true);
+    setSheetOpen(true);
+    sheetY.value = withSpring(0, SHEET_SPRING);
+  }, []);
+  const finishClose = useCallback(() => {
+    setSheetMounted(false);
+    setSheetOpen(false);
+  }, []);
+  const closeSheet = useCallback(() => {
+    sheetRef.current?.pauseForClose();
+    sheetY.value = withTiming(height, { duration: 260 }, (fin) => {
+      'worklet';
+      if (fin) runOnJS(finishClose)();
+    });
+    // day state may have changed inside the round (finish/lock)
+    setTimeout(refreshDay, 300);
+  }, [height, refreshDay, finishClose]);
+
+  // pull UP from home: the sheet follows the finger from the first pixel.
+  // DISABLED once fully open — the board's trace owns every gesture in there.
+  const mountSheet = useCallback(() => setSheetMounted(true), []);
+  const markOpen = useCallback(() => setSheetOpen(true), []);
+  const openDrag = useMemo(
     () =>
       Gesture.Pan()
-        .minDistance(24)
+        .enabled(!sheetOpen)
+        .minDistance(12)
+        .onStart(() => {
+          'worklet';
+          runOnJS(mountSheet)();
+        })
+        .onUpdate((e) => {
+          'worklet';
+          // the sheet's TOP EDGE rides the finger itself (absoluteY), not the
+          // translation — otherwise the sheet trails far below the thumb
+          sheetY.value = Math.min(height, Math.max(0, e.absoluteY));
+        })
         .onEnd((e) => {
           'worklet';
-          if (e.translationY < -60 && Math.abs(e.translationX) < 80) runOnJS(toPlay)();
+          const risen = height - sheetY.value;
+          if (risen > height * 0.22 || e.velocityY < -900) {
+            sheetY.value = withSpring(0, SHEET_SPRING);
+            runOnJS(markOpen)();
+          } else {
+            sheetY.value = withTiming(height, { duration: 200 }, (fin) => {
+              'worklet';
+              if (fin) runOnJS(finishClose)();
+            });
+          }
         }),
-    []
+    [height, sheetOpen, mountSheet, markOpen, finishClose]
   );
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: sheetY.value }],
+    // soft top corners while mid-drag, square when fully open
+    borderTopLeftRadius: interpolate(sheetY.value, [0, height * 0.2], [0, 22]),
+    borderTopRightRadius: interpolate(sheetY.value, [0, height * 0.2], [0, 22]),
+  }));
+  // the background BLURS as the sheet rises (fixed-intensity blur layer whose
+  // presence fades in with sheet progress — animatable at 60fps)
+  const blurStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(sheetY.value, [height, height * 0.15, 0], [0, 0.9, 1]),
+  }));
 
   const dateLine = new Date()
     .toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
@@ -55,7 +126,7 @@ export default function HomeScreen() {
   const bs = deal ? Math.min(52, Math.floor(280 / deal.sworb.length)) : 48;
 
   return (
-    <GestureDetector gesture={swipeUp}>
+    <GestureDetector gesture={openDrag}>
       <View style={styles.root}>
         <StatusBar style="light" />
         <Floaters width={width} height={height} />
@@ -64,7 +135,6 @@ export default function HomeScreen() {
         </View>
 
         <SafeAreaView style={styles.safe}>
-          {/* date + score, spanning the screen (v18 top strip) */}
           <View style={styles.top}>
             {__DEV__ && (
               <Pressable onPress={() => router.push('/dev')} style={styles.gear} hitSlop={10}>
@@ -81,7 +151,6 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.middle}>
-            {/* hero word: candy when done (always candy — owner rule); hidden before */}
             {played && deal ? (
               <View style={styles.heroRow}>
                 {[...deal.sworb].map((ch, i) => {
@@ -89,7 +158,7 @@ export default function HomeScreen() {
                   return (
                     <Animated.View
                       key={i}
-                      entering={ZoomIn.delay(80 + i * 70).springify().mass(0.6)}
+                      entering={ZoomIn.delay(80 + i * 70)}
                       style={[
                         styles.heroBlock,
                         {
@@ -117,22 +186,20 @@ export default function HomeScreen() {
                 ))}
               </View>
             )}
-            {played && !solved && <Text style={styles.missLine}>not cracked — tomorrow's another sworbl</Text>}
+            {played && !solved && (
+              <Text style={styles.missLine}>not cracked — tomorrow's another sworbl</Text>
+            )}
 
-            {/* the 6 clue spots — ghosts before play, candy after (found only) */}
             {deal && <ClueFan clues={deal.clues} found={day?.found ?? []} />}
 
             <View style={styles.supWrap}>
               <Superlatives words={day?.bestWords ?? []} />
             </View>
 
-            {!played && (
-              <Pressable onPress={toPlay} style={styles.playBtn}>
-                <Text style={styles.playText}>PLAY TODAY</Text>
-              </Pressable>
-            )}
+            {/* no PLAY button — the swipe IS the way in (word-light, owner call);
+                the dock's chevron + "swipe to play" is the whole affordance */}
             {played && (
-              <Pressable onPress={toPlay} style={styles.resultLink}>
+              <Pressable onPress={openSheet} style={styles.resultLink}>
                 <Text style={styles.resultLinkText}>see result ›</Text>
               </Pressable>
             )}
@@ -140,6 +207,20 @@ export default function HomeScreen() {
 
           <CountdownDock played={played} />
         </SafeAreaView>
+
+        {/* progressive blur under the rising sheet */}
+        {sheetMounted && (
+          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, blurStyle]}>
+            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+          </Animated.View>
+        )}
+
+        {/* THE SHEET */}
+        {sheetMounted && deal && (
+          <Animated.View style={[styles.sheet, sheetStyle]}>
+            <PlaySheet ref={sheetRef} onClose={closeSheet} />
+          </Animated.View>
+        )}
       </View>
     </GestureDetector>
   );
@@ -155,6 +236,16 @@ const styles = StyleSheet.create({
   },
   safe: {
     flex: 1,
+  },
+  sheet: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: BG_DARK,
+    overflow: 'hidden',
+    zIndex: 20,
   },
   top: {
     alignItems: 'center',
@@ -234,19 +325,6 @@ const styles = StyleSheet.create({
   },
   supWrap: {
     marginTop: 4,
-  },
-  playBtn: {
-    backgroundColor: '#8971FF',
-    borderRadius: 14,
-    paddingHorizontal: 26,
-    paddingVertical: 12,
-    boxShadow: '0 4px 0 #5A43C9',
-  },
-  playText: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 14,
-    letterSpacing: 0.8,
-    color: '#FFFFFF',
   },
   resultLink: {
     paddingVertical: 4,
