@@ -9,7 +9,7 @@ import { GameTile } from './game-tile';
 import TraceConnector from './trace-connector';
 import { ClueFan } from './clue-fan';
 import { COLS, ROWS, type TileT, type TraceTile } from '@/game/types';
-import { PALETTE } from '@/game/palette';
+import { PALETTE, CARD } from '@/game/palette';
 import { settle, restampBroken, landsInMs, type DailyDeal } from '@/game/daily';
 import { dict, prefixMap, scoreWord } from '@/game/dict';
 import { beginW, moveW, type TraceCtx } from '@/game/trace';
@@ -321,17 +321,27 @@ export function GameBoard({
         )}
       </View>
 
+      {/* THE BOARD CARD (web boardCardStyle): tiles live ON a card with sunken
+          cell wells — not floating on the screen background */}
       <GestureDetector gesture={pan}>
+        <View
+          style={[
+            styles.card,
+            {
+              width: boardW + 24,
+              paddingBottom: 12 + Math.max(3, Math.round(size * 0.08)),
+            },
+          ]}>
         <View style={{ width: boardW, height: boardH }}>
           {Array.from({ length: COLS * ROWS }, (_, i) => (
             <View
               key={`bgc${i}`}
               style={[
-                styles.cellGhost,
+                styles.cellWell,
                 {
                   width: size,
                   height: size,
-                  borderRadius: Math.round(size * 0.27),
+                  borderRadius: Math.round(size * 0.2),
                   left: (i % COLS) * cell,
                   top: Math.floor(i / COLS) * cell,
                 },
@@ -367,6 +377,7 @@ export function GameBoard({
             />
           )}
         </View>
+        </View>
       </GestureDetector>
 
       {tokens.count > 0 && (
@@ -388,11 +399,24 @@ const styles = StyleSheet.create({
     fontSize: 26,
     letterSpacing: 2,
   },
-  cellGhost: {
+  card: {
+    backgroundColor: CARD.bg,
+    borderRadius: 20,
+    padding: 12,
+    alignItems: 'center',
+    // the card's own candy ledge (web: 0 6px 0 --card-edge)
+    shadowColor: CARD.edge,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
+  },
+  cellWell: {
     position: 'absolute',
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: '#26262E',
+    backgroundColor: CARD.well,
+    // sunken read (web: inset 0 3px 5px black) — top-edge shade approximation
+    borderTopWidth: 3,
+    borderTopColor: 'rgba(0,0,0,0.35)',
   },
   tokenLine: {
     marginTop: 12,

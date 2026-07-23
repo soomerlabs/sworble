@@ -5,6 +5,7 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import Svg, { Polyline } from 'react-native-svg';
 import type { SharedValue } from 'react-native-reanimated';
+import { PALETTE } from '@/game/palette';
 import type { TraceTile } from '@/game/types';
 
 interface Props {
@@ -28,9 +29,10 @@ export default function TraceConnector({ jsPath, size, gap, width, height }: Pro
       <Polyline
         points={points}
         fill="none"
-        stroke="#FFFFFF"
-        strokeOpacity={0.45}
-        strokeWidth={size * 0.16}
+        stroke={PALETTE[p[p.length - 1].ci % PALETTE.length].bg}
+        strokeOpacity={0.7}
+        strokeWidth={Math.max(6, size * 0.13)}
+        strokeDasharray="1 9"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

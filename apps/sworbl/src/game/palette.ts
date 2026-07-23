@@ -19,6 +19,13 @@ export const PALETTE: Pal[] = [
 export const INK = '#1F1442';
 export const BG_DARK = '#101014';
 
+// the mono board (web: MONO_DARK) — tiles idle GRAY; color is EARNED (traced)
+export const MONO_DARK: Pal = { bg: '#33333E', hi: '#42424F', edge: '#22222A' };
+export const MONO_INK = '#F2F1F4';
+
+// the board card + its sunken cell wells (web: --card/--card-edge dark + cells)
+export const CARD = { bg: '#1E1E24', edge: '#0A0A0D', well: '#141418' };
+
 // same families as the web tileColorFor: vowels amber/coral, premium pink,
 // mid-value violet, commons cyan/mint
 export function tileColorFor(letter: string, id: number | null = null): number {
