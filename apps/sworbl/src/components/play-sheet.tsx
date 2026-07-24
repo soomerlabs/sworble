@@ -625,12 +625,9 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
               )}
               {active && (phase === 'paused' || phase === 'idle') && (
                 <View style={styles.pausedCoverWrap}>
-                  {/* no word, just the button (owner: "not have it say
-                      paused") — one candy play circle, tap anywhere works */}
                   <Pressable style={styles.pausedCover} onPress={rearm}>
-                    <View style={styles.resumeBtn}>
-                      <Text style={styles.resumeGlyph}>▶</Text>
-                    </View>
+                    <Text style={[styles.pausedTitle, { color: gs.ink }]}>paused</Text>
+                    <Text style={[styles.pausedSub, { color: gs.sub }]}>tap to resume</Text>
                   </Pressable>
                 </View>
               )}
@@ -679,20 +676,6 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
 });
 
 const styles = StyleSheet.create({
-  resumeBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 20, borderCurve: 'continuous',
-    backgroundColor: '#8971FF',
-    boxShadow: '0 5px 0 #6A54D8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  resumeGlyph: {
-    fontSize: 24,
-    color: '#FFFFFF',
-    marginLeft: 3,
-  },
   root: {
     flex: 1, // surface painted by index's themed game layer
   },
