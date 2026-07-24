@@ -108,25 +108,28 @@ export default function ProfileScreen() {
           <ScreenHeader
             theme={theme}
             eyebrow={`${titleFor(collected).toUpperCase()} · ${sinceLine(stats.firstDay).toUpperCase()}`}
-            title={name.toLowerCase()}
-            titleAdornment={
-              <Pressable onPress={openEdit} hitSlop={12} style={styles.pencilBtn}>
-                <Icon name="pencil" size={15} color={theme.faint} />
-              </Pressable>
-            }
-            right={
-              <View
-                style={[
-                  styles.avatar,
-                  {
-                    backgroundColor: avatarPal.bg,
-                    boxShadow: `0 5px 0 ${avatarPal.edge}, inset 0 3px 0 rgba(255,255,255,0.42)`,
-                  },
-                ]}>
-                <Text style={styles.avatarLetter}>{name[0]}</Text>
-              </View>
-            }
+            title="profile"
           />
+          {/* THE IDENTITY ROW (owner): header just says profile; the real
+              you lives BELOW the divider, bigger — block · name · edit */}
+          <Pressable onPress={openEdit} style={styles.identityRow}>
+            <View
+              style={[
+                styles.avatar,
+                {
+                  backgroundColor: avatarPal.bg,
+                  boxShadow: `0 5px 0 ${avatarPal.edge}, inset 0 3px 0 rgba(255,255,255,0.42)`,
+                },
+              ]}>
+              <Text style={styles.avatarLetter}>{name[0]}</Text>
+            </View>
+            <Text style={[styles.identityName, { color: theme.ink }]} numberOfLines={1}>
+              {name.toLowerCase()}
+            </Text>
+            <View style={styles.pencilBtn}>
+              <Icon name="pencil" size={16} color={theme.faint} />
+            </View>
+          </Pressable>
 
           {/* 2×2 stat cards */}
           <View style={styles.cards}>
@@ -273,6 +276,18 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  identityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    alignSelf: 'stretch',
+    paddingVertical: 4,
+  },
+  identityName: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 26,
+    flexShrink: 1,
+  },
   root: { flex: 1 },
   safe: { flex: 1 },
   content: {
