@@ -716,6 +716,8 @@ export default function HomeScreen() {
                     guessesUsed: day?.sworb?.guessesUsed ?? 0,
                     score: you?.score ?? 0,
                     streak,
+                    mode: day?.mode,
+                    rounds: day?.rounds.played ?? 0,
                   }),
                 }).catch(() => {})
               }
