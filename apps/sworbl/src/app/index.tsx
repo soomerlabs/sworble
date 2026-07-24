@@ -501,7 +501,7 @@ export default function HomeScreen() {
             else runOnJS(restartArmIdle)();
           }
         }),
-    [width, height, closedY, sheetOpen, played, markOpen, traceBeat, nudgeBeat, commitBeat, armSoon, disarm, holdArmIdle, restartArmIdle]
+    [width, height, closedY, sheetOpen, played, markOpen, traceBeat, nudgeBeat, armSoon, disarm, holdArmIdle, restartArmIdle]
   );
 
   // close drag (home owns sheetY): the round pauses ONLY when the close
