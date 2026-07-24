@@ -33,14 +33,25 @@ system, one validated submission path.
 - Tester phase: client-side lock-in. Launch hardening: server rejects a
   hard submission when prior regular round-activity exists for the day.
 
-## PRACTICE ("storms")
-- Endless seeded boards (`s-0001`, …): pure 3-minute word hunt, no
-  archetype, no sworb/finale. Score = word points.
-- Replayable forever; server keeps your BEST per seed.
-- **Leaderboard PER SEED** ("who owns board s-0042") + your best.
-- Content is any seed; a curated featured list, validated by the
-  dailies-check tooling; solver can auto-pick clue words for hint parity
-  (or clue-less pure hunt — decide at build).
+## GHOST DUELS (owner-approved 2026-07-23 — replaces "practice" as the
+## third mode; same seeds, framed as "beat someone")
+- **Pseudo head-to-head**: the server picks an OPPONENT'S RECORDED RUN on
+  a featured seed (skill-adjacent: within ~±30% of your average). You play
+  the same 3-minute board; their score climbs beside yours as a GHOST on
+  a race bar, word by word. Buzzer → W/L + their best words vs yours.
+  Feels live, needs no lobbies, works at any player count and any hour —
+  deliberately better than real-time PvP for a small base (empty lobbies
+  kill features). Real-time rooms stay a POSSIBLE future layer.
+- **Global leaderboard PER SEED** stays ("who owns board s-0042") — solo
+  climbing the seed board remains a valid way to play.
+- Seeded deterministic boards, no archetype, no sworb/finale; score =
+  word points (submit-score practice policy: keep-best per seed, delta 0).
+- Server additions beyond schema v4: practice_scores gains words jsonb
+  (+ optional per-word timestamps later — ghosts then replay EXACTLY);
+  a pick-opponent edge function; a duel W/L record per player.
+- Client: ghost race bar during the round (shared-value pair, cheap),
+  duel result screen, duels entry on home. Even without timestamps,
+  pacing recorded words across the 3:00 reads convincingly live.
 
 ## SERVER MODEL (schema v4)
 - `submissions` gains `mode text not null default 'hard'` (existing rows
@@ -68,4 +79,5 @@ system, one validated submission path.
 2. Client regular-replay loop (persist v2, play-sheet round loop,
    decoupled guess, home in-progress face). The big one.
 3. Hard mode (mode-choice moment + lock; mostly flags on #2).
-4. Practice storms (seed screens, per-seed boards, featured list).
+4. Ghost duels (seed boards + ghost race bar + pick-opponent function +
+   per-seed boards/featured list). ~3-4 sessions.
