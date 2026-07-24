@@ -91,6 +91,13 @@ system, one validated submission path.
   GUESS button, next-round entry through the same PLAY door.
 - Streak/share/stats read the derived day score; share card gains mode.
 
+## LIVE TUTORIAL (owner 2026-07-23, queued post-tester-wave)
+A GUIDED FIRST ROUND, not a slide deck: scripted mini-board walking the
+finger through the verbs — trace a word, watch the flight to the stepper,
+catch a planted clue, feel the clock, one gimme guess — each step gated
+on DOING it (the trace-to-play door proved teach-by-doing). Tester
+confusion points become the curriculum.
+
 ## BUILD ORDER
 1. schema-v4.sql + submit-score v2 (server first — old clients keep
    working through the transition).
