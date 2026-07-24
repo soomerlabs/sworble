@@ -368,12 +368,12 @@ export default function StormScreen() {
               style={[styles.cta, styles.ctaCard, { backgroundColor: theme.card }]}>
               <Text style={[styles.ctaText, { color: posted === 'ok' ? '#5FD6A8' : theme.ink }]}>
                 {posted === 'ok'
-                  ? 'posted — waiting for a taker ✦'
+                  ? 'showdown posted — waiting for a taker ✦'
                   : posted === 'busy'
                     ? 'posting…'
                     : posted === 'error'
                       ? 'post failed — again?'
-                      : 'post as open duel'}
+                      : 'post a showdown'}
               </Text>
             </Pressable>
             <Pressable

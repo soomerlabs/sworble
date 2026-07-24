@@ -10,18 +10,16 @@ import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { PALETTE } from '@/game/palette';
 import { dailyStormBoards } from '@/game/storm-seeds';
 import { ACCENT, type Theme } from '@/game/theme';
-import { fetchOpenDuels, fetchStormCrowns, readCachedDuels, type OpenDuel } from '@/net/duels';
+import { fetchStormCrowns } from '@/net/duels';
 
 type Crowns = Record<string, { top: { name: string; score: number } | null; mine: number | null }>;
 
 export function StormShelf({ theme, refreshNonce }: { theme: Theme; refreshNonce?: number }) {
   const boards = useMemo(() => dailyStormBoards(), []);
   const [crowns, setCrowns] = useState<Crowns | null>(null);
-  const [duels, setDuels] = useState<OpenDuel[]>(() => readCachedDuels());
   useEffect(() => {
     let live = true;
     fetchStormCrowns(boards.map((b) => b.seed)).then((c) => live && c && setCrowns(c));
-    fetchOpenDuels().then((d) => live && d && setDuels(d));
     return () => {
       live = false;
     };
@@ -61,32 +59,6 @@ export function StormShelf({ theme, refreshNonce }: { theme: Theme; refreshNonce
           );
         })}
 
-        {/* SHOWDOWNS (owner rename): open 1v1 posts ride the same shelf */}
-        {duels.map((d) => {
-          const pal = PALETTE[(d.name.charCodeAt(0) ?? 97) % PALETTE.length];
-          return (
-            <Pressable
-              key={`sd-${d.id}`}
-              disabled={d.mine}
-              onPress={() =>
-                router.push(
-                  `/storm?seed=${d.seed}&vs=${encodeURIComponent(d.name)}&target=${d.score}&did=${d.id}${d.format === 'blitz' ? '&clock=120' : ''}`
-                )
-              }
-              style={[styles.block, { backgroundColor: theme.card }]}>
-              <View style={[styles.chip, { backgroundColor: pal.bg, boxShadow: `inset 0 -3px 0 ${pal.edge}` }]}>
-                <Text style={[styles.chipLetter]}>{d.name[0]}</Text>
-              </View>
-              <Text style={[styles.name, { color: theme.ink }]} numberOfLines={1}>
-                {d.name.toLowerCase()}
-              </Text>
-              <Text style={[styles.stat, { color: theme.sub }]}>{d.score.toLocaleString()} pts</Text>
-              <Text style={[styles.meta, { color: d.mine ? theme.faint : ACCENT }]}>
-                {d.mine ? 'your showdown' : 'showdown ›'}
-              </Text>
-            </Pressable>
-          );
-        })}
       </ScrollView>
     </View>
   );
@@ -129,11 +101,6 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   chipGlyph: { fontSize: 14 },
-  chipLetter: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 15,
-    color: '#1F1442',
-  },
   name: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 14.5,

@@ -13,6 +13,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ShowdownsRail } from '@/components/home/showdowns-rail';
+import { StandingsStrip } from '@/components/home/standings-strip';
 import { StormShelf } from '@/components/home/storm-shelf';
 import { ParkFrost } from '@/components/home/park-frost';
 import { router, useFocusEffect } from 'expo-router';
@@ -796,15 +798,20 @@ export default function HomeScreen() {
           </Pressable>
 
 
-          <StandingsSection
+          {/* CONSOLIDATED (owner): the strip is home's glance; the full
+              floating podium lives on the leaderboard page */}
+          <StandingsStrip
             theme={theme}
             entries={entries}
-            standings={standings}
-            hasYou={!!you || entries.some((e) => e.isMe || e.name === getPlayerName())}
-            devCount={__DEV__ && devSnap.diag}
+            you={you ? { rank: you.rank, score: you.score } : null}
+            youOnPodium={entries
+              .slice(0, 3)
+              .some((e) => e.isMe || e.name === getPlayerName())}
           />
 
           <StormShelf theme={theme} refreshNonce={duelsNonce} />
+
+          <ShowdownsRail theme={theme} refreshNonce={duelsNonce} />
         </ScrollView>
 
       </SafeAreaView>
