@@ -16,6 +16,13 @@ function mintName(): string {
   return `PLAYER${digits}`;
 }
 
+// remint the default (unique-name collision at boot) — saves + returns it
+export function remintPlayerName(): string {
+  const minted = mintName();
+  engine.store.setJSON(NAME_KEY, minted);
+  return minted;
+}
+
 export function getPlayerName(): string {
   const v = engine.store.getJSON(NAME_KEY, null) as string | null;
   if (v && typeof v === 'string') return v;

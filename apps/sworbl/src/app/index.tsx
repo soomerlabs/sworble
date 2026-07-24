@@ -132,6 +132,7 @@ export default function HomeScreen() {
   const [homeRefreshing, setHomeRefreshing] = useState(false);
   const homeRefresh = useCallback(async () => {
     if (!deal) return;
+    haptic.soft(); // the native PTR thunk RN doesn't give you (owner)
     setHomeRefreshing(true);
     try {
       const [field, changed] = await Promise.all([

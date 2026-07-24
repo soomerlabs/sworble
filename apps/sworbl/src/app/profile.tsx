@@ -18,7 +18,7 @@ import { useTheme, CLUE_GREEN } from '@/game/theme';
 import { PALETTE, tileColorFor } from '@/game/palette';
 import { loadStats, historyGrid, streakDays } from '@/game/stats';
 import { getPlayerName, setPlayerName, isNameAllowed } from '@/game/player';
-import { ensurePlayer } from '@/net/supabase';
+import { renamePlayer } from '@/net/supabase';
 import { toast } from '@/components/toast';
 import { haptic } from '@/game/haptics';
 import { lexiconCount, titleFor } from '@/game/lexicon';
@@ -57,9 +57,19 @@ export default function ProfileScreen() {
     const saved = setPlayerName(draft);
     setName(saved);
     if (saved !== before) {
-      void ensurePlayer(saved); // standings rename on next fetch
-      toast(`you're ${saved} now`, { title: 'name changed', pal: 2 });
-      haptic.good();
+      // usernames are UNIQUE (owner: one way to link a person) — the
+      // server verdict decides the toast, and a taken name rolls back
+      void renamePlayer(saved).then((verdict) => {
+        if (verdict === 'taken') {
+          setPlayerName(before);
+          setName(before);
+          toast('someone already owns that one', { title: 'name taken', pal: 5 });
+          haptic.bad();
+        } else {
+          toast(`you're ${saved} now`, { title: 'name changed', pal: 2 });
+          haptic.good();
+        }
+      });
     }
   };
   const avatarPal = PALETTE[tileColorFor(name[0]?.toLowerCase() ?? 'p', 0)];

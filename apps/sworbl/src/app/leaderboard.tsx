@@ -23,6 +23,7 @@ import { fetchDaily, fetchAllTime, readCachedField, type RemoteField } from '@/n
 import { loadDay } from '@/game/persist';
 import { loadStats } from '@/game/stats';
 import { getPlayerName } from '@/game/player';
+import { haptic } from '@/game/haptics';
 
 const LIST_CAP = 12;
 
@@ -123,6 +124,7 @@ export default function LeaderboardScreen() {
   // boards re-fetch; the spinner holds until the slower one answers
   const [refreshing, setRefreshing] = useState(false);
   const refresh = async () => {
+    haptic.soft(); // the native PTR thunk RN doesn't give you (owner)
     setRefreshing(true);
     try {
       const [d, a] = await Promise.all([fetchDaily(dayKey), fetchAllTime()]);

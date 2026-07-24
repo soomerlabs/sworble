@@ -55,8 +55,8 @@ system, one validated submission path.
 - **DIRECT CHALLENGES (owner 2026-07-23)**: duel a SPECIFIC user — both
   consent, the server assigns a VIRGIN seed neither has seen; each plays
   on their own schedule; first finisher becomes the second's ghost;
-  resolves to W/L for both. Identity via FRIEND CODE (short code from
-  player id, shown on profile — names are not unique). Rematch button =
+  resolves to W/L for both. Identity via USERNAME — UNIQUE as of schema
+  v5 (owner: "username is what games do"; friend codes are OUT). Rematch button =
   a de-facto series across fresh boards; formal best-of-N later.
   Server: challenges table (challenger, opponent, seed, per-side
   score/words, status, 48h expiry) + accept/decline; in-app inbox chip

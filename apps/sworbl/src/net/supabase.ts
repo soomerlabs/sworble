@@ -43,6 +43,9 @@ export function supabase(): SupabaseClient | null {
 
 // anonymous identity: sign in once, upsert the player row with the local
 // name. Fire-and-forget from boot; failures are silent (local-first).
+// USERNAMES ARE UNIQUE (schema v5, owner: "username is what games do") —
+// a collision on a MINTED default remints and retries once; a collision
+// on a chosen name is surfaced through renamePlayer instead.
 export async function ensurePlayer(name: string): Promise<string | null> {
   const sb = supabase();
   if (!sb) return null;
@@ -55,10 +58,33 @@ export async function ensurePlayer(name: string): Promise<string | null> {
     }
     const uid = data.session?.user.id ?? null;
     if (uid) {
-      await sb.from('players').upsert({ id: uid, name }, { onConflict: 'id' });
+      const { error } = await sb.from('players').upsert({ id: uid, name }, { onConflict: 'id' });
+      if (error && `${error.code}` === '23505' && /^PLAYER\d{4}$/.test(name)) {
+        // minted default collided — remint locally and try once more
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { remintPlayerName } = require('@/game/player');
+        const fresh = remintPlayerName();
+        await sb.from('players').upsert({ id: uid, name: fresh }, { onConflict: 'id' });
+      }
     }
     return uid;
   } catch {
     return null;
+  }
+}
+
+// the rename path with an honest verdict — 'taken' feeds the profile toast
+export async function renamePlayer(name: string): Promise<'ok' | 'taken' | 'error'> {
+  const sb = supabase();
+  if (!sb) return 'ok'; // offline/unconfigured: local-first, server catches up at boot
+  try {
+    const { data } = await sb.auth.getSession();
+    const uid = data.session?.user.id;
+    if (!uid) return 'error';
+    const { error } = await sb.from('players').upsert({ id: uid, name }, { onConflict: 'id' });
+    if (!error) return 'ok';
+    return `${error.code}` === '23505' ? 'taken' : 'error';
+  } catch {
+    return 'error';
   }
 }
