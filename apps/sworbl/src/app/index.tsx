@@ -778,17 +778,13 @@ export default function HomeScreen() {
               onGuess={dayInProgress && !played && sworbPending && deal ? openForGuess : undefined}
             />
 
-            {!played && dayInProgress && deal && (
+            {/* the strip carries the day's numbers now (owner) — only the
+                guess door hint remains up top */}
+            {!played && dayInProgress && deal && sworbPending && (
               <View style={styles.dayStatusRow}>
-                <Text style={[styles.dayStatusText, { color: theme.sub }]}>
-                  best round {(day?.rounds.bestRound ?? 0).toLocaleString()} ·{' '}
-                  {day?.found.length ?? 0} clue{(day?.found.length ?? 0) === 1 ? '' : 's'}
+                <Text style={[styles.guessHint, { color: '#8971FF' }]}>
+                  tap the word to guess · {6 - (day?.sworb?.guessesUsed ?? 0)} left
                 </Text>
-                {sworbPending && (
-                  <Text style={[styles.guessHint, { color: '#8971FF' }]}>
-                    tap the word to guess · {6 - (day?.sworb?.guessesUsed ?? 0)} left
-                  </Text>
-                )}
               </View>
             )}
           </Pressable>

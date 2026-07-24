@@ -30,8 +30,7 @@ export function StandingsStrip({ theme, podium, you }: Props) {
               <View key={i} style={styles.cell}>
                 <View style={[styles.block, styles.blockGhost, { borderColor: theme.dashed }]} />
                 <View style={styles.cellText}>
-                  <Text style={[styles.name, { color: theme.faint }]}>open</Text>
-                  <Text style={[styles.score, { color: theme.faint }]}>—</Text>
+                  <Text style={[styles.name, { color: theme.faint }]}>— —</Text>
                 </View>
               </View>
             );
@@ -100,9 +99,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // a BLOCK, not a circle (owner) — tile squircle ratio at strip scale
   blockGhost: {
     borderWidth: 2,
     borderStyle: 'dashed',
+    borderRadius: 6,
   },
   blockRank: {
     fontFamily: 'Fredoka_600SemiBold',

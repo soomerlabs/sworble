@@ -104,9 +104,15 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   // fair by construction (letters exist only once the clock runs; the radial
   // wake is the reaction ramp). Arming is still EDGE-TRIGGERED (dock /
   // foreground arrival), never level-triggered.
+  // NO COUNTDOWN (owner 2026-07-23: "awful countdown... clunky") — arming
+  // starts play instantly; the radial letter stamp-in (GO wake) is the
+  // reaction ramp, same fairness as the paused-cover tap. The countin
+  // phase machinery stays for safety nets but is never entered.
   const arm = useCallback(() => {
-    setCountInMounted(true);
-    setPhase('countin');
+    clockRef.current = clockStart(clockRef.current, Date.now());
+    setRemaining(clockRemaining(clockRef.current, Date.now(), CT));
+    setPhase('live');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // GUESS INTENT (modes-spec): home opens the sheet straight into the
   // finale — no round, no count-in. The dock-arm effect's cleanup clears

@@ -111,18 +111,16 @@ export default function StormScreen() {
         if (r === 'taken') setClaimLost(true);
       });
     }
+    // NO COUNTDOWN (owner) — one settle beat, then the wake is the ramp
     phaseRef.current = 'countin';
     setPhase('countin');
-    setCountStep('3');
-    const steps: Array<'2' | '1'> = ['2', '1'];
-    steps.forEach((st, i) => countTimers.current.push(setTimeout(() => setCountStep(st), 700 * (i + 1))));
     countTimers.current.push(
       setTimeout(() => {
         setCountStep(null);
         clockRef.current = clockStart(mkClock(), Date.now());
         phaseRef.current = 'live';
         setPhase('live');
-      }, 700 * 3)
+      }, 350)
     );
   };
   const phaseRef = useRef<Phase>('ready');
