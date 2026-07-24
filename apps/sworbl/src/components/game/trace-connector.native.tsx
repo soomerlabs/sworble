@@ -5,7 +5,7 @@
 // geometry/color/opacity from the shared path — unused segments park off-board.
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { Canvas, Path, DashPathEffect } from '@shopify/react-native-skia';
+import { BlurMask, Canvas, Path, DashPathEffect } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import { PALETTE } from '@/game/palette';
 import type { TraceTile } from '@/game/types';
@@ -54,6 +54,8 @@ function Seg({ sPath, sTrail, sTrailFade, idx, size, cell }: SegProps) {
   return (
     <Path path={d} style="stroke" color={color} opacity={opacity} strokeWidth={strokeWidth} strokeCap="round">
       <DashPathEffect intervals={[1, 9]} />
+      {/* web trailSegs: blur(1.5px) tip / blur(2px) body — the ember softness */}
+      <BlurMask blur={1.8} style="normal" />
     </Path>
   );
 }

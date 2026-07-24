@@ -80,6 +80,7 @@ function GameTileInner({ tile, size, gap, sPath, sSubmit, clearingSeq, flight, n
   // size, fading just as they land ("placed", not destroyed)
   const flyX = useSharedValue(0);
   const flyY = useSharedValue(0);
+  const popSpin = useSharedValue(0);
   useEffect(() => {
     if (clearingSeq === undefined) return;
     const d = clearingSeq * 40;
@@ -89,7 +90,9 @@ function GameTileInner({ tile, size, gap, sPath, sSubmit, clearingSeq, flight, n
       opacity.value = withDelay(d, withTiming(0, { duration: 40 }));
     } else {
       // no vector (merge twin, edge cases): the fossil's snappy pop fallback
+      // (scale 0.1 + rotate 20deg — the web's little twist on the way out)
       scale.value = withDelay(d, withTiming(0.1, { duration: 200, easing: Easing.bezier(0.55, 0, 0.8, 0.4) }));
+      popSpin.value = withDelay(d, withTiming(20, { duration: 200, easing: Easing.bezier(0.55, 0, 0.8, 0.4) }));
       opacity.value = withDelay(d + 30, withTiming(0, { duration: 70 }));
     }
   }, [clearingSeq]);
@@ -186,12 +189,20 @@ function GameTileInner({ tile, size, gap, sPath, sSubmit, clearingSeq, flight, n
     }
   );
 
+  // THE LIT GLOW (owner pass 2: "web looked just a bit nicer") — web lit
+  // tiles wear a colored glow (round(s*0.2), head round(s*0.24)). The
+  // shadow itself is STATIC on its own layer; only OPACITY animates.
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: sLitBlend.value * (sLit.value === 2 ? 1 : 0.65),
+  }));
+
   const inner = useAnimatedStyle(() => ({
     transform: [
       { translateX: x + flyX.value },
       { translateY: y.value + liftY.value + flyY.value },
       { scale: scale.value * deflate.value * stackPop.value * wakePop.value },
       { scale: headScale.value },
+      { rotate: `${popSpin.value}deg` },
       { scaleY: squashY.value },
     ],
     // submit breath (fossil submitDim): the whole field recedes toward 0.72
@@ -238,6 +249,22 @@ function GameTileInner({ tile, size, gap, sPath, sSubmit, clearingSeq, flight, n
   return (
     <Animated.View style={styles.outer}>
       <Animated.View style={[inner, { width: size, height: size + lift + 2 }]}>
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            glowStyle,
+            {
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width: size,
+              height: size,
+              borderRadius: rad,
+              borderCurve: 'continuous',
+              boxShadow: `0 0 ${Math.round(size * 0.22)}px ${Math.round(size * 0.04)}px ${pal.bg}`,
+            },
+          ]}
+        />
         <Animated.View
           style={[
             styles.ledge,

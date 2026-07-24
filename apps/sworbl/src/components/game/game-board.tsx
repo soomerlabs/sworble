@@ -103,7 +103,7 @@ function GameBoardInner({
   useEffect(() => {
     if (act.length > prevActLen.current) {
       setVerdict({ word: 'bonus', ok: true });
-      setTimeout(() => setVerdict(null), 1200);
+      setTimeout(() => setVerdict(null), 1900); // web: celebration holds
       haptic.good();
     }
     prevActLen.current = act.length;
@@ -223,7 +223,7 @@ function GameBoardInner({
     setFound((cur) => (cur.includes(clue) ? cur : [...cur, clue]));
     firePing(clue, Math.max(0, applySwaps(deal.clues, swapsRef.current).indexOf(clue)));
     setVerdict({ word: clue.toUpperCase(), ok: true, clue });
-    setTimeout(() => setVerdict(null), 1400);
+    setTimeout(() => setVerdict(null), 1150); // web rjDrain rhythm
     haptic.good();
     return true;
   }, [findableUnfound, firePing, deal]);
@@ -494,7 +494,7 @@ function GameBoardInner({
           });
         }, 700);
       });
-      setTimeout(() => setVerdict(null), 1200);
+      setTimeout(() => setVerdict(null), 1900); // web: celebration holds
       haptic.good();
       scoreRef.current += pts;
       onWordSpelled && onWordSpelled(word, pts, res.isNew);

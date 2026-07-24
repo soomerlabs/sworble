@@ -8,6 +8,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import Animated, {
   ZoomIn, FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withSequence, withTiming,
   withDelay, Easing, type EntryExitAnimationFunction,
+  Keyframe, FadeIn as ChipFadeIn,
 } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 import { PALETTE, CARD, tileColorFor, GAME_DARK, type GameSurface } from '@/game/palette';
@@ -148,6 +149,15 @@ function ConfettiBit({ c }: { c: (typeof CONFETTI)[number] }) {
   );
 }
 
+// FOSSIL stepChipIn, exact: opacity lands by 3%, scale 0.7 → 1.14@55% → 1
+// (the springify approximation read softer than the web — owner pass 2)
+const stepChipIn = new Keyframe({
+  0: { opacity: 0, transform: [{ scale: 0.7 }] },
+  3: { opacity: 1, transform: [{ scale: 0.72 }] },
+  55: { opacity: 1, transform: [{ scale: 1.14 }] },
+  100: { opacity: 1, transform: [{ scale: 1 }] },
+});
+
 function Chips({ word, red, fly }: { word: string; red?: boolean; fly?: boolean }) {
   const hs = Math.min(30, Math.floor(220 / Math.max(1, word.length)));
   return (
@@ -164,8 +174,8 @@ function Chips({ word, red, fly }: { word: string; red?: boolean; fly?: boolean 
               fly
                 ? // THE HIT (web): each chip pops the instant ITS ghost lands
                   // (flight 300ms + 40ms/letter stagger, minus the fade tail)
-                  ZoomIn.springify().mass(0.5).delay(i * 40 + 240)
-                : ZoomIn.springify().mass(0.5)
+                  stepChipIn.duration(240).delay(i * 40 + 240)
+                : stepChipIn.duration(240)
             }
             exiting={red ? chipFallAt(i) : undefined}>
             <View
@@ -303,7 +313,8 @@ export function StepperCard({ width, traceWord, verdict, sworb, countIn, gs = GA
       {/* the banner: live chain chips, a landed verdict, or the idle line */}
       {verdict ? (
         <Animated.View
-          entering={verdict.ok ? undefined : missShakeIn}
+          key={`${verdict.word}-${verdict.ok}-${verdict.pts ?? ''}`}
+          entering={verdict.ok ? ChipFadeIn.duration(180) : missShakeIn}
           style={styles.bannerRow}>
           <Chips word={verdict.word.toLowerCase()} red={!verdict.ok} fly={verdict.fly} />
           {verdict.ok && verdict.mult != null && (
