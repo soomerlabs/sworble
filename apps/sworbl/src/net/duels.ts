@@ -65,6 +65,38 @@ export async function fetchDuelGhost(
   }
 }
 
+// the shelf's crowns: best score + holder per board, plus YOUR best —
+// one query each way, batched over today's three seeds
+export async function fetchStormCrowns(
+  seeds: string[]
+): Promise<Record<string, { top: { name: string; score: number } | null; mine: number | null }> | null> {
+  const sb = supabase();
+  if (!sb) return null;
+  try {
+    const uid = (await sb.auth.getSession()).data.session?.user.id ?? null;
+    const [tops, mine] = await Promise.all([
+      sb.from('practice_standings').select('seed, name, score, rank').in('seed', seeds).eq('rank', 1),
+      uid
+        ? sb.from('practice_scores').select('seed, score').in('seed', seeds).eq('player_id', uid)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    if (tops.error) return null;
+    const out: Record<string, { top: { name: string; score: number } | null; mine: number | null }> = {};
+    for (const s of seeds) out[s] = { top: null, mine: null };
+    for (const r of tops.data ?? []) {
+      const cur = out[String(r.seed)];
+      // rank() ties: keep the higher name deterministically (first wins)
+      if (cur && !cur.top) cur.top = { name: String(r.name), score: Number(r.score) };
+    }
+    for (const r of (mine.data ?? []) as Array<{ seed: string; score: number }>) {
+      if (out[String(r.seed)]) out[String(r.seed)].mine = Number(r.score);
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
 // publish the caller's validated run on a seed; 'no-run' = play it first
 export async function postDuel(
   seed: string,

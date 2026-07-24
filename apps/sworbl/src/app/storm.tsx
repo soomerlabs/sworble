@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GameBoard } from '@/components/game/game-board';
 import { dealPractice } from '@/game/daily';
+import { stormName } from '@/game/storm-seeds';
 import { haptic } from '@/game/haptics';
 import { type BestWord } from '@/game/persist';
 import {
@@ -241,7 +242,7 @@ export default function StormScreen() {
         </View>
         <View style={styles.topMid}>
           <Text style={[styles.eyebrow, { color: theme.faint }]}>STORM BOARD</Text>
-          <Text style={[styles.seedName, { color: theme.ink }]}>{seed}</Text>
+          <Text style={[styles.seedName, { color: theme.ink }]}>{stormName(seed)}</Text>
         </View>
         <View style={styles.topRight}>
           <Text
@@ -283,7 +284,7 @@ export default function StormScreen() {
         {phase === 'ready' && (
           <View style={styles.cover}>
             <Text style={[styles.eyebrow, { color: theme.faint }]}>SHARED BOARD</Text>
-            <Text style={[styles.title, { color: theme.ink }]}>{seed}</Text>
+            <Text style={[styles.title, { color: theme.ink }]}>{stormName(seed)}</Text>
             <Text style={[styles.sub, { color: theme.sub }]}>
               {duel
                 ? `${duel.name.toLowerCase()} put up ${duel.score.toLocaleString()} on this board.\n${blitz ? '2:00, pure points' : '3 minutes'} — beat it.`

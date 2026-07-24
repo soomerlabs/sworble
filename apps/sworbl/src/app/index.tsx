@@ -13,7 +13,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { DuelsRail } from '@/components/home/duels-rail';
+import { StormShelf } from '@/components/home/storm-shelf';
 import { ParkFrost } from '@/components/home/park-frost';
 import { router, useFocusEffect } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -804,7 +804,7 @@ export default function HomeScreen() {
             devCount={__DEV__ && devSnap.diag}
           />
 
-          <DuelsRail theme={theme} refreshNonce={duelsNonce} />
+          <StormShelf theme={theme} refreshNonce={duelsNonce} />
         </ScrollView>
 
       </SafeAreaView>
