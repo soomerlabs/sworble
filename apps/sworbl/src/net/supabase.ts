@@ -2,6 +2,7 @@
 // isConfigured() false and every caller falls back to the local stubs: the
 // app NEVER depends on the network to function (local-first law).
 //   .env:  EXPO_PUBLIC_SUPABASE_URL=…  EXPO_PUBLIC_SUPABASE_ANON_KEY=…
+import { Platform } from 'react-native';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import engine from '@sworbl/engine';
 
@@ -12,14 +13,50 @@ export function isConfigured(): boolean {
   return URL.length > 0 && KEY.length > 0;
 }
 
-// auth session persists through the SAME storage the game uses (MMKV via
-// the engine's backing — sync under the hood, async facade for supabase)
+// THE KEYCHAIN (owner: identity must survive reinstall) — the auth session
+// lives in expo-secure-store on native: iOS Keychain entries persist
+// through app deletion, so a reinstall signs back into the SAME anonymous
+// user. Web (and any secure-store failure) falls back to the engine store.
+// One-time migration lifts a legacy MMKV session into the keychain.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const SecureStore = Platform.OS === 'web' ? null : require('expo-secure-store');
+
 const storageAdapter = {
-  getItem: async (k: string) => (engine.store.getJSON(k, null) as string | null),
+  getItem: async (k: string): Promise<string | null> => {
+    if (SecureStore) {
+      try {
+        const v = await SecureStore.getItemAsync(k);
+        if (v != null) return v;
+        // MIGRATION: a session saved by the pre-keychain builds lives in
+        // MMKV — lift it into the keychain once, then forget the old copy
+        const legacy = engine.store.getJSON(k, null) as string | null;
+        if (legacy != null) {
+          await SecureStore.setItemAsync(k, legacy);
+          engine.store.remove(k);
+          return legacy;
+        }
+        return null;
+      } catch {
+        // keychain unavailable (simulator quirks etc.) → engine store
+      }
+    }
+    return engine.store.getJSON(k, null) as string | null;
+  },
   setItem: async (k: string, v: string) => {
+    if (SecureStore) {
+      try {
+        await SecureStore.setItemAsync(k, v);
+        return;
+      } catch {}
+    }
     engine.store.setJSON(k, v);
   },
   removeItem: async (k: string) => {
+    if (SecureStore) {
+      try {
+        await SecureStore.deleteItemAsync(k);
+      } catch {}
+    }
     engine.store.remove(k);
   },
 };
