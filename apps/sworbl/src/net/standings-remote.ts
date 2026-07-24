@@ -113,6 +113,33 @@ export function enqueuePractice(seed: string, score: number, words: BestWord[]):
   void drainOutbox();
 }
 
+// per-seed standings (duels): top runs on one shared board. No view yet —
+// a straight join, keep-best rows are already one-per-player.
+export async function fetchPractice(
+  seed: string,
+  limit = 10
+): Promise<Array<{ name: string; score: number; isMe: boolean }> | null> {
+  const sb = supabase();
+  if (!sb) return null;
+  try {
+    const uid = (await sb.auth.getSession()).data.session?.user.id ?? null;
+    const { data, error } = await sb
+      .from('practice_scores')
+      .select('score, player_id, players(name)')
+      .eq('seed', seed)
+      .order('score', { ascending: false })
+      .limit(limit);
+    if (error || !data) return null;
+    return data.map((r) => ({
+      name: String((r.players as unknown as { name?: string })?.name ?? '???'),
+      score: Number(r.score),
+      isMe: uid != null && r.player_id === uid,
+    }));
+  } catch {
+    return null;
+  }
+}
+
 export function enqueueSubmission(
   dayKey: string,
   score: number,

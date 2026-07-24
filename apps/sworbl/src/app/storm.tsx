@@ -18,7 +18,7 @@ import {
 } from '@/game/round-clock';
 import { useTheme } from '@/game/theme';
 import { TUNING } from '@/game/tuning';
-import { enqueuePractice } from '@/net/standings-remote';
+import { enqueuePractice, fetchPractice } from '@/net/standings-remote';
 
 type Phase = 'ready' | 'countin' | 'live' | 'done';
 
@@ -41,6 +41,7 @@ export default function StormScreen() {
   const deal = useMemo(() => (seed ? dealPractice(seed) : null), [seed, dealNonce]);
 
   const [phase, setPhase] = useState<Phase>('ready');
+  const [board, setBoard] = useState<Array<{ name: string; score: number; isMe: boolean }> | null>(null);
   const [countStep, setCountStep] = useState<'3' | '2' | '1' | null>(null);
   const [score, setScore] = useState(0);
   const wordsRef = useRef<BestWord[]>([]);
@@ -90,6 +91,11 @@ export default function StormScreen() {
     submittedRef.current = true;
     haptic.soft();
     enqueuePractice(seed, score, wordsRef.current);
+    // give the outbox a beat to land, then pull the per-seed standings
+    const t = setTimeout(() => {
+      void fetchPractice(seed, 5).then((rows) => rows && setBoard(rows));
+    }, 900);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
@@ -104,6 +110,7 @@ export default function StormScreen() {
   const runAgain = () => {
     submittedRef.current = false;
     wordsRef.current = [];
+    setBoard(null);
     setScore(0);
     setRemaining(CT.baseSecs);
     clockRef.current = mkClock();
@@ -184,6 +191,21 @@ export default function StormScreen() {
             <Text style={[styles.sub, { color: theme.sub }]}>
               {wordsRef.current.length} words · score sent — best run counts
             </Text>
+            {board != null && board.length > 0 && (
+              <View style={styles.lbBox}>
+                {board.map((r, i) => (
+                  <View key={`${r.name}-${i}`} style={styles.lbRow}>
+                    <Text style={[styles.lbRank, { color: theme.faint }]}>{i + 1}</Text>
+                    <Text
+                      style={[styles.lbName, { color: r.isMe ? '#8971FF' : theme.ink }]}
+                      numberOfLines={1}>
+                      {r.name}
+                    </Text>
+                    <Text style={[styles.lbScore, { color: theme.sub }]}>{r.score}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
             <Pressable onPress={runAgain} style={[styles.cta, { backgroundColor: '#8971FF' }]}>
               <Text style={[styles.ctaText, { color: '#fff' }]}>RUN IT AGAIN</Text>
             </Pressable>
@@ -227,4 +249,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ctaText: { fontFamily: 'Fredoka_600SemiBold', fontSize: 15, letterSpacing: 0.8 },
+  lbBox: { alignSelf: 'stretch', gap: 6, paddingHorizontal: 8 },
+  lbRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  lbRank: { fontFamily: 'Fredoka_600SemiBold', fontSize: 12, width: 16, textAlign: 'right' },
+  lbName: { fontFamily: 'Fredoka_600SemiBold', fontSize: 14, flex: 1 },
+  lbScore: { fontFamily: 'Fredoka_600SemiBold', fontSize: 14, fontVariant: ['tabular-nums'] },
 });
