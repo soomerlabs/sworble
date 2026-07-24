@@ -358,6 +358,15 @@ export default function HomeScreen() {
     markOpen();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markOpen]);
+  // TAP TO PLAY (owner): the whole top section opens the game — the sheet
+  // docks and the idle phase arms its own count-in, same as a swipe
+  const openToPlay = useCallback(() => {
+    if (closingRef.current) return;
+    sMode.value = 3;
+    sheetY.value = withSpring(0, OPEN_SPRING);
+    markOpen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markOpen]);
 
   // the DETENT: a tick the instant the pull crosses the commit threshold —
   // the hand learns "release now and it opens" without reading anything.
@@ -755,34 +764,37 @@ export default function HomeScreen() {
             />
           )}
 
-          <HeroWord
-            theme={theme}
-            deal={deal}
-            played={played || solved}
-            solved={solved}
-            width={width}
-            onGuess={dayInProgress && !played && sworbPending && deal ? openForGuess : undefined}
-          />
+          {/* THE PLAY DOOR (owner): the entire top section taps into the
+              game; the hero's own guess door nests inside and wins its
+              taps. Status reads CENTERED under the word. */}
+          <Pressable
+            onPress={!played ? openToPlay : undefined}
+            disabled={played}
+            style={styles.playDoor}>
+            <HeroWord
+              theme={theme}
+              deal={deal}
+              played={played || solved}
+              solved={solved}
+              width={width}
+              onGuess={dayInProgress && !played && sworbPending && deal ? openForGuess : undefined}
+            />
 
-          {/* DAY IN PROGRESS (modes-spec): the living day — best round,
-              clue bank, and the guess door (6 a day, spend anytime) */}
-          {!played && dayInProgress && deal && (
-            <View style={styles.dayStatusRow}>
-              <Pressable onPress={() => router.push('/words')} hitSlop={8}>
+            {!played && dayInProgress && deal && (
+              <View style={styles.dayStatusRow}>
                 <Text style={[styles.dayStatusText, { color: theme.sub }]}>
                   best round {(day?.rounds.bestRound ?? 0).toLocaleString()} ·{' '}
                   {day?.found.length ?? 0} clue{(day?.found.length ?? 0) === 1 ? '' : 's'}
                   {day?.bestWords?.[0] ? ` · ${day.bestWords[0].word.toUpperCase()} +${day.bestWords[0].pts}` : ''}
-                  {'  ›'}
                 </Text>
-              </Pressable>
-              {sworbPending && (
-                <Text style={[styles.guessHint, { color: '#8971FF' }]}>
-                  tap the word to guess · {6 - (day?.sworb?.guessesUsed ?? 0)} left
-                </Text>
-              )}
-            </View>
-          )}
+                {sworbPending && (
+                  <Text style={[styles.guessHint, { color: '#8971FF' }]}>
+                    tap the word to guess · {6 - (day?.sworb?.guessesUsed ?? 0)} left
+                  </Text>
+                )}
+              </View>
+            )}
+          </Pressable>
 
 
           <StandingsSection
@@ -989,11 +1001,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#8971FF',
   },
-  dayStatusRow: {
-    flexDirection: 'row',
+  // the play-door wrapper carries the column's own 22px rhythm — wrapping
+  // hero + status in one Pressable must not collapse their spacing (owner:
+  // "increase the padding between the views on the top")
+  playDoor: {
+    alignSelf: 'stretch',
     alignItems: 'center',
-    gap: 12,
-    marginTop: -8,
+    gap: 22,
+  },
+  dayStatusRow: {
+    alignItems: 'center',
+    gap: 5,
   },
   dayStatusText: {
     fontFamily: 'Fredoka_600SemiBold',

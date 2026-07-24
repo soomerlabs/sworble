@@ -52,14 +52,15 @@ export function StandingsSection({ theme, entries, standings, hasYou, devCount }
           // (owner brought the rows back — the caption stays gone)
           <StandingsList theme={theme} rows={[]} youOutside={null} ghost={false} emptyRows={3} />
         ) : (
+          // PODIUM ONLY (owner: "get rid of the 4 5 6") — below the podium
+          // lives exactly one line: YOUR seat, and only when you're not
+          // already standing on it
           <StandingsList
             theme={theme}
-            rows={standings.list}
+            rows={[]}
             youOutside={standings.youOutside}
-            // the dashed seat only when you're truly ABSENT from the field —
-            // a podium #1 doesn't need a placeholder chair (owner)
             ghost={!hasYou}
-            emptyRows={entries.length <= 3 && entries.length > 0 ? 3 : 0}
+            emptyRows={0}
           />
         )}
         </Pressable>
