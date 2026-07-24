@@ -37,6 +37,9 @@ export function StandingsSection({ theme, entries, standings, hasYou, devCount }
         </Pressable>
       </View>
       <Arrive ready={entries.length > 0} style={styles.arriveWrap}>
+        {/* the field itself is a door too (owner) — any row opens the
+            full leaderboard; the chart button stays for discoverability */}
+        <Pressable onPress={() => router.push('/leaderboard')}>
         <FloatingPodium
           theme={theme}
           entries={standings.podium}
@@ -59,6 +62,7 @@ export function StandingsSection({ theme, entries, standings, hasYou, devCount }
             emptyRows={entries.length <= 3 && entries.length > 0 ? 3 : 0}
           />
         )}
+        </Pressable>
       </Arrive>
     </View>
   );

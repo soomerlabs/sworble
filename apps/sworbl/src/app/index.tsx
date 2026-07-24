@@ -275,6 +275,7 @@ export default function HomeScreen() {
   }, []);
   const closeSettled = useCallback(() => {
     closingRef.current = false;
+    haptic.soft(); // THE close beat — one soft tap as the sheet docks
     // the day re-read happens AFTER the park lands (owner butter audit:
     // refreshing at +300ms detonated home's biggest re-render — FlipTiles,
     // pager, standings, dock swap — in the MIDDLE of the park spring)
@@ -331,18 +332,6 @@ export default function HomeScreen() {
   // RATE-LIMITED (owner: slow-drag jank synced with haptics): a hover at the
   // boundary must never machine-gun the feedback generator
   const lastDetent = useRef(0);
-  const detentIn = useCallback(() => {
-    const now = Date.now();
-    if (now - lastDetent.current < 220) return;
-    lastDetent.current = now;
-    haptic.tick(3);
-  }, []);
-  const detentOut = useCallback(() => {
-    const now = Date.now();
-    if (now - lastDetent.current < 220) return;
-    lastDetent.current = now;
-    haptic.tick(1);
-  }, []);
 
   // a CONSUMED day is closed for business (owner): the dock is just the
   // countdown — the swipe doesn't react, the sheet never opens again
@@ -530,7 +519,6 @@ export default function HomeScreen() {
   // COMMITS (owner: an aborted swipe-down must not restart the count-in —
   // the round simply never stopped). A mid-drag glimpse can't be traced, so
   // fairness holds.
-  const parkBeat = useCallback(() => haptic.soft(), []);
   const commitClose = useCallback(() => {
     sheetRef.current?.pauseForClose();
     closingRef.current = true;
@@ -548,11 +536,9 @@ export default function HomeScreen() {
           'worklet';
           sheetY.value = Math.min(closedY, Math.max(0, e.translationY));
           const past = e.translationY > height * 0.25 ? 1 : 0;
-          if (past !== sDetent.value) {
-            sDetent.value = past;
-            if (past) runOnJS(detentIn)();
-            else runOnJS(detentOut)();
-          }
+          // (close-detent ticks owner-removed — the in/out chatter WAS the
+          // weird close haptics; the park beat is the close's only voice)
+          sDetent.value = past;
         })
         .onEnd((e) => {
           'worklet';
@@ -561,17 +547,16 @@ export default function HomeScreen() {
             // commit: deactivate NOW (blocker #1 — never let the arm effect
             // re-fire while the sheet slides away)
             runOnJS(commitClose)();
-            sheetY.value = withSpring(closedY, { ...PARK_SPRING, velocity: e.velocityY }, (fin) => {
+            sheetY.value = withSpring(closedY, { ...PARK_SPRING, velocity: e.velocityY }, () => {
               'worklet';
-              if (fin) runOnJS(parkBeat)(); // the soft "docked at the peek" tap
-              runOnJS(closeSettled)();
+              runOnJS(closeSettled)(); // carries the single park beat
             });
           } else {
             // abort: the round never paused — the sheet just springs back
             sheetY.value = withSpring(0, { ...OPEN_SPRING, velocity: e.velocityY });
           }
         }),
-    [height, closedY, sheetOpen, commitClose, detentIn, detentOut]
+    [height, closedY, sheetOpen, commitClose, closeSettled]
   );
 
   // PERF: transform ONLY — animating border radius on a clipped full-screen
@@ -636,7 +621,7 @@ export default function HomeScreen() {
   // first 40px of travel and unmounts entirely past 80px.
   const [parkBlurLive, setParkBlurLive] = useState(true);
   useAnimatedReaction(
-    () => sheetY.value > closedY * 0.2,
+    () => sheetY.value > closedY - 120,
     (near, prev) => {
       if (near !== prev) runOnJS(setParkBlurLive)(near);
     },
@@ -647,9 +632,12 @@ export default function HomeScreen() {
     // gameboard — that was pretty good"): the frost rides the whole pull,
     // melting away as the board fades in beneath — full at park, gone by
     // ~3/4 of the travel
+    // fades OUT within the first ~100px of travel: live blur must never
+    // ride the moving sheet (owner: "launching is jenky af" — the
+    // full-travel dissolve had smuggled the banned tax back in)
     opacity:
       bootWindow(sBoot.value, 0.45, 0.55) *
-      interpolate(sheetY.value, [closedY * 0.25, closedY - 20], [0, 1], Extrapolation.CLAMP),
+      interpolate(sheetY.value, [closedY - 96, closedY - 12], [0, 1], Extrapolation.CLAMP),
   }), [closedY]);
   // (the pending beacon strips were owner-removed — "weird spaced out
   // ovals" once the invisible park exposed them; the free-floating aurora

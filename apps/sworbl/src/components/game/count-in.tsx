@@ -5,7 +5,6 @@
 // blocks in full view, then the radial wake at GO.
 import { useEffect } from 'react';
 import engine from '@sworbl/engine';
-import { haptic } from '@/game/haptics';
 import { getCountInStall } from '@/game/dev-flags';
 import { countInTick } from '@/game/count-in-tick';
 
@@ -44,7 +43,6 @@ export function CountIn({ onStep, onRelease, onUnmount }: Props) {
       if (t.step && t.step !== lastStep) {
         lastStep = t.step;
         onStep(t.step);
-        haptic.soft(); // each beat TAPS; GO's thump is the board wake
       }
     }, 40);
     return () => clearInterval(h);
