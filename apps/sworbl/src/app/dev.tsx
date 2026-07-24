@@ -17,6 +17,7 @@ import { ScreenHeader } from '@/components/screen-header';
 import { useTheme, ACCENT, CLUE_GREEN } from '@/game/theme';
 import { PALETTE } from '@/game/palette';
 import { dealDaily, getDevDay, setDevDay, authoredDays } from '@/game/daily';
+import { fetchRemoteEntry, loadRemoteEntry } from '@/net/dailies-remote';
 import { loadDay, resetDay, getResetNonce, bumpResetNonce } from '@/game/persist';
 import { isFullDictionary, dict } from '@/game/dict';
 import { getLbFieldMode, setLbFieldMode, type LbFieldMode } from '@/game/standings';
@@ -286,6 +287,31 @@ export default function DevScreen() {
             style={[styles.actionRow, { backgroundColor: theme.card }]}>
             <Text style={[styles.actionText, { color: theme.ink }]}>storm board (seed run)</Text>
             <Text style={[styles.actionText, { color: theme.faint }]}>first-storm ›</Text>
+          </Pressable>
+          <Pressable
+            onPress={async () => {
+              // THE PROOF LOOP (owner): burn local content → fetch the
+              // server book → show the receipt → cache is warm again
+              if (!deal) return;
+              const dk = deal.dayKey;
+              for (const k of engine.store.keys()) {
+                if (k.startsWith('sworbl_rn_dayspec_')) engine.store.remove(k);
+              }
+              resetDay(dk);
+              refresh('local words nuked — asking the server…');
+              await fetchRemoteEntry(dk);
+              const e = loadRemoteEntry(dk) as {
+                sworb?: string; archetype?: string; themeWords?: string[]; hint?: string;
+              } | null;
+              refresh(
+                e
+                  ? `server book: ${e.sworb} · ${e.archetype} · ${e.themeWords?.length ?? 0} words${e.hint ? ' · hint ✓' : ''} — cached`
+                  : 'no server row — bundled fallback in play'
+              );
+            }}
+            style={[styles.actionRow, { backgroundColor: theme.card }]}>
+            <Text style={[styles.actionText, { color: theme.ink }]}>nuke words → refetch → prove</Text>
+            <Text style={[styles.actionText, { color: '#F5B84A' }]}>server test</Text>
           </Pressable>
           <Pressable
             onPress={() => {

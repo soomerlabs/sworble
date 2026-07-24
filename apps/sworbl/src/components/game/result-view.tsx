@@ -8,11 +8,13 @@ import { PALETTE, INK, tileColorFor } from '@/game/palette';
 
 // content values → player-facing labels ("straight-category" is internal)
 export const ARCHETYPE_LABEL: Record<string, string> = {
-  'straight-category': 'category',
+  straight: 'category', // the owner book's key (2026-07-24 reseed)
+  'straight-category': 'category', // legacy key, same meaning
   connector: 'connector',
   sibling: 'sibling',
   lateral: 'lateral',
   wordplay: 'wordplay',
+  association: 'association',
 };
 
 // each archetype wears ONE palette hue, with a reason (owner: "a color
@@ -22,12 +24,15 @@ export const ARCHETYPE_LABEL: Record<string, string> = {
 //   sibling   → pink (3): kinship — warm blood, same family
 //   lateral   → violet (0): lateral thinking — imagination's color
 //   wordplay  → amber (4): the jester's gold — wit and puns
+//   association → coral (5): the warm web of things that belong together
 export const ARCHETYPE_PAL: Record<string, number> = {
+  straight: 2,
   'straight-category': 2,
   connector: 1,
   sibling: 3,
   lateral: 0,
   wordplay: 4,
+  association: 5,
 };
 
 interface Props {

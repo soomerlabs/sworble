@@ -13,7 +13,7 @@ import { useTheme } from '@/game/theme';
 
 const BOOK = [
   {
-    key: 'straight-category', name: 'category',
+    key: 'straight', name: 'category',
     rule: 'every clue is a member of the word’s family.',
     example: 'FOREST ← pine, moss, birch, canopy',
   },
@@ -28,14 +28,19 @@ const BOOK = [
     example: 'SILVER ← gold, copper, bronze, zinc',
   },
   {
+    key: 'association', name: 'association',
+    rule: 'everything belongs to the word’s world.',
+    example: 'CLOCK ← face, alarm, chime, cuckoo',
+  },
+  {
     key: 'lateral', name: 'lateral',
-    rule: 'the clues orbit the word — its parts, its props, its world.',
-    example: 'CLOCK ← face, hands, alarm, chime',
+    rule: 'the link is a sideways leap — think about what the clues can become.',
+    example: 'BROKEN ← news, heart, mirror, promise',
   },
   {
     key: 'wordplay', name: 'wordplay',
-    rule: 'the clues share a sound or shape with the word — listen, don’t think.',
-    example: 'STONE ← bone, tone, throne, ozone',
+    rule: 'something is hiding inside every word — look, don’t think.',
+    example: 'SAFARI ← grAPE, prOWL, goATee',
   },
 ];
 
@@ -48,7 +53,7 @@ export default function ArchetypesScreen() {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <Text style={[styles.eyebrow, { color: theme.faint }]}>ARCHETYPES</Text>
           <Text style={[styles.title, { color: theme.ink }]}>
-            five ways the clues point at the word
+            six ways the clues point at the word
           </Text>
           <Text style={[styles.lede, { color: theme.sub }]}>
             every day wears one — it&rsquo;s on the home screen before you play.

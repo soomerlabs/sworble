@@ -119,6 +119,7 @@ export default function GuessScreen() {
           {deal && ctx && (
             <GuessStage
               sworb={deal.sworb}
+              hint={deal.hint}
               archetype={deal.archetype}
               rounds={ctx.rounds}
               restore={ctx.restore}

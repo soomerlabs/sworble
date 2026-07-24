@@ -161,6 +161,7 @@
       themeWords: themeWords,
       archetype: typeof e.archetype === 'string' && e.archetype ? e.archetype : null,
       definition: typeof e.definition === 'string' ? e.definition : '',
+      hint: typeof e.hint === 'string' ? e.hint : '',
     };
   }
 

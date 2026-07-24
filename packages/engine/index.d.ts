@@ -32,7 +32,9 @@ export type GuessColor = 'green' | 'yellow' | 'gray';
 export interface DailyEntry {
   sworb: string;
   themeWords: string[];
-  definition?: string;
+  archetype: string | null;
+  definition: string;
+  hint: string; // the day's riddle (owner book 2026-07-24)
   [k: string]: unknown;
 }
 

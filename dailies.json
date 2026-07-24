@@ -1,32 +1,29 @@
 {
   "2026-07-23": {
-    "sworb": "fire",
     "archetype": "connector",
+    "sworb": "fire",
     "themeWords": [
       "camp",
       "work",
       "place",
       "side",
       "wood",
-      "storm",
       "proof",
-      "fly",
-      "arm",
       "drill",
       "truck",
       "house",
-      "ball",
-      "pit",
-      "light"
+      "light",
+      "wall",
+      "cracker"
     ],
-    "definition": "flame, heat and light \u2014 and every clue snaps onto it"
+    "hint": "every word on this board is missing the same burning partner",
+    "definition": "the hot glow and flames of something burning"
   },
   "2026-07-24": {
+    "archetype": "straight",
     "sworb": "forest",
-    "archetype": "straight-category",
     "themeWords": [
       "pine",
-      "oak",
       "moss",
       "fern",
       "cedar",
@@ -35,39 +32,39 @@
       "canopy",
       "grove",
       "bark",
-      "roots",
+      "root",
       "maple",
       "willow",
       "aspen",
       "timber"
     ],
+    "hint": "you can't see it for the trees",
     "definition": "a large area covered chiefly with trees and undergrowth"
   },
   "2026-07-25": {
-    "sworb": "stone",
     "archetype": "wordplay",
+    "sworb": "safari",
     "themeWords": [
-      "bone",
-      "tone",
-      "zone",
-      "cone",
-      "drone",
-      "phone",
-      "throne",
-      "clone",
-      "prone",
-      "alone",
-      "ozone",
-      "scone",
-      "shone",
-      "crone",
-      "atone"
+      "grape",
+      "clasp",
+      "wheel",
+      "prowl",
+      "carpet",
+      "pantry",
+      "goatee",
+      "berate",
+      "aboard",
+      "shared",
+      "coward",
+      "pigment",
+      "scatter"
     ],
-    "definition": "hard mineral matter \u2014 and every clue rings with its ending"
+    "hint": "a creature hides inside every word \u2014 where would you go to spot them all?",
+    "definition": "an expedition to observe wild animals in their habitat"
   },
   "2026-07-26": {
-    "sworb": "silver",
     "archetype": "sibling",
+    "sworb": "silver",
     "themeWords": [
       "gold",
       "copper",
@@ -75,65 +72,62 @@
       "bronze",
       "nickel",
       "zinc",
-      "tin",
       "lead",
       "steel",
       "cobalt",
       "chrome",
       "pewter",
       "brass",
-      "mercury",
-      "platinum"
+      "mercury"
     ],
-    "definition": "a precious grey-white metal \u2014 one of the family the clues belong to"
+    "hint": "one more piece belongs in this family \u2014 second place knows it well",
+    "definition": "a precious grey-white metal used in coins and jewelry"
   },
   "2026-07-27": {
+    "archetype": "association",
     "sworb": "clock",
-    "archetype": "lateral",
     "themeWords": [
       "face",
-      "hands",
+      "hand",
       "tick",
-      "tock",
+      "quartz",
       "alarm",
-      "tower",
       "hour",
       "minute",
       "second",
       "chime",
-      "gears",
+      "gear",
       "spring",
       "dial",
       "cuckoo",
       "watch"
     ],
+    "hint": "everything here belongs to the machine that never stops moving",
     "definition": "the machine that carves the day into hours and minutes"
   },
   "2026-07-28": {
-    "sworb": "rain",
     "archetype": "connector",
+    "sworb": "rain",
     "themeWords": [
-      "bow",
       "coat",
       "drop",
       "fall",
-      "storm",
       "check",
       "water",
       "gauge",
-      "proof",
-      "forest",
       "dance",
       "maker",
       "spout",
       "cloud",
-      "shower"
+      "shower",
+      "barrel"
     ],
-    "definition": "water falling from the sky \u2014 and every clue snaps onto it"
+    "hint": "these words have nothing in common until the sky opens up",
+    "definition": "water falling in drops from the clouds"
   },
   "2026-07-29": {
+    "archetype": "straight",
     "sworb": "circus",
-    "archetype": "straight-category",
     "themeWords": [
       "clown",
       "tent",
@@ -141,7 +135,7 @@
       "trapeze",
       "juggle",
       "acrobat",
-      "stilts",
+      "stilt",
       "cannon",
       "tamer",
       "parade",
@@ -151,33 +145,32 @@
       "monkey",
       "ticket"
     ],
-    "definition": "the traveling show of acrobats, animals and clowns"
+    "hint": "step right up \u2014 every word performs under the same striped roof",
+    "definition": "the traveling show of acrobats, animals, and clowns"
   },
   "2026-07-30": {
-    "sworb": "bright",
     "archetype": "wordplay",
+    "sworb": "count",
     "themeWords": [
-      "light",
-      "night",
-      "sight",
-      "might",
-      "fight",
-      "right",
-      "tight",
-      "flight",
-      "fright",
+      "money",
+      "stone",
+      "honey",
+      "often",
+      "listen",
+      "kitten",
+      "rotten",
+      "fasten",
+      "canine",
+      "weight",
       "height",
-      "knight",
-      "slight",
-      "plight",
-      "blight",
-      "alight"
+      "network"
     ],
-    "definition": "full of light \u2014 and every clue rings with its ending"
+    "hint": "each of these words has quietly swallowed something you learned before the alphabet",
+    "definition": "to name numbers in order; to add up a total"
   },
   "2026-07-31": {
-    "sworb": "cello",
     "archetype": "sibling",
+    "sworb": "cello",
     "themeWords": [
       "violin",
       "viola",
@@ -188,40 +181,38 @@
       "lute",
       "fiddle",
       "ukulele",
-      "mandolin",
       "sitar",
       "lyre",
       "zither",
-      "dulcimer",
       "piano"
     ],
+    "hint": "the orchestra is missing one deep voice",
     "definition": "the deep-voiced string instrument held between the knees"
   },
   "2026-08-01": {
+    "archetype": "association",
     "sworb": "pirate",
-    "archetype": "lateral",
     "themeWords": [
       "parrot",
       "plank",
       "chest",
-      "map",
       "hook",
       "patch",
-      "sails",
-      "rum",
-      "cannon",
       "island",
-      "treasure",
       "anchor",
       "beard",
       "flag",
-      "gold"
+      "sail",
+      "cutlass",
+      "compass",
+      "galleon"
     ],
-    "definition": "a sea-robber of the high seas"
+    "hint": "everything here belongs to the scourge of the high seas",
+    "definition": "a robber who attacks ships at sea"
   },
   "2026-08-02": {
-    "sworb": "book",
     "archetype": "connector",
+    "sworb": "book",
     "themeWords": [
       "worm",
       "mark",
@@ -232,18 +223,18 @@
       "club",
       "cook",
       "note",
-      "hand",
       "year",
       "text",
       "scrap",
       "guide",
       "phone"
     ],
-    "definition": "pages bound together \u2014 and every clue snaps onto it"
+    "hint": "these strangers all attach to the same bound companion",
+    "definition": "a set of printed pages bound together for reading"
   },
   "2026-08-03": {
+    "archetype": "straight",
     "sworb": "desert",
-    "archetype": "straight-category",
     "themeWords": [
       "cactus",
       "dune",
@@ -251,9 +242,7 @@
       "oasis",
       "mirage",
       "sand",
-      "scorpion",
       "lizard",
-      "sun",
       "drought",
       "vulture",
       "sage",
@@ -261,33 +250,32 @@
       "canyon",
       "gecko"
     ],
+    "hint": "bring a canteen \u2014 today's board is bone dry",
     "definition": "a dry, barren expanse of sand and sun"
   },
   "2026-08-04": {
-    "sworb": "snake",
     "archetype": "wordplay",
+    "sworb": "anatomy",
     "themeWords": [
-      "bake",
-      "cake",
-      "lake",
-      "make",
-      "rake",
-      "take",
-      "wake",
-      "fake",
-      "quake",
-      "brake",
-      "flake",
-      "shake",
-      "stake",
-      "awake",
-      "drake"
+      "swarm",
+      "learn",
+      "tribe",
+      "legend",
+      "tiptoe",
+      "shine",
+      "eclipse",
+      "whip",
+      "kneel",
+      "machine",
+      "gutter",
+      "lunge"
     ],
-    "definition": "the legless slitherer \u2014 and every clue rings with its ending"
+    "hint": "someone left spare parts inside every word \u2014 a specialist could name them all",
+    "definition": "the structure of the body and its parts"
   },
   "2026-08-05": {
-    "sworb": "tulip",
     "archetype": "sibling",
+    "sworb": "tulip",
     "themeWords": [
       "rose",
       "daisy",
@@ -302,58 +290,55 @@
       "dahlia",
       "aster",
       "zinnia",
-      "crocus",
-      "marigold"
+      "crocus"
     ],
-    "definition": "the cupped spring bloom the dutch went mad for"
+    "hint": "one more bloom belongs in this bouquet \u2014 the dutch went mad for it",
+    "definition": "a cupped spring flower grown from a bulb"
   },
   "2026-08-06": {
-    "sworb": "winter",
     "archetype": "lateral",
+    "sworb": "broken",
     "themeWords": [
-      "frost",
-      "sled",
-      "mitten",
-      "cocoa",
-      "icicle",
-      "hearth",
-      "scarf",
-      "shovel",
-      "blizzard",
-      "skates",
-      "snowman",
-      "chill",
-      "flannel",
-      "eggnog",
-      "solstice"
+      "news",
+      "bone",
+      "home",
+      "heart",
+      "chain",
+      "glass",
+      "habit",
+      "record",
+      "mirror",
+      "spirit",
+      "window",
+      "promise",
+      "silence"
     ],
-    "definition": "the cold season of short days and long nights"
+    "hint": "what everything on this board can end up being \u2014 handle with care",
+    "definition": "shattered, cracked, or no longer working"
   },
   "2026-08-07": {
-    "sworb": "sun",
     "archetype": "connector",
+    "sworb": "over",
     "themeWords": [
-      "flower",
-      "rise",
-      "set",
-      "shine",
-      "light",
-      "burn",
-      "screen",
-      "glasses",
-      "spot",
-      "beam",
-      "dial",
-      "roof",
-      "dress",
-      "stroke",
-      "tan"
+      "time",
+      "flow",
+      "look",
+      "haul",
+      "cast",
+      "load",
+      "pass",
+      "ride",
+      "turn",
+      "grown",
+      "night",
+      "sight"
     ],
-    "definition": "our star \u2014 and every clue snaps onto it"
+    "hint": "every word is missing the same head start",
+    "definition": "above, across, or more than enough"
   },
   "2026-08-08": {
+    "archetype": "straight",
     "sworb": "bakery",
-    "archetype": "straight-category",
     "themeWords": [
       "bread",
       "scone",
@@ -363,46 +348,41 @@
       "loaf",
       "roll",
       "tart",
-      "pie",
       "eclair",
-      "baguette",
       "yeast",
       "oven",
       "icing",
       "crumb"
     ],
-    "definition": "where the ovens never sleep and the shelves smell sweet"
+    "hint": "where the ovens never sleep and the shelves smell sweet",
+    "definition": "a shop where bread and pastries are made and sold"
   },
   "2026-08-09": {
-    "sworb": "star",
     "archetype": "wordplay",
+    "sworb": "palette",
     "themeWords": [
-      "car",
-      "bar",
-      "far",
-      "jar",
-      "tar",
-      "scar",
-      "radar",
-      "cigar",
-      "guitar",
-      "caviar",
-      "avatar",
-      "jaguar",
-      "sonar",
-      "cedar",
-      "altar"
+      "sacred",
+      "instant",
+      "stealth",
+      "sublime",
+      "plumber",
+      "trust",
+      "chamber",
+      "aquatic",
+      "arose",
+      "jaded",
+      "brownie",
+      "bronzed"
     ],
-    "definition": "a burning point of night light \u2014 and every clue rings with its ending"
+    "hint": "every word here is secretly wearing a different shade",
+    "definition": "the board an artist mixes colors on"
   },
   "2026-08-10": {
-    "sworb": "salmon",
     "archetype": "sibling",
+    "sworb": "salmon",
     "themeWords": [
       "trout",
       "tuna",
-      "bass",
-      "cod",
       "perch",
       "pike",
       "carp",
@@ -410,55 +390,53 @@
       "catfish",
       "halibut",
       "sardine",
-      "mackerel",
-      "eel",
       "snapper",
-      "flounder"
+      "minnow",
+      "guppy",
+      "tilapia"
     ],
-    "definition": "the upstream swimmer with the pink flesh"
+    "hint": "one more swimmer belongs in this school \u2014 it heads upstream",
+    "definition": "a large fish with pink flesh that swims upriver to spawn"
   },
   "2026-08-11": {
+    "archetype": "association",
     "sworb": "wizard",
-    "archetype": "lateral",
     "themeWords": [
       "wand",
       "spell",
       "robe",
-      "hat",
       "potion",
       "scroll",
       "tower",
-      "beard",
       "staff",
       "magic",
       "charm",
       "brew",
-      "owl",
       "cloak",
-      "crystal"
+      "crystal",
+      "amulet"
     ],
-    "definition": "the robed keeper of spells and secrets"
+    "hint": "everything here belongs to the robed keeper of spells",
+    "definition": "a person with magical powers in stories and legend"
   },
   "2026-08-12": {
-    "sworb": "snow",
     "archetype": "connector",
+    "sworb": "snow",
     "themeWords": [
       "ball",
-      "man",
       "flake",
-      "storm",
       "plow",
       "shoe",
-      "fall",
       "drift",
       "bank",
-      "cap",
       "board",
       "globe",
       "angel",
-      "cone",
-      "day"
+      "mobile",
+      "melt",
+      "bird"
     ],
-    "definition": "frozen white from the sky \u2014 and every clue snaps onto it"
+    "hint": "twelve strangers waiting for the same cold companion",
+    "definition": "soft white frozen flakes that fall from winter clouds"
   }
 }

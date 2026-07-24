@@ -14,6 +14,7 @@ export interface DailyDeal {
   dayKey: string;
   sworb: string;
   definition: string;
+  hint: string; // the day's riddle (owner book) — pre-guess flavor
   archetype: string | null; // today's twist — REVEALED ONLY POST-ROUND (owner:
   // pre-round diagnosis IS the game; the tag teaches the vocabulary after)
   clues: string[]; // the 6 realized clue words actually stamped on this board
@@ -134,6 +135,7 @@ export function dealDaily(now = new Date(), opts: DealOpts = {}): DailyDeal | nu
     dayKey,
     sworb: entry.sworb,
     definition: entry.definition || '',
+    hint: entry.hint || '',
     archetype: typeof entry.archetype === 'string' ? entry.archetype : null,
     clues: cand.realized,
     poolExtras: entry.themeWords.filter((w: string) => !cand.realized.includes(w)),
@@ -178,6 +180,7 @@ export function dealPractice(seed: string): DailyDeal {
     dayKey: 'storm:' + seed, // namespaced — never collides with a real day
     sworb: '',
     definition: '',
+    hint: '',
     archetype: null,
     clues: [],
     poolExtras: [],

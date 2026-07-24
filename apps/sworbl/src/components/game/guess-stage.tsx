@@ -28,6 +28,7 @@ export interface FinaleRestore {
 
 interface Props {
   sworb: string;
+  hint?: string; // the day's riddle (owner book) — shown with the intel
   archetype?: string | null; // the day's twist — CONTRACT intel, shown
   // before the guess (owner ruling: the rule is knowable, only the
   // answer is hidden — bravery needs a legible bet)
@@ -46,7 +47,7 @@ interface Props {
 }
 
 export function GuessStage({
-  sworb, archetype, rounds, restore, found, clues, clueTotal, nudged, size, gap, gs = GAME_DARK, onProgress, onMiss, onDone,
+  sworb, hint, archetype, rounds, restore, found, clues, clueTotal, nudged, size, gap, gs = GAME_DARK, onProgress, onMiss, onDone,
 }: Props) {
   const twist = archetype ? ARCHETYPE_LABEL[archetype] : null;
   const len = sworb.length;
@@ -153,6 +154,9 @@ export function GuessStage({
           <Text style={styles.twistText}>archetype: {twist}</Text>
         </View>
       )}
+      {!!hint && (
+        <Text style={[styles.hintLine, { color: gs.sub }]}>&ldquo;{hint}&rdquo;</Text>
+      )}
     </Animated.View>
   );
 }
@@ -167,6 +171,15 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     backgroundColor: 'rgba(137,113,255,0.14)',
     marginTop: 12,
+  },
+  hintLine: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 12,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    lineHeight: 17,
+    marginTop: 8,
+    paddingHorizontal: 24,
   },
   twistText: {
     fontFamily: 'Fredoka_600SemiBold',
