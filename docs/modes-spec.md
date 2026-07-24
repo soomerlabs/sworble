@@ -148,3 +148,16 @@ confusion points become the curriculum.
   showdown; TAKING IT CLAIMS IT (atomic, 1v1); the taker's validated
   keep-best resolves it server-side; decided = OFF THE RAIL (history
   later). Points for now: +10 win, +2 played (players.showdown_points).
+
+## INLINE HOME GUESS (owner 2026-07-23, supersedes the /guess screen as
+## the end state — "keyboard swaps everything below the hints on home,
+## type right into the blocks"; the screen stays as the deep-link path)
+- Tap the hero → the dashed hero blocks become LIVE guess slots in
+  place (Wordle colors persist on them all day).
+- Everything from the standings strip DOWN swap-flips to the keyboard
+  in a gameboard-style card ("nail the transitions from the leaderboard
+  down flipping to the keyboard").
+- A CLOSE button appears top-right of the sworb-of-the-day section —
+  the exit is visible, never modal.
+- Build gate: the transition must pass the owner's eye — this rides the
+  universal-play-door session, same surfaces, same care.
