@@ -87,7 +87,8 @@ export default function RootLayout() {
           screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: scheme === 'light' ? '#EDEFF7' : '#101014' },
-            animation: 'fade',
+            // NATIVE PUSH (owner: "i want that normal push") — the fade was
+            // set explicitly; default iOS slide matches the back-swipe
           }}
         />
         <ToastHost />
