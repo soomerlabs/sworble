@@ -29,6 +29,7 @@ export function StormShelf({ theme, refreshNonce }: { theme: Theme; refreshNonce
   return (
     <View style={styles.wrap}>
       <Text style={[styles.title, { color: theme.ink }]}>storms</Text>
+      <Text style={[styles.subtitle, { color: theme.faint }]}>pick your weather</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -81,13 +82,19 @@ export function StormShelf({ theme, refreshNonce }: { theme: Theme; refreshNonce
 const styles = StyleSheet.create({
   wrap: {
     alignSelf: 'stretch',
-    gap: 12,
+    gap: 4,
   },
   // rhymes with the masthead — the two section names wear the same type
   title: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 16,
     letterSpacing: 0.3,
+  },
+  subtitle: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.4,
+    marginBottom: 8,
   },
   rowContent: {
     gap: 10,
