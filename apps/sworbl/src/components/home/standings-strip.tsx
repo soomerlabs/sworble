@@ -9,17 +9,15 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 
 import { PALETTE, tileColorFor } from '@/game/palette';
 import { ACCENT, type Theme } from '@/game/theme';
-import { type LbEntry } from '@/game/standings';
 
 interface Props {
   theme: Theme;
-  entries: LbEntry[]; // ranked field (remote or stub)
-  you: { rank: number; score: number } | null; // your seat when known
-  youOnPodium: boolean;
+  // the HEALED rows (home's name-match splice) — top three seats
+  podium: Array<{ name: string; score: number; you: boolean }>;
+  you: { rank: number; score: number } | null; // your seat when OFF the podium
 }
 
-export function StandingsStrip({ theme, entries, you, youOnPodium }: Props) {
-  const podium = entries.slice(0, 3);
+export function StandingsStrip({ theme, podium, you }: Props) {
   return (
     <Pressable
       onPress={() => router.push('/leaderboard')}
@@ -46,7 +44,7 @@ export function StandingsStrip({ theme, entries, you, youOnPodium }: Props) {
               </View>
               <View style={styles.cellText}>
                 <Text
-                  style={[styles.name, { color: e.isMe ? ACCENT : theme.ink }]}
+                  style={[styles.name, { color: e.you ? ACCENT : theme.ink }]}
                   numberOfLines={1}>
                   {e.name.toLowerCase()}
                 </Text>
@@ -58,7 +56,7 @@ export function StandingsStrip({ theme, entries, you, youOnPodium }: Props) {
           );
         })}
       </View>
-      {you && !youOnPodium && (
+      {you && (
         <View style={[styles.youRow, { borderTopColor: theme.hairline }]}>
           <Text style={[styles.youText, { color: ACCENT }]}>
             you · #{you.rank} · {you.score.toLocaleString()}

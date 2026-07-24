@@ -37,7 +37,6 @@ import Animated, {
 import { Floaters } from '@/components/home/floaters';
 import { CountdownDock } from '@/components/home/countdown-dock';
 import { HeroWord, twistLabel } from '@/components/home/hero-word';
-import { StandingsSection } from '@/components/home/standings-section';
 import { StormCrest } from '@/components/home/sheet-weather';
 import {
   OPEN_SPRING, PARK_SPRING, DOCK_H, ASSIST_RISE, BOOT_MS, bootWindow,
@@ -189,11 +188,8 @@ export default function HomeScreen() {
       rows.splice(you.rank - 1, 0, { rank: you.rank, name: getPlayerName(), score: you.score, you: true });
       rows.forEach((r, i) => (r.rank = i + 1));
     }
-    const podium: LbEntry[] = rows.slice(0, 3).map((r) => ({ name: r.name, score: r.score, solved: true }));
     const youRow = rows.find((r) => r.you) ?? null;
-    const list = rows.slice(3, 10);
-    const youOutside = youRow && youRow.rank > 10 ? youRow : null;
-    return { podium, list, youOutside };
+    return { podium: rows.slice(0, 3), youRow };
   }, [entries, you]);
 
   // ---- UI RESTORATION (owner): killed-in-background with the board open →
@@ -802,11 +798,12 @@ export default function HomeScreen() {
               floating podium lives on the leaderboard page */}
           <StandingsStrip
             theme={theme}
-            entries={entries}
-            you={you ? { rank: you.rank, score: you.score } : null}
-            youOnPodium={entries
-              .slice(0, 3)
-              .some((e) => e.isMe || e.name === getPlayerName())}
+            podium={standings.podium}
+            you={
+              standings.youRow && standings.youRow.rank > 3
+                ? { rank: standings.youRow.rank, score: standings.youRow.score }
+                : null
+            }
           />
 
           <StormShelf theme={theme} refreshNonce={duelsNonce} />
