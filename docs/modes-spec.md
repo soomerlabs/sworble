@@ -215,3 +215,24 @@ FREE TIER + ADS:
 BUILD ORDER: wallet (rename showdown_points → points, earn hooks) →
 streak repair → archive → stakes → cosmetics → metering/ads last (needs
 usage data + App Store setup).
+
+## THE HOCKEY-STICK TRACE (owner 2026-07-24 — "PL across, AY going up,
+## the gameboard already coming up... fluid")
+ONE gesture: tracing P·L·A·Y IS the swipe.
+- GEOMETRY: P, L sit horizontal at the dock; A stacks above L, Y above
+  A — the path runs right, then UP (the backwards-L / hockey stick).
+- THE CORNER HANDOFF: the moment the trace turns up past L, the finger's
+  Y starts driving sheetY directly — the sheet rises WITH the vertical
+  leg, tiles A and Y light as the finger passes their zones on the way
+  up. Trace ticks keep the 4-beat ascending haptic grammar.
+- COMMIT: reaching Y (or passing the existing commit threshold mid-leg)
+  = open; release before = spring back + disarm (the existing abort
+  behavior, one system).
+- FALLBACKS: the plain swipe-up must still work for muscle memory; the
+  armed chevron state dies (there IS no separate armed state — the arm
+  is the corner).
+- BUILD HOME: this is the OPENING move of the universal-play-door
+  session — the dock gesture is being rebuilt context-aware there
+  anyway; the hockey stick is its input layer. It must not be bolted
+  onto the current dock (the zombie-arm/slow-drag fixes live in the
+  current geometry's assumptions).
