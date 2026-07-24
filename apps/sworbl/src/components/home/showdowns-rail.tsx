@@ -4,6 +4,7 @@
 // score" cards; your own post is a dashed live WAITING state. Taking a
 // card claims the 1v1 (server-atomic); decided ones never appear (the
 // view filters to open).
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
@@ -37,6 +38,7 @@ export function ShowdownsRail({ theme, refreshNonce }: { theme: Theme; refreshNo
       <Text style={[styles.subtitle, { color: theme.faint }]}>
         mano a mano
       </Text>
+      <View style={styles.scrollerWrap}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -101,6 +103,16 @@ export function ShowdownsRail({ theme, refreshNonce }: { theme: Theme; refreshNo
           </View>
         ))}
       </ScrollView>
+      {/* the PEEK fade (owner: "hurricane is totally hidden") — cards
+          scroll under a bg-colored gradient at the true screen edge */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[`${theme.bg}00`, theme.bg]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={styles.edgeFade}
+      />
+      </View>
     </View>
   );
 }
@@ -121,11 +133,22 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     marginBottom: 8,
   },
+  // bleeds to the TRUE screen edge (home pads 18) so hidden cards peek
+  scrollerWrap: {
+    marginRight: -18,
+  },
   rowContent: {
     gap: 10,
-    paddingRight: 18,
+    paddingRight: 44, // the last card clears the fade fully when scrolled
     paddingBottom: 6,
     paddingTop: 2,
+  },
+  edgeFade: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 36,
   },
   block: {
     width: 124,
