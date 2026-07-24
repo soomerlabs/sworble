@@ -7,39 +7,33 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ARCHETYPE_PAL } from '@/components/game/result-view';
+import { ARCHETYPE_PAL, ARCHETYPE_RULE } from '@/components/game/result-view';
 import { PALETTE } from '@/game/palette';
 import { useTheme } from '@/game/theme';
 
 const BOOK = [
   {
     key: 'straight', name: 'category',
-    rule: 'every clue is a member of the word’s family.',
     example: 'FOREST ← pine, moss, birch, canopy',
   },
   {
     key: 'connector', name: 'connector',
-    rule: 'every clue snaps onto the word to make a new one.',
     example: 'FIRE ← camp(fire), (fire)work, (fire)place',
   },
   {
     key: 'sibling', name: 'sibling',
-    rule: 'the clues and the word are siblings — the answer belongs to the same set.',
     example: 'SILVER ← gold, copper, bronze, zinc',
   },
   {
     key: 'association', name: 'association',
-    rule: 'everything belongs to the word’s world.',
     example: 'CLOCK ← face, alarm, chime, cuckoo',
   },
   {
     key: 'lateral', name: 'lateral',
-    rule: 'the link is a sideways leap — think about what the clues can become.',
     example: 'BROKEN ← news, heart, mirror, promise',
   },
   {
     key: 'wordplay', name: 'wordplay',
-    rule: 'something is hiding inside every word — look, don’t think.',
     example: 'SAFARI ← grAPE, prOWL, goATee',
   },
 ];
@@ -69,7 +63,7 @@ export default function ArchetypesScreen() {
                 </View>
                 <View style={styles.cardText}>
                   <Text style={[styles.cardName, { color: theme.ink }]}>{a.name}</Text>
-                  <Text style={[styles.cardRule, { color: theme.sub }]}>{a.rule}</Text>
+                  <Text style={[styles.cardRule, { color: theme.sub }]}>{ARCHETYPE_RULE[a.key]}</Text>
                   <Text style={[styles.cardExample, { color: theme.faint }]}>{a.example}</Text>
                 </View>
               </View>

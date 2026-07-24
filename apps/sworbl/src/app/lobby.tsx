@@ -195,14 +195,13 @@ export default function LobbyScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  safe: { flex: 1 },
+  root: {},
+  safe: {},
   content: {
-    flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 26,
+    paddingTop: 22,
     paddingBottom: 10,
-    gap: 20,
+    gap: 18,
   },
   tierRow: {
     flexDirection: 'row',
@@ -237,10 +236,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   duelBlock: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
+    gap: 14,
+    paddingVertical: 6,
   },
   vsRow: {
     flexDirection: 'row',
@@ -284,9 +282,9 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
   },
   lbBlock: {
-    flex: 1,
     gap: 9,
-    paddingTop: 4,
+    paddingTop: 2,
+    minHeight: 96, // the empty/loading line still gives the sheet a body
   },
   lbEmpty: {
     fontFamily: 'Fredoka_600SemiBold',

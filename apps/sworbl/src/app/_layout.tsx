@@ -94,7 +94,17 @@ export default function RootLayout() {
               down to bail (intel parks on every guess regardless) */}
           <Stack.Screen name="guess" options={{ presentation: 'modal' }} />
           <Stack.Screen name="archetypes" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="lobby" options={{ presentation: 'modal' }} />
+          <Stack.Screen
+            name="lobby"
+            options={{
+              // content-height sheet (owner: "not so massive") — iOS
+              // formSheet sized to its children, grabber visible
+              presentation: 'formSheet',
+              sheetAllowedDetents: 'fitToContents',
+              sheetGrabberVisible: true,
+              sheetCornerRadius: 24,
+            }}
+          />
         </Stack>
         <ToastHost />
       </ThemeProvider>

@@ -10,9 +10,9 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 
 import { applyGuess } from '@/game/finale-logic';
-import { ARCHETYPE_LABEL } from '@/components/game/result-view';
+import { ARCHETYPE_LABEL, ARCHETYPE_PAL, ARCHETYPE_RULE } from '@/components/game/result-view';
 import { haptic } from '@/game/haptics';
-import { GAME_DARK, type GameSurface } from '@/game/palette';
+import { GAME_DARK, PALETTE, type GameSurface } from '@/game/palette';
 import { BoardKeyboard } from './board-keyboard';
 import { ClueFan } from './clue-fan';
 import { StepperCard } from './stepper-card';
@@ -50,6 +50,8 @@ export function GuessStage({
   sworb, hint, archetype, rounds, restore, found, clues, clueTotal, nudged, size, gap, gs = GAME_DARK, onProgress, onMiss, onDone,
 }: Props) {
   const twist = archetype ? ARCHETYPE_LABEL[archetype] : null;
+  const twistPal = PALETTE[ARCHETYPE_PAL[archetype ?? ''] ?? 2];
+  const twistRule = archetype ? ARCHETYPE_RULE[archetype] : null;
   const len = sworb.length;
   const cell = size + gap;
   const boardW = 5 * cell - gap;
@@ -118,6 +120,18 @@ export function GuessStage({
 
   return (
     <Animated.View entering={FadeIn.duration(260)} style={styles.wrap}>
+      {/* THE CONTRACT, UP TOP (owner): the archetype wears home's candy
+          tag style, its rule reads right under it — above the board */}
+      {twist && (
+        <View style={styles.archHead}>
+          <View style={[styles.archTag, { backgroundColor: twistPal.bg, boxShadow: `inset 0 -2.5px 0 ${twistPal.edge}` }]}>
+            <Text style={styles.archTagText}>{twist}</Text>
+          </View>
+          {!!twistRule && (
+            <Text style={[styles.archRule, { color: gs.sub }]}>{twistRule}</Text>
+          )}
+        </View>
+      )}
       <StepperCard
         width={boardW + 24}
         traceWord=""
@@ -149,11 +163,6 @@ export function GuessStage({
         />
       </View>
       <ClueFan clues={clues} found={found} nudged={nudged} gs={gs} />
-      {twist && (
-        <View style={styles.twistPill}>
-          <Text style={styles.twistText}>archetype: {twist}</Text>
-        </View>
-      )}
       {!!hint && (
         <Text style={[styles.hintLine, { color: gs.sub }]}>&ldquo;{hint}&rdquo;</Text>
       )}
@@ -171,6 +180,29 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     backgroundColor: 'rgba(137,113,255,0.14)',
     marginTop: 12,
+  },
+  archHead: {
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 14,
+    paddingHorizontal: 20,
+  },
+  archTag: {
+    borderRadius: 10, borderCurve: 'continuous',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  archTagText: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 12.5,
+    letterSpacing: 0.3,
+    color: '#1F1442',
+  },
+  archRule: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 12.5,
+    textAlign: 'center',
+    lineHeight: 17,
   },
   hintLine: {
     fontFamily: 'Fredoka_600SemiBold',

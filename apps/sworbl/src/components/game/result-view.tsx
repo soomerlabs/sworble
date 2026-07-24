@@ -24,6 +24,18 @@ export const ARCHETYPE_LABEL: Record<string, string> = {
 //   sibling   → pink (3): kinship — warm blood, same family
 //   lateral   → violet (0): lateral thinking — imagination's color
 //   wordplay  → amber (4): the jester's gold — wit and puns
+// the one-sentence rule per archetype — the book's cards and the guess
+// sheet's header speak the same words
+export const ARCHETYPE_RULE: Record<string, string> = {
+  straight: 'every clue is a member of the word\u2019s family.',
+  'straight-category': 'every clue is a member of the word\u2019s family.',
+  connector: 'every clue snaps onto the word to make a new one.',
+  sibling: 'the clues and the word are siblings \u2014 the answer belongs to the same set.',
+  lateral: 'the link is a sideways leap \u2014 think about what the clues can become.',
+  wordplay: 'something is hiding inside every word \u2014 look, don\u2019t think.',
+  association: 'everything belongs to the word\u2019s world.',
+};
+
 //   association → coral (5): the warm web of things that belong together
 export const ARCHETYPE_PAL: Record<string, number> = {
   straight: 2,
