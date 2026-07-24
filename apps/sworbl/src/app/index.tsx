@@ -156,15 +156,19 @@ export default function HomeScreen() {
   // takes 1-3 (you can BE on it), the list takes 4-10, and past-10 you ride
   // below an ellipsis. Unplayed → a dashed ghost row instead.
   const standings = useMemo(() => {
+    // usernames are UNIQUE (owner ruling) — a name match IS you, which
+    // heals identity drift from dev wipes (the ghost-seat-under-your-own-
+    // podium bug: session id changed, the name did not)
     const rows: StandingRow[] = entries.map((e, i) => ({
-      rank: i + 1, name: e.name, score: e.score, you: !!e.isMe,
+      rank: i + 1, name: e.name, score: e.score,
+      you: !!e.isMe || e.name === getPlayerName(),
     }));
     // splice ONLY into stub fields — a remote field already contains you
     // (the double-you bug: server row + local splice, same score, #1/#2)
     // splice whenever the FIELD lacks you — a fresh remote field can be
     // stale for a beat after finishing (the insert races the fetch) and
     // you'd vanish from your own standings (owner butter audit)
-    if (you && !entries.some((e) => e.isMe)) {
+    if (you && !entries.some((e) => e.isMe || e.name === getPlayerName())) {
       rows.splice(you.rank - 1, 0, { rank: you.rank, name: getPlayerName(), score: you.score, you: true });
       rows.forEach((r, i) => (r.rank = i + 1));
     }
@@ -773,7 +777,7 @@ export default function HomeScreen() {
             theme={theme}
             entries={entries}
             standings={standings}
-            hasYou={!!you || entries.some((e) => e.isMe)}
+            hasYou={!!you || entries.some((e) => e.isMe || e.name === getPlayerName())}
             devCount={__DEV__ && devSnap.diag}
           />
         </ScrollView>

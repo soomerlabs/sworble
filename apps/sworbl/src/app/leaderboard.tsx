@@ -101,13 +101,14 @@ export default function LeaderboardScreen() {
   // pin YOU inline at rank position (handoff: the list keeps you as a row)
   const listed: { rank: number; entry: LbEntry | { name: string; score: number }; you: boolean }[] =
     useMemo(() => {
+      // unique usernames: a name match IS you (identity-drift healing)
       const rows = entries.map((e, i) => ({
         rank: i + 1,
         entry: e as LbEntry | { name: string; score: number },
-        you: !!(e as LbEntry).isMe,
+        you: !!(e as LbEntry).isMe || e.name === name,
       }));
-      // splice ONLY into stub fields — remote fields already contain you
-      if (played && myRank !== null && !isRemote) {
+      // splice only when the field truly lacks you (name-match counts)
+      if (played && myRank !== null && !rows.some((r) => r.you)) {
         rows.splice(myRank - 1, 0, { rank: myRank, entry: { name, score: myScore }, you: true });
         rows.forEach((r, i) => (r.rank = i + 1));
       }
