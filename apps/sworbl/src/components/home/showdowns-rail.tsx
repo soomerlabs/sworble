@@ -35,7 +35,7 @@ export function ShowdownsRail({ theme, refreshNonce }: { theme: Theme; refreshNo
     <View style={styles.wrap}>
       <Text style={[styles.title, { color: theme.ink }]}>showdowns</Text>
       <Text style={[styles.subtitle, { color: theme.faint }]}>
-        post a score, claim a challenger · 1v1
+        mano a mano
       </Text>
       <ScrollView
         horizontal
