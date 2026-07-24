@@ -65,13 +65,21 @@ export function DateHeader({ theme, dayKey, score, streak, onShare, onInfo, arch
           <Pressable
             onPress={() => router.push('/archetypes')}
             hitSlop={8}
-            style={[
-              styles.archTag,
-              { backgroundColor: archPal.bg, boxShadow: `inset 0 -2.5px 0 ${archPal.edge}` },
-            ]}>
-            <Text style={styles.archTagText}>{archetypeLabel}</Text>
-            <View style={styles.archInfo}>
-              <Text style={styles.archInfoText}>i</Text>
+            style={styles.archBadge}>
+            {/* the split badge (owner: say 'archetype' without a tap) —
+                dark key half, candy value half in the reasoned hue */}
+            <View style={[styles.archKey, { backgroundColor: theme.pill }]}>
+              <Text style={[styles.archKeyText, { color: theme.sub }]}>archetype</Text>
+            </View>
+            <View
+              style={[
+                styles.archVal,
+                { backgroundColor: archPal.bg, boxShadow: `inset 0 -2.5px 0 ${archPal.edge}` },
+              ]}>
+              <Text style={styles.archValText}>{archetypeLabel}</Text>
+              <View style={styles.archInfo}>
+                <Text style={styles.archInfoText}>i</Text>
+              </View>
             </View>
           </Pressable>
         )}
@@ -95,16 +103,30 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     gap: 5,
   },
-  archTag: {
+  archBadge: {
+    flexDirection: 'row',
+    borderRadius: 10, borderCurve: 'continuous',
+    overflow: 'hidden',
+  },
+  archKey: {
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  archKeyText: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 9,
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
+  },
+  archVal: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderRadius: 10, borderCurve: 'continuous',
-    paddingLeft: 10,
+    paddingLeft: 9,
     paddingRight: 6,
-    paddingVertical: 4,
+    paddingVertical: 4.5,
   },
-  archTagText: {
+  archValText: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 12,
     letterSpacing: 0.3,
