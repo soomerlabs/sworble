@@ -65,7 +65,7 @@ export default function Storm({ width, height = 260 }: {
             styles.bloom,
             {
               left: width * 0.22, top: height * 0.5,
-              width: height * 0.9, height: height * 0.9, borderRadius: height * 0.45,
+              width: height * 0.9, height: height * 0.9, borderRadius: height * 0.45, borderCurve: 'continuous',
               backgroundColor: 'rgba(167,139,250,0.55)',
             },
           ]}
@@ -76,7 +76,7 @@ export default function Storm({ width, height = 260 }: {
             styles.bloom,
             {
               left: width * 0.64, top: height * 0.44,
-              width: height * 0.8, height: height * 0.8, borderRadius: height * 0.4,
+              width: height * 0.8, height: height * 0.8, borderRadius: height * 0.4, borderCurve: 'continuous',
               backgroundColor: 'rgba(245,143,184,0.45)',
             },
           ]}

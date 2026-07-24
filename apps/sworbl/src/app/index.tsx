@@ -1025,7 +1025,7 @@ const styles = StyleSheet.create({
   },
   guessPill: {
     backgroundColor: '#8971FF',
-    borderRadius: 999,
+    borderRadius: 999, borderCurve: 'continuous',
     paddingVertical: 6,
     paddingHorizontal: 13,
     boxShadow: '0 3px 0 #6A54D8',
@@ -1039,7 +1039,7 @@ const styles = StyleSheet.create({
   shareChip: {
     width: 30,
     height: 30,
-    borderRadius: 10,
+    borderRadius: 10, borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },

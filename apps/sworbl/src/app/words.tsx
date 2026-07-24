@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   pill: {
-    borderRadius: 999,
+    borderRadius: 999, borderCurve: 'continuous',
     paddingHorizontal: 18,
     paddingVertical: 8,
   },
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     marginTop: -8,
   },
   board: {
-    borderRadius: 16,
+    borderRadius: 16, borderCurve: 'continuous',
     padding: 12,
   },
   miniTile: {
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    borderRadius: 11,
+    borderRadius: 11, borderCurve: 'continuous',
     paddingVertical: 9,
     paddingHorizontal: 12,
   },

@@ -307,7 +307,7 @@ function GameTileInner({ tile, size, gap, sPath, sSubmit, clearingSeq, flight, n
                 {
                   minWidth: Math.round(size * 0.34),
                   height: Math.round(size * 0.3),
-                  borderRadius: Math.round(size * 0.15),
+                  borderRadius: Math.round(size * 0.15), borderCurve: 'continuous',
                   top: Math.round(size * 0.06),
                   right: Math.round(size * 0.06),
                 },

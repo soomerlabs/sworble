@@ -45,7 +45,14 @@
       if (!w) return null;
       themeWords.push(w);
     }
-    return { sworb: sworb, themeWords: themeWords };
+    // the twist + definition RIDE THE PARSE (they were dropped here —
+    // every consumer of the parsed entry saw archetype null)
+    return {
+      sworb: sworb,
+      themeWords: themeWords,
+      archetype: typeof e.archetype === 'string' && e.archetype ? e.archetype : null,
+      definition: typeof e.definition === 'string' ? e.definition : '',
+    };
   }
 
   // A spelled word counts as finding a clue if it STARTS WITH the clue (trims/trimmed/

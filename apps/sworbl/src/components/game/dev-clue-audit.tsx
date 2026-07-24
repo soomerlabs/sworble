@@ -101,7 +101,7 @@ function FlashCell({ c, i, size, cell }: {
         st, styles.flashCell,
         {
           left: c.col * cell, top: c.row * cell,
-          width: size, height: size, borderRadius: Math.round(size * 0.2),
+          width: size, height: size, borderRadius: Math.round(size * 0.2), borderCurve: 'continuous',
         },
       ]}>
       <Text style={styles.flashSeq}>{i + 1}</Text>
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   chip: {
-    borderRadius: 9,
+    borderRadius: 9, borderCurve: 'continuous',
     paddingHorizontal: 10,
     paddingVertical: 4,
   },

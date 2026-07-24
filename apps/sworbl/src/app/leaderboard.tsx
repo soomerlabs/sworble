@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     gap: 11,
     paddingVertical: 9,
     paddingHorizontal: 11,
-    borderRadius: 12,
+    borderRadius: 12, borderCurve: 'continuous',
   },
   rank: {
     width: 18,
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   pill: {
-    borderRadius: 999,
+    borderRadius: 999, borderCurve: 'continuous',
     paddingHorizontal: 18,
     paddingVertical: 8,
   },

@@ -52,7 +52,7 @@ function Ghost({ g }: { g: FlightGhostT }) {
         {
           width: g.size,
           height: g.size,
-          borderRadius: Math.round(g.size * 0.2),
+          borderRadius: Math.round(g.size * 0.2), borderCurve: 'continuous',
           backgroundColor: pal.bg,
           boxShadow: `0 3px 0 ${pal.edge}`,
         },

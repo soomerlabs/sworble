@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     marginTop: -6,
   },
   twistPill: {
-    borderRadius: 999,
+    borderRadius: 999, borderCurve: 'continuous',
     paddingHorizontal: 14,
     paddingVertical: 6,
     backgroundColor: 'rgba(137,113,255,0.14)',
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   // fan — blank slot, presence only, never shape
   hintSlot: {
     height: 26,
-    borderRadius: 9,
+    borderRadius: 9, borderCurve: 'continuous',
     borderWidth: 2,
     borderStyle: 'dashed',
   },

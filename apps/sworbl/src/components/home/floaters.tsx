@@ -42,7 +42,7 @@ function Floater({ f, width, height }: { f: (typeof FLOATERS)[number]; width: nu
           top: (f.y / 100) * height,
           width: f.s,
           height: f.s,
-          borderRadius: Math.round(f.s * 0.27),
+          borderRadius: Math.round(f.s * 0.27), borderCurve: 'continuous',
           backgroundColor: pal.bg,
           opacity: 0.16 * (f.o ?? 1),
         },

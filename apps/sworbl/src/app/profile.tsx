@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   modalCard: {
-    borderRadius: 20,
+    borderRadius: 20, borderCurve: 'continuous',
     padding: 20,
     gap: 10,
   },
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 5,
-    borderRadius: 9,
+    borderRadius: 9, borderCurve: 'continuous',
     paddingVertical: 5,
     paddingHorizontal: 10,
   },
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
   card: {
     flexBasis: '47%',
     flexGrow: 1,
-    borderRadius: 14,
+    borderRadius: 14, borderCurve: 'continuous',
     paddingVertical: 12,
     paddingHorizontal: 13,
     gap: 7,
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   cardDot: {
     width: 9,
     height: 9,
-    borderRadius: 3,
+    borderRadius: 3, borderCurve: 'continuous',
   },
   cardLabel: {
     fontFamily: 'Fredoka_600SemiBold',
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   payBadge: {
-    borderRadius: 8,
+    borderRadius: 8, borderCurve: 'continuous',
     borderWidth: 1,
     paddingHorizontal: 9,
     paddingVertical: 3,
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 5,
-    borderRadius: 8,
+    borderRadius: 8, borderCurve: 'continuous',
     paddingVertical: 5,
     paddingHorizontal: 9,
   },

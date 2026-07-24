@@ -13,7 +13,7 @@ export function Brand({ scale = 1, ink }: { scale?: number; ink?: string }) {
     top: inset,
     right: inset,
     bottom: inset,
-    borderRadius: 8 * scale,
+    borderRadius: 8 * scale, borderCurve: 'continuous' as const,
   };
   return (
     <View style={styles.row}>
@@ -46,7 +46,7 @@ export function Brand({ scale = 1, ink }: { scale?: number; ink?: string }) {
               top: 1.5 * scale,
               right: 1.5 * scale,
               bottom: 1.5 * scale,
-              borderRadius: 9 * scale,
+              borderRadius: 9 * scale, borderCurve: 'continuous' as const,
               boxShadow: `0 ${2 * scale}px 0 #7C5CE0`,
               paddingBottom: 2 * scale,
             },

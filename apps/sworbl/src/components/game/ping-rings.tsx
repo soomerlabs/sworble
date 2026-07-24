@@ -35,7 +35,7 @@ function Ring({ x, y, size, color, delay }: Omit<Props, 'onFinish'> & { delay: n
           top: y - d / 2,
           width: d,
           height: d,
-          borderRadius: d / 2,
+          borderRadius: d / 2, borderCurve: 'continuous',
           borderColor: color,
         },
       ]}

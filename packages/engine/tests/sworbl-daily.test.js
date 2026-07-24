@@ -4,7 +4,10 @@ const D = require('../sworbl-daily.js');
 const dailies = { '2026-07-21': { sworb: 'ocean', clues: ['tide', 'coral', 'wave', 'reef', 'salt'] } };
 
 const e = D.parseEntry(dailies, '2026-07-21');
-assert.deepStrictEqual(e, { sworb: 'ocean', themeWords: ['tide', 'coral', 'wave', 'reef', 'salt'] });
+assert.deepStrictEqual(e, {
+  sworb: 'ocean', themeWords: ['tide', 'coral', 'wave', 'reef', 'salt'],
+  archetype: null, definition: '',
+});
 assert.strictEqual(D.parseEntry(dailies, '2026-07-22'), null, 'missing day -> null');
 assert.strictEqual(D.parseEntry({ '2026-07-21': { sworb: '', clues: [] } }, '2026-07-21'), null, 'empty -> null');
 assert.strictEqual(D.parseEntry({ '2026-07-21': { sworb: 'x', clues: 'nope' } }, '2026-07-21'), null, 'bad clues -> null');
@@ -40,9 +43,9 @@ assert.deepStrictEqual(D.scoreGuess('erxx', 'reef'), ['yellow','yellow','gray','
   // BACK-COMPAT: legacy `clues` still parses, surfaced as themeWords
   const legacy = { '2026-08-02': { sworb: 'kitchen', clues: ['oven','fork','pan','dish','spoon'] } };
   const l = D.parseEntry(legacy, '2026-08-02');
-  assert.deepStrictEqual(l, { sworb: 'kitchen', themeWords: ['oven','fork','pan','dish','spoon'] });
+  assert.deepStrictEqual(l, { sworb: 'kitchen', themeWords: ['oven','fork','pan','dish','spoon'], archetype: null, definition: '' });
   // normalization + validation
-  assert.deepStrictEqual(D.parseEntry({ x: { sworb: ' Ocean ', themeWords: [' Tide ', 'CORAL'] } }, 'x'), { sworb: 'ocean', themeWords: ['tide','coral'] });
+  assert.deepStrictEqual(D.parseEntry({ x: { sworb: ' Ocean ', themeWords: [' Tide ', 'CORAL'] } }, 'x'), { sworb: 'ocean', themeWords: ['tide','coral'], archetype: null, definition: '' });
   assert.strictEqual(D.parseEntry({ x: { sworb: 'ocean', themeWords: [] } }, 'x'), null, 'empty pool -> null');
   assert.strictEqual(D.parseEntry({ x: { sworb: 'ocean', themeWords: 'nope' } }, 'x'), null, 'non-array -> null');
   assert.strictEqual(D.parseEntry({ x: { sworb: '', themeWords: ['a'] } }, 'x'), null, 'empty sworb -> null');
@@ -441,5 +444,17 @@ console.log('sworbl-daily: mercyPulseShouldFire passed');
 console.log('sworbl-daily: tier x rounds parity pinned (client bonus always legal server-side)');
 
 console.log('sworbl-daily: round decay pinned');
+
+// parseEntry PASSES THROUGH the twist + definition (they were silently
+// dropped — the archetype pill had null wherever the parsed entry fed it)
+{
+  const e = D.parseEntry({ '2026-07-24': { sworb: 'forest', themeWords: ['pine', 'oak', 'moss'], archetype: 'straight-category', definition: 'trees' } }, '2026-07-24');
+  assert.strictEqual(e.archetype, 'straight-category', 'archetype rides the parse');
+  assert.strictEqual(e.definition, 'trees', 'definition rides the parse');
+  const bare = D.parseEntry({ d: { sworb: 'x', themeWords: ['abc'] } }, 'd');
+  assert.strictEqual(bare.archetype, null, 'missing archetype = null, never undefined');
+  assert.strictEqual(bare.definition, '', 'missing definition = empty string');
+}
+console.log('sworbl-daily: parseEntry passthrough pinned');
 
 console.log('sworbl-daily: all passed');

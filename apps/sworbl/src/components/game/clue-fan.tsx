@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     maxWidth: 420,
   },
   pill: {
-    borderRadius: 9,
+    borderRadius: 9, borderCurve: 'continuous',
     paddingHorizontal: 11,
     paddingVertical: 5,
   },

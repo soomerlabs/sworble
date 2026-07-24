@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   infoChip: {
     width: 30,
     height: 30,
-    borderRadius: 10,
+    borderRadius: 10, borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },

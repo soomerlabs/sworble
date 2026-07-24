@@ -356,7 +356,7 @@ export function StepperCard({ width, traceWord, verdict, sworb, countIn, gs = GA
 const styles = StyleSheet.create({
   card: {
     backgroundColor: CARD.bg,
-    borderRadius: 16,
+    borderRadius: 16, borderCurve: 'continuous',
     // FIXED height — tall enough for the guess face, so the finale swap
     // never reflows the column (the board must not move)
     height: 80,
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
     gap: 4,
     alignItems: 'center',
     backgroundColor: '#26262E',
-    borderRadius: 8,
+    borderRadius: 8, borderCurve: 'continuous',
     paddingHorizontal: 8,
     paddingVertical: 2,
     boxShadow: '0 2px 0 rgba(0,0,0,0.25)',
@@ -450,6 +450,6 @@ const styles = StyleSheet.create({
   slotHint: { borderWidth: 2.5, borderStyle: 'dashed', borderColor: '#CE9022' },
   slotText: { fontFamily: 'Fredoka_600SemiBold', includeFontPadding: false },
   pips: { flexDirection: 'row', gap: 5, marginTop: 6, justifyContent: 'center' },
-  pip: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#2a2446' },
+  pip: { width: 7, height: 7, borderRadius: 4, borderCurve: 'continuous', backgroundColor: '#2a2446' },
   pipUsed: { backgroundColor: '#ff6b5a' },
 });

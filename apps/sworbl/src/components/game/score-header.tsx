@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: 6.5,
     height: 5,
-    borderRadius: 999,
+    borderRadius: 999, borderCurve: 'continuous',
     backgroundColor: 'rgba(137,113,255,0.8)',
     // web: filter blur(1px) + glow shadow — the SOFT bar, never a hard line
     boxShadow: '0 0 9px 1px rgba(137,113,255,0.8)',
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
   markTick: {
     width: 2,
     height: 12,
-    borderRadius: 1,
+    borderRadius: 1, borderCurve: 'continuous',
     backgroundColor: '#3A3A44',
   },
   markTickPassed: {

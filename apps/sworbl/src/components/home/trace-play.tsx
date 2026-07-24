@@ -116,7 +116,7 @@ function PlayTile({ ch, i, sLit, sPoke, theme, tile, armed }: {
         style={[
           styles.face,
           faceStyle,
-          { width: tile, height: tile, borderRadius: RAD, boxShadow: gs.tileBevel },
+          { width: tile, height: tile, borderRadius: RAD, borderCurve: 'continuous', boxShadow: gs.tileBevel },
         ]}>
         <Animated.Text style={[styles.letter, inkStyle, { fontSize: Math.round(tile * 0.5) }]}>
           {ch.toUpperCase()}

@@ -863,7 +863,7 @@ const styles = StyleSheet.create({
     gap: 4,
     width: 34,
     height: 34,
-    borderRadius: 12,
+    borderRadius: 12, borderCurve: 'continuous',
     backgroundColor: '#26262E',
     alignItems: 'center',
     justifyContent: 'center',
@@ -877,7 +877,7 @@ const styles = StyleSheet.create({
   pauseBar: {
     width: 4,
     height: 13,
-    borderRadius: 2,
+    borderRadius: 2, borderCurve: 'continuous',
     backgroundColor: '#9DA2B3',
   },
   pauseGhost: {

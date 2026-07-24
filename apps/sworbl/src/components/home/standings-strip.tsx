@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   blockGhost: {
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderRadius: 6,
+    borderRadius: 6, borderCurve: 'continuous',
   },
   blockRank: {
     fontFamily: 'Fredoka_600SemiBold',

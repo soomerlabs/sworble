@@ -782,7 +782,7 @@ function GameBoardInner({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: CARD.bg,
-    borderRadius: 20,
+    borderRadius: 20, borderCurve: 'continuous',
     padding: 12,
     alignItems: 'center',
     // the card's own candy ledge (web: 0 6px 0 --card-edge)

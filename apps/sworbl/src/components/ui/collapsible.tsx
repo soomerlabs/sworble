@@ -52,13 +52,13 @@ const styles = StyleSheet.create({
   button: {
     width: Spacing.four,
     height: Spacing.four,
-    borderRadius: 12,
+    borderRadius: 12, borderCurve: 'continuous',
     justifyContent: 'center',
     alignItems: 'center',
   },
   content: {
     marginTop: Spacing.three,
-    borderRadius: Spacing.three,
+    borderRadius: Spacing.three, borderCurve: 'continuous',
     marginLeft: Spacing.four,
     padding: Spacing.four,
   },

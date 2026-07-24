@@ -27,7 +27,7 @@ const Flow = require('../sworbl-flow.js');
 const root = path.join(__dirname, '..', '..', '..');
 const dailies = JSON.parse(fs.readFileSync(path.join(root, 'dailies.json'), 'utf8'));
 
-const DAY = '2026-07-20';           // fixture day: sworb "ocean"
+const DAY = '2026-07-24'; // fresh-book day (content reseed 2026-07-23)           // fixture day: sworb "ocean"
 const COLS = 5, ROWS = 6;
 const CLUE_COUNT = 6;               // SWORB_CLUE_COUNT — "6 to find, 6 to crack it"
 
@@ -37,7 +37,7 @@ const CLUE_COUNT = 6;               // SWORB_CLUE_COUNT — "6 to find, 6 to cra
 // ===================================================================================
 const entry = Daily.parseEntry(dailies, DAY);
 assert.ok(entry, DAY + ' parses');
-assert.strictEqual(entry.sworb, 'ocean', 'fixture sworb is "ocean"');
+assert.strictEqual(entry.sworb, 'forest', 'fixture sworb is "forest" (fresh book)');
 
 function dealBoard() {
   const rngFactory = () => Core.mulberry32(Core.hashSeed(DAY + '|sworb'));
@@ -162,8 +162,8 @@ function guess(word) {
   return { colors: colors, res: res };
 }
 
-let g = guess('steam'); // wrong, 5 letters like "ocean"
-assert.strictEqual(g.colors.length, 5, 'scoreGuess returns one color per letter');
+let g = guess('branch'); // wrong, 6 letters like "forest"
+assert.strictEqual(g.colors.length, 6, 'scoreGuess returns one color per letter');
 assert.ok(g.colors.some(c => c !== 'green'), 'a wrong guess is not all-green');
 assert.strictEqual(g.res.ok, true, 'guess processed');
 assert.strictEqual(g.res.correct, false, 'wrong guess');
@@ -180,7 +180,7 @@ const typed = Daily.nextSlots({ slots: keepSlots, colors: keepColors, ch: 'C', l
 assert.strictEqual(typed.slots[0], 'o', 'a locked green survives the next keystroke');
 assert.strictEqual(typed.slots[1], 'C', 'the new letter fills the first empty (non-green) slot');
 
-g = guess('learn'); // second wrong guess (5 letters)
+g = guess('meadow'); // second wrong guess (6 letters)
 persisted.sworb.guessesUsed = g.res.newGuessesUsed; // 2
 assert.strictEqual(persisted.sworb.guessesUsed, 2, 'two guesses spent');
 console.log('round-lifecycle: STAGE 3 finale wrong-guess color flow passed');
@@ -188,7 +188,7 @@ console.log('round-lifecycle: STAGE 3 finale wrong-guess color flow passed');
 // ===================================================================================
 // STAGE 4 — SOLVE: the correct guess. Reward tiers scale by clues found (3 of 15 → "most").
 // ===================================================================================
-g = guess('OcEaN'); // case-insensitive
+g = guess('FoReSt'); // case-insensitive
 assert.strictEqual(g.res.correct, true, 'correct answer solves');
 assert.strictEqual(g.res.newGuessesUsed, 3, 'the solve is the third guess');
 assert.strictEqual(g.res.bonus, Daily.REWARD.most, 'reward tier: 3 clues found (of 15 pool) → "most" (200)');

@@ -138,7 +138,7 @@ function ConfettiBit({ c }: { c: (typeof CONF)[number] }) {
         st,
         {
           position: 'absolute', left: c.left, top: 0,
-          width: c.w, height: c.h, borderRadius: 2, backgroundColor: c.color,
+          width: c.w, height: c.h, borderRadius: 2, borderCurve: 'continuous', backgroundColor: c.color,
         },
       ]}
     />
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 96,
     height: 96,
-    borderRadius: 999,
+    borderRadius: 999, borderCurve: 'continuous',
     left: '50%',
     top: '50%',
     marginLeft: -48,
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
     right: -12,
     height: 20,
     paddingHorizontal: 6,
-    borderRadius: 7,
+    borderRadius: 7, borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     left: -9,
     width: 18,
     height: 18,
-    borderRadius: 6,
+    borderRadius: 6, borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },
