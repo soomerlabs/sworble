@@ -5,8 +5,8 @@
 // board→keyboard morph is gone from this path entirely.
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GuessStage } from '@/components/game/guess-stage';
@@ -42,24 +42,26 @@ export default function GuessScreen() {
   }, [deal]);
 
   // THE GUESSING FLOOR: entering with fewer than FINALE_FLOOR clues
-  // grants up to the floor — once per day, persisted immediately
+  // grants up to the floor — once per day. In an EFFECT (audit: storage
+  // writes + setState in the render body hitched the sheet's present).
   const flooredRef = useRef(false);
-  if (deal && ctx && !flooredRef.current) {
+  useEffect(() => {
+    if (!deal || !ctx || flooredRef.current) return;
     flooredRef.current = true;
     const l = loadLadder(deal.dayKey);
-    if (!l.floorGiven) {
-      saveLadder(deal.dayKey, { ...l, floorGiven: true });
-      const need = FINALE_FLOOR - found.length;
-      if (need > 0) {
-        const grants = ctx.swapped.filter((c) => !found.includes(c)).slice(0, need);
-        if (grants.length) {
-          const next = [...found, ...grants];
-          setFound(next);
-          saveProgress(deal.dayKey, boot?.score ?? 0, next);
-        }
+    if (l.floorGiven) return;
+    saveLadder(deal.dayKey, { ...l, floorGiven: true });
+    const need = FINALE_FLOOR - found.length;
+    if (need > 0) {
+      const grants = ctx.swapped.filter((c) => !found.includes(c)).slice(0, need);
+      if (grants.length) {
+        const next = [...found, ...grants];
+        setFound(next);
+        saveProgress(deal.dayKey, boot?.score ?? 0, next);
       }
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deal, ctx]);
 
   const onMiss = useCallback(
     (usedNow: number) => {
@@ -140,6 +142,11 @@ export default function GuessScreen() {
             />
           )}
         </View>
+        {/* the decay truth, where the choice is live (audit: it vanished
+            with the in-sheet finale) */}
+        <Text style={[styles.bailLine, { color: theme.faint }]}>
+          swipe down to bail — guesses keep, but the bonus shrinks every round
+        </Text>
       </SafeAreaView>
     </View>
   );
@@ -147,6 +154,13 @@ export default function GuessScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  bailLine: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 11.5,
+    textAlign: 'center',
+    paddingBottom: 10,
+    paddingHorizontal: 24,
+  },
   safe: { flex: 1, paddingHorizontal: 18, paddingTop: 0 },
   stageWrap: {
     flex: 1,

@@ -362,14 +362,6 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deal]);
   // GUESS FROM HOME (modes-spec): open the sheet STRAIGHT into the finale
-  const [guessIntent, setGuessIntent] = useState(0);
-  const openForGuess = useCallback(() => {
-    setGuessIntent((n) => n + 1);
-    sMode.value = 3;
-    sheetY.value = withSpring(0, OPEN_SPRING);
-    markOpen();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markOpen]);
   // TAP TO PLAY (owner): the whole top section opens the game — the sheet
   // docks and the idle phase arms its own count-in, same as a swipe
   const openToPlay = useCallback(() => {
@@ -858,7 +850,6 @@ export default function HomeScreen() {
                 onClose={closeSheet}
                 active={sheetOpen}
                 closeGesture={closeDrag}
-                guessIntent={guessIntent}
               />
             </Animated.View>
             {/* TAIL BRIDGE: whisper aurora tint under the crest's glow —

@@ -104,12 +104,14 @@ interface Pending {
 
 // PRACTICE (duels groundwork): keep-best per seed; words ride along so the
 // run can GHOST a future opponent
-export function enqueuePractice(seed: string, score: number, words: BestWord[]): void {
+export function enqueuePractice(seed: string, score: number, words: BestWord[]): Promise<void> {
   const key = 'storm:' + seed;
   const box = (engine.store.getJSON(OUTBOX_KEY, []) as Pending[]).filter((p) => p.day !== key);
   box.push({ id: mintRowId(), day: key, seed, score, solved: false, guesses: 0, words, mode: 'practice' });
   engine.store.setJSON(OUTBOX_KEY, box);
-  void drainOutbox();
+  // callers may await: post-a-showdown and resolve need the run VALIDATED
+  // server-side first (timers raced the drain — audit)
+  return drainOutbox();
 }
 
 // per-seed standings (duels): the ranked view over keep-best runs on one

@@ -4,6 +4,7 @@
 //   .env:  EXPO_PUBLIC_SUPABASE_URL=…  EXPO_PUBLIC_SUPABASE_ANON_KEY=…
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import engine from '@sworbl/engine';
+import { installNetLog } from './net-log';
 
 const URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
@@ -75,6 +76,7 @@ let client: SupabaseClient | null = null;
 export function supabase(): SupabaseClient | null {
   if (!isConfigured()) return null;
   if (!client) {
+    installNetLog(URL); // dev-only inside — the debug menu's network log
     client = createClient(URL, KEY, {
       auth: {
         storage: storageAdapter,

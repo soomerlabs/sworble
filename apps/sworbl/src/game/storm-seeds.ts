@@ -50,7 +50,7 @@ export interface StormBoard {
   intensity: StormIntensity;
 }
 
-// three boards per day: seed = s-YYYYMMDD-a/b/c (fits the server's
+// four boards per day: seed = s-YYYYMMDD-a/b/c/d (fits the server's
 // ^[a-z0-9-]{3,24}$ law); names dealt without same-day duplicates
 export function dailyStormBoards(now: Date = new Date()): StormBoard[] {
   const dk = engine.core.dayKey(now).replace(/-/g, '');

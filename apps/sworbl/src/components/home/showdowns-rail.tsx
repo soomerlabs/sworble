@@ -191,10 +191,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 14,
   },
+  // centered on the FACE, not the box — the 3px inset ledge eats the
+  // bottom (owner: "the p is sitting low")
   avatarLetter: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 15,
     color: '#1F1442',
+    includeFontPadding: false,
+    marginTop: -2,
   },
   name: {
     fontFamily: 'Fredoka_600SemiBold',

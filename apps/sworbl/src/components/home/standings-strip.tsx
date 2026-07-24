@@ -109,6 +109,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 12,
     color: '#1F1442',
+    includeFontPadding: false,
+    marginTop: -1.5,
   },
   name: {
     fontFamily: 'Fredoka_600SemiBold',

@@ -26,7 +26,7 @@ const STEPS: { pal: number; title: string; body: string }[] = [
   {
     pal: 0,
     title: "crack the day's word",
-    body: 'at 0:00 the board becomes a keyboard. you get 6 guesses for the WHOLE day at the one word behind the clues — fewer clues found, bigger the bonus.',
+    body: 'at 0:00 the guess slides up — 6 tries for the WHOLE day at the one word behind the clues. fewer clues found, bigger the bonus.',
   },
   {
     pal: 4,

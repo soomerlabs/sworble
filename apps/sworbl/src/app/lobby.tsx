@@ -256,6 +256,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 26,
     color: '#1F1442',
+    includeFontPadding: false,
+    marginTop: -3, // the 4px ledge — center on the face
   },
   openSeat: {
     borderWidth: 2.5,
@@ -264,6 +266,8 @@ const styles = StyleSheet.create({
   openMark: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 22,
+    includeFontPadding: false,
+    marginTop: -2,
   },
   vsBig: {
     fontFamily: 'Fredoka_600SemiBold',
@@ -284,7 +288,9 @@ const styles = StyleSheet.create({
   lbBlock: {
     gap: 9,
     paddingTop: 2,
-    minHeight: 96, // the empty/loading line still gives the sheet a body
+    // FIXED height (audit: fitToContents re-measured when the async top-5
+    // landed and the sheet visibly grew) — loading paints into this space
+    height: 148,
   },
   lbEmpty: {
     fontFamily: 'Fredoka_600SemiBold',

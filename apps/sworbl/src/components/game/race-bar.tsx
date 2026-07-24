@@ -10,7 +10,7 @@ import { ACCENT, type Theme } from '@/game/theme';
 
 const GHOST_C = '#F58FB8'; // the charged pink — the opponent's lane
 
-export function RaceBar({
+function RaceBarInner({
   theme, width, you, ghost, ghostName, ceiling,
 }: {
   theme: Theme;
@@ -49,6 +49,9 @@ export function RaceBar({
     </View>
   );
 }
+
+// one re-render per landed word, not per clock tick (audit)
+export const RaceBar = React.memo(RaceBarInner);
 
 const styles = StyleSheet.create({
   wrap: { gap: 3, marginBottom: 8 },

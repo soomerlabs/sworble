@@ -6,7 +6,7 @@
 // 3rd-miss freebie is reported UP (onMiss) — granting is the sheet's job.
 import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import engine from '@sworbl/engine';
 
 import { applyGuess } from '@/game/finale-logic';
@@ -119,7 +119,7 @@ export function GuessStage({
   }, [locked, slots, rows, used, sworb, found.length, clueTotal, rounds, onProgress, onMiss, onDone]);
 
   return (
-    <Animated.View entering={FadeIn.duration(260)} style={styles.wrap}>
+    <Animated.View style={styles.wrap}>
       {/* THE CONTRACT, UP TOP (owner): the archetype wears home's candy
           tag style, its rule reads right under it — above the board */}
       {twist && (

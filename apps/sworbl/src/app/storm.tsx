@@ -5,7 +5,7 @@
 // spell for 3 minutes, the score rides the practice outbox (keep-best per
 // seed, server-validated with delta 0).
 import { router, useLocalSearchParams } from 'expo-router';
-import { AppState, Share } from 'react-native';
+import { AppState, InteractionManager, Share } from 'react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,7 +22,7 @@ import { gameSurface } from '@/game/palette';
 import { useTheme, ACCENT, ACCENT_EDGE } from '@/game/theme';
 import { TUNING } from '@/game/tuning';
 import { RaceBar } from '@/components/game/race-bar';
-import { claimShowdown, fetchDuelGhost, postDuel, resolveShowdown, type ShowdownVerdict } from '@/net/duels';
+import { fetchDuelGhost, postDuel, resolveShowdown, type ShowdownVerdict } from '@/net/duels';
 import { enqueuePractice, fetchPractice } from '@/net/standings-remote';
 
 type Phase = 'ready' | 'settling' | 'live' | 'done';
@@ -37,15 +37,14 @@ function fmtClock(secs: number): string {
 export default function StormScreen() {
   const theme = useTheme();
   const params = useLocalSearchParams<{
-    seed?: string; clock?: string; vs?: string; target?: string; did?: string;
+    seed?: string; vs?: string; target?: string; did?: string;
     go?: string; post?: string;
   }>();
   const rawSeed = typeof params.seed === 'string' ? params.seed : '';
   const seed = SEED_RE.test(rawSeed) ? rawSeed : null;
-  // THE LADDER (owner): rules derive from the seed itself — the clock
-  // param survives only for foreign/legacy links
+  // THE LADDER (owner): rules derive from the seed itself
   const intensity = stormIntensity(rawSeed);
-  const blitz = intensity.key !== 'drizzle' || params.clock === '120';
+  const blitz = intensity.key !== 'drizzle';
   const vsName = typeof params.vs === 'string' && params.vs.length <= 24 ? params.vs : null;
   const vsScore = Number(params.target);
   const duel = vsName && Number.isFinite(vsScore) ? { name: vsName, score: vsScore } : null;
@@ -94,7 +93,8 @@ export default function StormScreen() {
   const [score, setScore] = useState(0);
   const wordsRef = useRef<BestWord[]>([]);
 
-  const CT = { baseSecs: intensity.clockSecs, capSecs: intensity.capSecs };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const CT = useMemo(() => ({ baseSecs: intensity.clockSecs, capSecs: intensity.capSecs }), []);
   const clockRef = useRef<ClockState>(mkClock());
   const [remaining, setRemaining] = useState(CT.baseSecs);
 
@@ -103,17 +103,9 @@ export default function StormScreen() {
   // (double-tap can't stack two timelines / restart the clock).
   const countTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   useEffect(() => () => countTimers.current.forEach(clearTimeout), []);
-  const [claimLost, setClaimLost] = useState(false);
   const [verdict, setVerdict] = useState<ShowdownVerdict | null>(null);
-  // the LOBBY claims before launching (go=1) — no double-claim here
-  const preClaimed = params.go === '1';
   const startRun = () => {
     if (phaseRef.current !== 'ready') return;
-    if (!preClaimed && duel && Number.isFinite(duelId)) {
-      void claimShowdown(duelId).then((r) => {
-        if (r === 'taken') setClaimLost(true);
-      });
-    }
     // NO COUNTDOWN (owner) — one settle beat, then the wake is the ramp
     phaseRef.current = 'settling';
     setPhase('settling');
@@ -148,11 +140,20 @@ export default function StormScreen() {
   // FROM THE LOBBY (owner: "dismiss that, then launch the gameboard") —
   // the sheet was the ready cover, so the board starts itself
   const autoStarted = useRef(false);
+  const ceilingRef = useRef(0); // monotonic — fills only ever grow (audit)
   useEffect(() => {
     if (params.go !== '1' || autoStarted.current) return;
     autoStarted.current = true;
-    const t = setTimeout(() => startRun(), 420);
-    return () => clearTimeout(t);
+    // wait for the formSheet dismiss + push to SETTLE (audit: the board
+    // build landed inside the overlapping native transitions)
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const task = InteractionManager.runAfterInteractions(() => {
+      t = setTimeout(() => startRun(), 160);
+    });
+    return () => {
+      task.cancel();
+      if (t) clearTimeout(t);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -192,20 +193,18 @@ export default function StormScreen() {
     if (phase !== 'done' || submittedRef.current || !seed) return;
     submittedRef.current = true;
     haptic.soft();
-    enqueuePractice(seed, score, wordsRef.current);
-    // PLAY & POST (lobby intent): the showdown posts itself after the
-    // outbox lands — no second tap
-    if (params.post === '1') {
-      setTimeout(() => {
-        void postDuel(seed, 'blitz').then((r) => {
+    // SEQUENCED ON VALIDATION (audit: timers raced the drain) — the post
+    // and the verdict both wait for the run to be server-validated
+    void enqueuePractice(seed, score, wordsRef.current).then(() => {
+      void fetchPractice(seed, 5).then((rows) => rows && setBoard(rows));
+      // PLAY & POST (lobby intent): fires ONCE EVER (replays never
+      // re-post — audit), never over a manual post already in flight
+      if (params.post === '1' && !autoPostedRef.current && posted === 'idle') {
+        autoPostedRef.current = true;
+        void postDuel(seed, blitz ? 'blitz' : 'themed').then((r) => {
           setPosted(r === 'ok' ? 'ok' : r === 'has-open' ? 'has-open' : 'error');
         });
-      }, 1400);
-    }
-    // give the outbox a beat to land, then standings + the showdown verdict
-    // (retry once — the validated run may still be in flight)
-    const t = setTimeout(() => {
-      void fetchPractice(seed, 5).then((rows) => rows && setBoard(rows));
+      }
       if (duel && Number.isFinite(duelId)) {
         void resolveShowdown(duelId).then((v) => {
           if (v === 'pending') {
@@ -219,8 +218,7 @@ export default function StormScreen() {
           }
         });
       }
-    }, 900);
-    return () => clearTimeout(t);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
@@ -235,6 +233,7 @@ export default function StormScreen() {
   }, []);
 
   const [posted, setPosted] = useState<'idle' | 'busy' | 'ok' | 'has-open' | 'error'>('idle');
+  const autoPostedRef = useRef(false);
   const postAsDuel = async () => {
     if (!seed || posted === 'busy' || posted === 'ok') return;
     setPosted('busy');
@@ -252,7 +251,10 @@ export default function StormScreen() {
     setRemaining(CT.baseSecs);
     clockRef.current = mkClock();
     setDealNonce((n) => n + 1);
+    phaseRef.current = 'ready';
     setPhase('ready');
+    // consistency (audit): first entry auto-started, so replays do too
+    setTimeout(() => startRun(), 380);
   };
 
   // board sizing: play-sheet's exact formula
@@ -307,7 +309,7 @@ export default function StormScreen() {
             you={score}
             ghost={ghostScore}
             ghostName={duel.name}
-            ceiling={Math.max(duel.score, score)}
+            ceiling={ceilingRef.current = Math.max(ceilingRef.current, duel.score, score)}
           />
         )}
         {deal && phase !== 'ready' && phase !== 'done' && (
@@ -329,11 +331,9 @@ export default function StormScreen() {
             <Text style={[styles.eyebrow, { color: theme.faint }]}>SHARED BOARD</Text>
             <Text style={[styles.title, { color: theme.ink }]}>{stormName(seed)}</Text>
             <Text style={[styles.sub, { color: theme.sub }]}>
-              {claimLost
-                ? 'someone took this showdown first — the board is still open to play.'
-                : duel
-                  ? `${duel.name.toLowerCase()} put up ${duel.score.toLocaleString()} on this board.\n${intensity.label} · ${fmtClock(intensity.clockSecs)} — beat it.`
-                  : `everyone gets this exact board.\n${intensity.label} · ${fmtClock(intensity.clockSecs)} — best score counts.`}
+              {duel
+                ? `${duel.name.toLowerCase()} put up ${duel.score.toLocaleString()} on this board.\n${intensity.label} · ${fmtClock(intensity.clockSecs)} — beat it.`
+                : `everyone gets this exact board.\n${intensity.label} · ${fmtClock(intensity.clockSecs)} — best score counts.`}
             </Text>
             <Pressable onPress={startRun} style={[styles.cta, { backgroundColor: ACCENT, boxShadow: `0 4px 0 ${ACCENT_EDGE}` }]}>
               <Text style={[styles.ctaText, { color: '#FFFFFF' }]}>PLAY</Text>
@@ -344,7 +344,11 @@ export default function StormScreen() {
         {phase === 'done' && (
           <View style={styles.cover}>
             <Text style={[styles.eyebrow, { color: theme.faint }]}>
-              {duel ? (score > duel.score ? 'SHOWDOWN WON ✦' : 'SHOWDOWN LOST') : 'YOUR SCORE'}
+              {duel
+                ? (verdict ? verdict.won : score > duel.score)
+                  ? 'SHOWDOWN WON ✦'
+                  : 'SHOWDOWN LOST'
+                : 'YOUR SCORE'}
             </Text>
             <Text style={[styles.bigScore, { color: theme.ink }]}>{score}</Text>
             {duel && (
@@ -357,6 +361,11 @@ export default function StormScreen() {
             {verdict && (
               <Text style={[styles.sub, { color: verdict.won ? '#5FD6A8' : theme.faint }]}>
                 {verdict.won ? '+12 showdown points ✦' : '+2 for the fight'} · settled
+              </Text>
+            )}
+            {params.post === '1' && posted === 'has-open' && (
+              <Text style={[styles.sub, { color: '#F58A66' }]}>
+                you already have a showdown open — this score wasn&rsquo;t posted
               </Text>
             )}
             <Text style={[styles.sub, { color: theme.sub }]}>

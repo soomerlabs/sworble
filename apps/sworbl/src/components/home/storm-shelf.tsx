@@ -1,4 +1,4 @@
-// THE STORM SHELF (owner ruling): three FRESH boards every day, each with
+// THE STORM SHELF (owner ruling): four FRESH boards every day, each with
 // its own persistent leaderboard — jump in, place, own the crown. Cards
 // show the current holder and YOUR best; a board you haven't run yet is
 // an invitation. Sits under the 'storms' section name with the SHOWDOWN

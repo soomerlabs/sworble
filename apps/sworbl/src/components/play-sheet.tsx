@@ -16,7 +16,6 @@ import {
 } from '@/game/round-clock';
 
 import { GameBoard } from '@/components/game/game-board';
-import { GuessStage } from '@/components/game/guess-stage';
 import { CountIn } from '@/components/game/count-in';
 import { type FinaleRestore } from '@/components/game/guess-stage';
 import { ResultView } from '@/components/game/result-view';
@@ -32,9 +31,7 @@ import {
   type RunSnap, type BestWord,
 } from '@/game/persist';
 import { enqueueSubmission } from '@/net/standings-remote';
-import { loadLadder, saveLadder, FINALE_FLOOR } from '@/game/hints';
-import { loadSwaps, applySwaps } from '@/game/clue-swaps';
-import { activeClues } from '@/game/daily';
+import { loadLadder } from '@/game/hints';
 import { getDiagnostics, getShortRounds } from '@/game/dev-flags';
 import { TUNING } from '@/game/tuning';
 import Animated, {
@@ -52,9 +49,6 @@ export interface PlaySheetHandle {
 
 interface PlaySheetProps {
   onClose: () => void;
-  // home bumps this to open the sheet STRAIGHT INTO the guess (modes-spec:
-  // the finale is decoupled — 6 guesses a day, spendable whenever)
-  guessIntent?: number;
   // the sheet is PRE-MOUNTED hidden at boot (drag must move an already-built
   // layer — mounting mid-gesture was the pull jank). The round only ARMS
   // (count-in starts) when `active` flips true at sheet-dock.
@@ -64,7 +58,7 @@ interface PlaySheetProps {
 }
 
 export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function PlaySheet(
-  { onClose, active, closeGesture, guessIntent },
+  { onClose, active, closeGesture },
   handleRef
 ) {
   const { width, height } = useWindowDimensions();
@@ -95,7 +89,9 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
 
   // a resumed run re-enters through the pause cover; a killed finale re-enters the finale
   const [phase, setPhase] = useState<Phase>(
-    route === 'consumed' ? 'done' : route === 'resume' ? 'paused' : route === 'finale' ? 'finale' : 'idle'
+    // legacy 'finale' snapshots (pre-/guess builds) land on idle — the
+    // parked intel restores through the guess sheet's own door
+    route === 'consumed' ? 'done' : route === 'resume' ? 'paused' : 'idle'
   );
   const [countInMounted, setCountInMounted] = useState(false);
 
@@ -118,18 +114,6 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     setPhase('live');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // GUESS INTENT (modes-spec): home opens the sheet straight into the
-  // finale — no round, no count-in. The dock-arm effect's cleanup clears
-  // its pending timer when phase leaves idle, so the two cannot race.
-  const lastGuessIntent = useRef(guessIntent ?? 0);
-  useEffect(() => {
-    if (!active || guessIntent == null || guessIntent === lastGuessIntent.current) return;
-    lastGuessIntent.current = guessIntent;
-    // roundend counts too (audit): during the lagged-remount window the
-    // parked sheet still sits in roundend — a guess tap must not strand
-    // the player on the banked-round cover
-    if (phase === 'idle' || phase === 'paused' || phase === 'roundend') setPhase('finale');
-  }, [active, guessIntent, phase]);
   // the count-in beat the STEPPER renders (count-in itself is headless now)
   const [countStep, setCountStep] = useState<'3' | '2' | '1' | null>(null);
   // seeded from the INITIAL prop: mounting already-active (state restoration
@@ -486,48 +470,6 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     [deal, score, found, onClose]
   );
 
-  // GUESS CONTEXT (decoupled — owner: "they should be decoupled anyway"):
-  // one object per finale entry; the SHEET owns the intel grants now.
-  const guessCtx = useMemo(() => {
-    if (phase !== 'finale' || !deal) return null;
-    return {
-      rounds: Math.max(1, loadDay(deal.dayKey).rounds.played),
-      restore: finaleRestore.current ?? loadFinaleProgress(deal.dayKey) ?? undefined,
-      swapped: applySwaps(deal.clues, loadSwaps(deal.dayKey)),
-      nudged: loadLadder(deal.dayKey).nudged,
-    };
-  }, [phase, deal]);
-
-  // THE GUESSING FLOOR (moved from the board): entering the guess with
-  // fewer than FINALE_FLOOR clues grants up to the floor — pure intel
-  useEffect(() => {
-    if (phase !== 'finale' || !deal || !guessCtx) return;
-    const l = loadLadder(deal.dayKey);
-    if (l.floorGiven) return;
-    saveLadder(deal.dayKey, { ...l, floorGiven: true });
-    const need = FINALE_FLOOR - found.length;
-    if (need > 0) {
-      const grants = guessCtx.swapped.filter((c) => !found.includes(c)).slice(0, need);
-      if (grants.length) setFound((cur) => [...cur, ...grants.filter((c) => !cur.includes(c))]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, deal, guessCtx]);
-
-  // the 3rd-miss FREEBIE (moved from the board): one more clue releases
-  // mid-guessing — banked as intel
-  const onGuessMiss = useCallback(
-    (usedNow: number) => {
-      if (usedNow !== 3 || !deal || !guessCtx) return;
-      const l = loadLadder(deal.dayKey);
-      if (l.guess3Given) return;
-      const clue = guessCtx.swapped.find((c) => !found.includes(c));
-      if (clue) {
-        saveLadder(deal.dayKey, { ...l, guess3Given: true });
-        setFound((cur) => (cur.includes(clue) ? cur : [...cur, clue]));
-      }
-    },
-    [deal, guessCtx, found]
-  );
 
   const tile = Math.min(64, Math.floor((Math.min(width, 480) - 32) / (5 + 4 * 0.16)));
   const gap = Math.round(tile * 0.16);
@@ -654,55 +596,22 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
                 pointerEvents={
                   (phase === 'live' && remaining > 0) || phase === 'finale' ? 'auto' : 'none'
                 }>
-                {phase === 'finale' && deal && guessCtx ? (
-                  <GuessStage
-                    sworb={deal.sworb}
-                    hint={deal.hint}
-                    archetype={deal.archetype}
-                    rounds={guessCtx.rounds}
-                    restore={guessCtx.restore}
-                    found={found}
-                    clues={activeClues(
-                      guessCtx.swapped,
-                      deal.poolExtras.filter((w) => !guessCtx.swapped.includes(w)),
-                      found
-                    )}
-                    clueTotal={deal.clues.length}
-                    nudged={guessCtx.nudged}
-                    size={tile}
-                    gap={gap}
-                    gs={gs}
-                    onProgress={onFinaleProgress}
-                    onMiss={onGuessMiss}
-                    onDone={onFinaleDone}
-                  />
-                ) : (
-                  <GameBoard
-                    deal={deal}
-                    size={tile}
-                    gap={gap}
-                    initialTiles={initialTiles}
-                    initialFound={boot?.run?.found ?? boot?.found}
-                    initialScore={boot?.run?.score}
-                    secsLeft={phase === 'live' ? remaining : undefined}
-                    onScore={setScore}
-                    onClues={setFound}
-                    onTiles={onTiles}
-                    onWordSpelled={onWordSpelled}
-                    gestureRef={boardPanRef}
-                    concealed={phase !== 'live'}
-                    countIn={phase === 'countin' ? countStep : null}
-                  />
-                )}
-                {/* THE RELEASE VALVE (owner): the guess opens automatically
-                    at round end, but nobody is trapped — swipe down keeps
-                    every guess for later */}
-                {phase === 'finale' && (
-                  <Text style={[styles.notYet, { color: gs.sub }]}>
-                    not yet? swipe down — guesses keep, but the bonus shrinks
-                    every round
-                  </Text>
-                )}
+                <GameBoard
+                  deal={deal}
+                  size={tile}
+                  gap={gap}
+                  initialTiles={initialTiles}
+                  initialFound={boot?.run?.found ?? boot?.found}
+                  initialScore={boot?.run?.score}
+                  secsLeft={phase === 'live' ? remaining : undefined}
+                  onScore={setScore}
+                  onClues={setFound}
+                  onTiles={onTiles}
+                  onWordSpelled={onWordSpelled}
+                  gestureRef={boardPanRef}
+                  concealed={phase !== 'live'}
+                  countIn={phase === 'countin' ? countStep : null}
+                />
               </View>
               {countInMounted && phase === 'countin' && (
                 <CountIn
@@ -716,9 +625,12 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
               )}
               {active && (phase === 'paused' || phase === 'idle') && (
                 <View style={styles.pausedCoverWrap}>
+                  {/* no word, just the button (owner: "not have it say
+                      paused") — one candy play circle, tap anywhere works */}
                   <Pressable style={styles.pausedCover} onPress={rearm}>
-                    <Text style={[styles.pausedTitle, { color: gs.ink }]}>paused</Text>
-                    <Text style={[styles.pausedSub, { color: gs.sub }]}>tap to resume</Text>
+                    <View style={styles.resumeBtn}>
+                      <Text style={styles.resumeGlyph}>▶</Text>
+                    </View>
                   </Pressable>
                 </View>
               )}
@@ -767,6 +679,20 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
 });
 
 const styles = StyleSheet.create({
+  resumeBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 20, borderCurve: 'continuous',
+    backgroundColor: '#8971FF',
+    boxShadow: '0 5px 0 #6A54D8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resumeGlyph: {
+    fontSize: 24,
+    color: '#FFFFFF',
+    marginLeft: 3,
+  },
   root: {
     flex: 1, // surface painted by index's themed game layer
   },

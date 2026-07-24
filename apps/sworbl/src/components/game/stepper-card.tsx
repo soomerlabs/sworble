@@ -264,7 +264,7 @@ export function StepperCard({ width, traceWord, verdict, sworb, countIn, gs = GA
     const bs = Math.min(34, Math.floor((width - 60) / Math.max(1, sworb.slots.length)) - 5);
     return (
       <View style={[styles.card, { width, backgroundColor: gs.card, boxShadow: `0 4px 0 ${gs.cardEdge}` }]}>
-        <Animated.View key="sworb" entering={FadeIn.delay(260).duration(320)} style={styles.face}>
+        <Animated.View key="sworb" entering={FadeIn.duration(180)} style={styles.face}>
         <Animated.View style={[styles.sworbRow, shakeStyle]}>
           {sworb.slots.map((l, i) => {
             const color = sworb.colors[i];

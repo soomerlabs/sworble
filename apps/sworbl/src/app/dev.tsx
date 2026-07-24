@@ -18,6 +18,7 @@ import { useTheme, ACCENT, CLUE_GREEN } from '@/game/theme';
 import { PALETTE } from '@/game/palette';
 import { dealDaily, getDevDay, setDevDay, authoredDays } from '@/game/daily';
 import { fetchRemoteEntry, loadRemoteEntry } from '@/net/dailies-remote';
+import { getNetLog, clearNetLog } from '@/net/net-log';
 import { loadDay, resetDay, getResetNonce, bumpResetNonce } from '@/game/persist';
 import { isFullDictionary, dict } from '@/game/dict';
 import { getLbFieldMode, setLbFieldMode, type LbFieldMode } from '@/game/standings';
@@ -326,6 +327,39 @@ export default function DevScreen() {
             </Text>
           </Pressable>
 
+          {/* ---- NETWORK (owner: a log of the supabase calls) ---- */}
+          <Text style={sectionLabel}>NETWORK · last {getNetLog().length} supabase calls</Text>
+          {getNetLog().slice(0, 14).map((e, i) => (
+            <View key={`${e.ts}-${i}`} style={styles.netRow}>
+              <Text style={[styles.netTime, { color: theme.faint }]}>
+                {new Date(e.ts).toLocaleTimeString('en-US', { hour12: false })}
+              </Text>
+              <Text style={[styles.netPath, { color: theme.ink }]} numberOfLines={1}>
+                {e.method} {e.path.replace('/functions/v1', 'ƒ').replace('/rest/v1', 'r')}
+              </Text>
+              <Text
+                style={[
+                  styles.netStatus,
+                  { color: e.status === 'ERR' || (typeof e.status === 'number' && e.status >= 400) ? '#FF8A8E' : CLUE_GREEN },
+                ]}>
+                {e.status} · {e.ms}ms
+              </Text>
+            </View>
+          ))}
+          {getNetLog().length === 0 && (
+            <Text style={[styles.metaLine, { color: theme.faint }]}>
+              no calls yet — pull to refresh home, then come back
+            </Text>
+          )}
+          <Pressable
+            onPress={() => {
+              clearNetLog();
+              refresh('network log cleared');
+            }}
+            style={[styles.actionRow, { backgroundColor: theme.card }]}>
+            <Text style={[styles.actionText, { color: theme.ink }]}>clear network log</Text>
+          </Pressable>
+
           {/* ---- STORAGE ---- */}
           <Text style={sectionLabel}>STORAGE</Text>
           <Pressable
@@ -375,6 +409,15 @@ export default function DevScreen() {
 }
 
 const styles = StyleSheet.create({
+  netRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 3,
+  },
+  netTime: { fontFamily: 'Fredoka_600SemiBold', fontSize: 10, fontVariant: ['tabular-nums'] },
+  netPath: { fontFamily: 'Fredoka_600SemiBold', fontSize: 11, flex: 1 },
+  netStatus: { fontFamily: 'Fredoka_600SemiBold', fontSize: 10, fontVariant: ['tabular-nums'] },
   root: { flex: 1 },
   safe: { flex: 1 },
   content: {

@@ -66,7 +66,7 @@ export async function fetchDuelGhost(
 }
 
 // the shelf's crowns: best score + holder per board, plus YOUR best —
-// one query each way, batched over today's three seeds
+// one query each way, batched over today's four seeds
 export async function fetchStormCrowns(
   seeds: string[]
 ): Promise<Record<string, { top: { name: string; score: number } | null; mine: number | null }> | null> {
