@@ -28,8 +28,9 @@ export function applyGuess(args: {
   sworb: string;
   foundCount: number;
   clueTotal: number;
+  rounds?: number; // rounds played at guess time — decays the solve bonus
 }): GuessOutcome {
-  const { slots, rows, guessesUsed, sworb, foundCount, clueTotal } = args;
+  const { slots, rows, guessesUsed, sworb, foundCount, clueTotal, rounds } = args;
   const len = sworb.length;
   const word = slots.join('');
   if (word.length < len || slots.some((s) => !s)) return { kind: 'reject' };
@@ -41,6 +42,7 @@ export function applyGuess(args: {
     solved: false,
     foundCount,
     total: clueTotal,
+    rounds,
   });
   if (!res.ok) return { kind: 'reject' };
 

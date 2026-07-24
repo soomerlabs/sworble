@@ -95,7 +95,7 @@ export default function HomeScreen() {
 
   const stats = useMemo(() => loadStats(), [day]); // re-read when the day state moves
   const streak = useMemo(() => streakDays(stats), [stats]);
-  const played = day?.route === 'consumed'; // legacy one-shot / future hard
+  const played = day?.route === 'consumed'; // legacy one-shot days
   const solved = !!day?.sworb?.solved; // regular: solve reveals the hero mid-day
   const inProgress = day?.route === 'resume' || day?.route === 'finale';
   // REGULAR MODE (modes-spec): the day is a living thing — rounds banked,
@@ -113,7 +113,7 @@ export default function HomeScreen() {
   useEffect(() => {
     let live = true;
     if (deal) {
-      fetchDaily(deal.dayKey, day?.mode ?? 'regular').then((r) => {
+      fetchDaily(deal.dayKey).then((r) => {
         if (live && r && r.entries.length) setRemote(r);
       });
       // server-driven day spec (owner: swap tester content rapidly) — a
@@ -137,7 +137,7 @@ export default function HomeScreen() {
     setHomeRefreshing(true);
     try {
       const [field, changed] = await Promise.all([
-        fetchDaily(deal.dayKey, day?.mode ?? 'regular'),
+        fetchDaily(deal.dayKey),
         fetchRemoteEntry(deal.dayKey),
       ]);
       if (field?.entries.length) setRemote(field);
@@ -145,7 +145,7 @@ export default function HomeScreen() {
     } finally {
       setHomeRefreshing(false);
     }
-  }, [deal, day?.mode]);
+  }, [deal]);
   const entries = useMemo(
     () => remote?.entries ?? (deal ? standingsStub(deal.dayKey) : []),
     [remote, deal]
@@ -700,7 +700,6 @@ export default function HomeScreen() {
             <DateHeader
               theme={theme}
               dayKey={deal.dayKey}
-              mode={day?.mode}
               score={myScore > 0 ? myScore : null}
               streak={streak}
               onInfo={!played ? () => router.push('/how-to') : undefined}
@@ -716,7 +715,6 @@ export default function HomeScreen() {
                     guessesUsed: day?.sworb?.guessesUsed ?? 0,
                     score: you?.score ?? 0,
                     streak,
-                    mode: day?.mode,
                     rounds: day?.rounds.played ?? 0,
                   }),
                 }).catch(() => {})

@@ -30,25 +30,11 @@ export interface DayState {
   sworb: SworbState | null;
   run: RunSnap | null;
   bestWords: BestWord[]; // top-5 by points — the home superlatives
-  rounds: DayRounds; // REGULAR mode (modes-spec): replayable rounds
-  mode: DayMode | null; // null until the day's fork is chosen
+  rounds: DayRounds; // replayable rounds (modes-spec: ONE mode now)
 }
 
 const ROUNDS_KEY = 'sworbl_rn_rounds_'; // + dayKey
-const MODE_KEY = 'sworbl_rn_mode_'; // + dayKey
-
-export type DayMode = 'regular' | 'hard';
-
-// null = the fork hasn't been chosen yet (modes-spec: declared BEFORE the
-// day's first round, locked for the day)
-export function getDayMode(dayKey: string): DayMode | null {
-  const v = engine.store.getJSON(MODE_KEY + dayKey, null);
-  return v === 'regular' || v === 'hard' ? v : null;
-}
-
-export function setDayMode(dayKey: string, mode: DayMode): void {
-  engine.store.setJSON(MODE_KEY + dayKey, mode);
-}
+const MODE_KEY = 'sworbl_rn_mode_'; // legacy hard-mode fork key — wiped only
 
 export function loadRounds(dayKey: string): DayRounds {
   const v = engine.store.getJSON(ROUNDS_KEY + dayKey, null) as DayRounds | null;
@@ -78,7 +64,6 @@ export function loadDay(dayKey: string): DayState {
     bestWords: (engine.store.getJSON(K.SEVEN_PREFIX + dayKey, { words: [] }) as { words: BestWord[] })
       .words,
     rounds: loadRounds(dayKey),
-    mode: getDayMode(dayKey),
   };
 }
 

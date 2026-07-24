@@ -7,6 +7,29 @@
   // (bold cold-read pays most; guessing after finding everything pays least). Tuning constants.
   var REWARD = { none: 500, few: 350, most: 200, all: 75 };
 
+  // ROUND DECAY (modes-spec: ONE mode, priced bravery) — the solve bonus
+  // decays by rounds played at guess time: x0.8 per extra round, floored at
+  // x0.3. More rounds = more intel bought = the solve is worth less.
+  var DECAY_PER_ROUND = 0.8;
+  var DECAY_FLOOR = 0.3;
+
+  function roundDecay(rounds) {
+    var r = (typeof rounds === 'number' && isFinite(rounds) && rounds >= 1) ? Math.floor(rounds) : 1;
+    return Math.max(DECAY_FLOOR, Math.pow(DECAY_PER_ROUND, r - 1));
+  }
+
+  // a decayed tier, rounded to the nearest 5 points (clean pips)
+  function decayedBonus(tier, rounds) {
+    return Math.round((tier * roundDecay(rounds)) / 5) * 5;
+  }
+
+  // the server's reconciliation set for a given round count: zero (no
+  // solve) plus every tier decayed — ascending, matching REWARD's spread
+  function legalBonuses(rounds) {
+    return [0, decayedBonus(REWARD.all, rounds), decayedBonus(REWARD.most, rounds),
+      decayedBonus(REWARD.few, rounds), decayedBonus(REWARD.none, rounds)];
+  }
+
   function parseEntry(dailies, day) {
     if (!dailies || typeof dailies !== 'object') return null;
     var e = dailies[day];
@@ -110,7 +133,7 @@
     if (correct) {
       var foundCount = (typeof a.foundCount === 'number' && isFinite(a.foundCount) && a.foundCount > 0) ? a.foundCount : 0;
       var total = (typeof a.total === 'number' && isFinite(a.total) && a.total > 0) ? a.total : 0;
-      bonus = guessReward(foundCount, total);
+      bonus = decayedBonus(guessReward(foundCount, total), a.rounds);
     }
     return {
       ok: true, correct: correct, newGuessesUsed: newGuessesUsed, nowSolved: correct,
@@ -252,6 +275,7 @@
   }
 
   var API = { parseEntry: parseEntry, isClue: isClue, clueFor: clueFor, checkGuess: checkGuess, guessReward: guessReward, scoreGuess: scoreGuess, bankClue: bankClue, applySworbGuess: applySworbGuess, nextSlots: nextSlots, BACKSPACE: BACKSPACE, resolveCatch: resolveCatch, REWARD: REWARD,
+    roundDecay: roundDecay, decayedBonus: decayedBonus, legalBonuses: legalBonuses,
     hintTokenEvents: hintTokenEvents, firstUnfoundClue: firstUnfoundClue, mercyPulseShouldFire: mercyPulseShouldFire,
     HINT_TOKEN_WORD_THRESHOLD: HINT_TOKEN_WORD_THRESHOLD, MAX_HINT_GRANTS_PER_ROUND: MAX_HINT_GRANTS_PER_ROUND, MERCY_THRESHOLD_SECS: MERCY_THRESHOLD_SECS, MERCY_MAX_CLUES_FOUND: MERCY_MAX_CLUES_FOUND };
   root.SworblDaily = API;

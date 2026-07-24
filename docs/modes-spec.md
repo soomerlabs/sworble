@@ -1,6 +1,7 @@
-# sworbl — THE MODES SPEC (owner rulings 2026-07-23, locked)
+# sworbl — THE MODES SPEC (owner rulings 2026-07-23, locked;
+# HARD MODE REMOVED by owner ruling 2026-07-23 — see ROUND DECAY)
 
-The one-shot daily becomes three modes sharing one engine, one board
+ONE daily mode + seed boards (duels), sharing one engine, one board
 system, one validated submission path.
 
 ## REGULAR (the default daily)
@@ -23,15 +24,20 @@ system, one validated submission path.
   round 2 be a memorized speedrun and would exhaust the layout's
   findable clues in one round.
 
-## HARD (the once-a-day ritual)
-- Today's exact flow: ONE round, then the guess phase immediately.
-- **Declared BEFORE the first round of the day** (once you've seen the
-  board, hard is meaningless) — a mode-choice moment at first launch of
-  the day, locked in. One mode per player per day.
-- Own leaderboard, prestige framing. Hard players then blast through
-  practice boards (owner: that's the once-a-day audience's volume play).
-- Tester phase: client-side lock-in. Launch hardening: server rejects a
-  hard submission when prior regular round-activity exists for the day.
+## ROUND DECAY (owner ruling 2026-07-23 — REPLACES hard mode)
+- Hard mode is DELETED. Instead, the guess prompt appears after EVERY
+  round (the round-end cover), and the solve bonus DECAYS with rounds
+  played at guess time: bravery is priced, not forked.
+- **Decay is by ROUNDS PLAYED, never wall-clock** (time decay would
+  punish the lunch-then-dinner player and fight the replay-all-day law).
+- **The math lives in the ENGINE** (sworbl-daily.js, shipped to the edge
+  function too — client and server compute the identical bonus):
+  `bonus = round5(guessReward(cluesFound) × max(0.3, 0.8^(rounds−1)))`.
+  Round 1 cold read = the full 500; round 3 = 320; the floor is ×0.3.
+- Submissions carry `rounds`; submit-score validates the delta against
+  `SworblDaily.legalBonuses(rounds)` — the engine's own set.
+- No mode fork, no per-day mode lock, no hard leaderboard. The daily
+  board is ONE board again (daily + all-time pages).
 
 ## GHOST DUELS (owner-approved 2026-07-23 — replaces "practice" as the
 ## third mode; same seeds, framed as "beat someone")
@@ -62,14 +68,13 @@ system, one validated submission path.
   score/words, status, 48h expiry) + accept/decline; in-app inbox chip
   v1, push notifications later. Same submit-score validation path.
 
-## SERVER MODEL (schema v4)
-- `submissions` gains `mode text not null default 'hard'` (existing rows
-  were one-shot = hard-shaped). PK stays `(player_id, day)` — legal
-  because a player is exactly ONE mode per day.
-- One-shot law becomes PER-MODE POLICY in submit-score:
-  hard → insert once, duplicates = delivered (today's behavior);
+## SERVER MODEL (schema v4; hard removed 2026-07-23)
+- `submissions.mode` remains as a column ('regular' rows only now);
+  PK stays `(player_id, day)`.
+- Write policy in submit-score:
   regular → keep-best upsert (update only when new score > stored);
-  practice → separate `practice_scores (player_id, seed)` keep-best.
+  practice → separate `practice_scores (player_id, seed)` keep-best,
+  words jsonb rides along (ghost fuel, schema v6).
 - `alltime_totals` trigger gains an UPDATE arm: `total += new - old`.
 - `daily_standings` view filtered/labeled by mode.
 
@@ -78,8 +83,8 @@ system, one validated submission path.
 - groups table (name unique-ish, PUBLIC browsable / PRIVATE by invite —
   join via group name or member username) + group_members join table.
 - A group leaderboard is a FILTER over existing validated data — no new
-  scoring paths: the group daily board (today, members only), group hard
-  board, group per-seed boards. Same submit-score gate everywhere.
+  scoring paths: the group daily board (today, members only) and group
+  per-seed boards. Same submit-score gate everywhere.
 - Group seed events: the group plays one virgin seed; ghost race vs the
   group's current leader instead of a random stranger.
 - Build after duels core (~2-3 extra sessions — tables, RLS, join/browse
@@ -115,6 +120,6 @@ confusion points become the curriculum.
    working through the transition).
 2. Client regular-replay loop (persist v2, play-sheet round loop,
    decoupled guess, home in-progress face). The big one.
-3. Hard mode (mode-choice moment + lock; mostly flags on #2).
+3. ~~Hard mode~~ REMOVED (2026-07-23): round decay replaced the fork.
 4. Ghost duels (seed boards + ghost race bar + pick-opponent function +
    per-seed boards/featured list). ~3-4 sessions.

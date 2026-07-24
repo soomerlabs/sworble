@@ -17,20 +17,17 @@ export interface RemoteField {
 }
 
 // ---- fetch (cache-backed) ----
-export async function fetchDaily(
-  dayKey: string,
-  mode: 'regular' | 'hard' = 'regular'
-): Promise<RemoteField | null> {
+export async function fetchDaily(dayKey: string): Promise<RemoteField | null> {
   const sb = supabase();
   if (!sb) return null;
-  const cacheKey = `${dayKey}:${mode}`;
+  const cacheKey = `${dayKey}:regular`;
   try {
     const uid = (await sb.auth.getSession()).data.session?.user.id ?? null;
     const { data, error } = await sb
       .from('daily_standings')
       .select('name, score, solved, rank, player_id')
       .eq('day', dayKey)
-      .eq('mode', mode)
+      .eq('mode', 'regular')
       .order('rank', { ascending: true })
       .limit(100);
     if (error || !data) return readCache(cacheKey);
@@ -100,7 +97,8 @@ interface Pending {
   solved: boolean;
   guesses: number;
   words: BestWord[];
-  mode?: 'regular' | 'hard' | 'practice'; // per-mode write policy (modes-spec)
+  mode?: 'regular' | 'practice'; // per-mode write policy (modes-spec)
+  rounds?: number; // rounds played at solve time — the bonus decay input
 }
 
 // PRACTICE (duels groundwork): keep-best per seed; words ride along so the
@@ -145,10 +143,13 @@ export function enqueueSubmission(
   score: number,
   sworb: SworbState,
   words: BestWord[],
-  mode: 'regular' | 'hard' = 'regular'
+  rounds: number = 1
 ): void {
   const box = (engine.store.getJSON(OUTBOX_KEY, []) as Pending[]).filter((p) => p.day !== dayKey);
-  box.push({ day: dayKey, score, solved: sworb.solved, guesses: sworb.guessesUsed, words, mode });
+  box.push({
+    day: dayKey, score, solved: sworb.solved, guesses: sworb.guessesUsed,
+    words, mode: 'regular', rounds,
+  });
   engine.store.setJSON(OUTBOX_KEY, box);
   void drainOutbox(); // best effort now; boot/foreground retries the rest
 }
@@ -171,7 +172,7 @@ export async function drainOutbox(): Promise<void> {
           ? { seed: p.seed, score: p.score, solved: false, guesses: 0, words: p.words, mode: 'practice' }
           : {
               day: p.day, score: p.score, solved: p.solved, guesses: p.guesses,
-              words: p.words, mode: p.mode ?? 'regular',
+              words: p.words, mode: 'regular', rounds: p.rounds ?? 1,
             },
       });
       if (data?.ok) continue; // delivered (duplicates count — one-shot law)

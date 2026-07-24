@@ -390,4 +390,39 @@ console.log('sworbl-daily: firstUnfoundClue passed');
 }
 console.log('sworbl-daily: mercyPulseShouldFire passed');
 
+// --- ROUND DECAY (modes-spec: one mode, priced bravery) ---------------------
+// the solve bonus decays by ROUNDS PLAYED at guess time: x0.8 per extra
+// round, floored at x0.3, rounded to the nearest 5 points
+{
+  assert.strictEqual(D.roundDecay(1), 1, 'round 1 = full price');
+  assert.strictEqual(D.roundDecay(2), 0.8);
+  assert.ok(Math.abs(D.roundDecay(3) - 0.64) < 1e-9);
+  assert.strictEqual(D.roundDecay(7), 0.3, 'deep grind hits the floor');
+  assert.strictEqual(D.roundDecay(50), 0.3, 'floor holds forever');
+  assert.strictEqual(D.roundDecay(0), 1, 'defensive: rounds<1 = full price');
+  assert.strictEqual(D.roundDecay(undefined), 1, 'defensive: missing = full price');
+
+  assert.strictEqual(D.decayedBonus(500, 1), 500);
+  assert.strictEqual(D.decayedBonus(500, 2), 400);
+  assert.strictEqual(D.decayedBonus(500, 3), 320);
+  assert.strictEqual(D.decayedBonus(500, 4), 255, '256 rounds to the nearest 5');
+  assert.strictEqual(D.decayedBonus(350, 3), 225, '224 rounds to 225');
+  assert.strictEqual(D.decayedBonus(75, 7), 25, 'floor: 22.5 rounds to 25');
+
+  // the server's reconciliation set: 0 plus each tier decayed for the round
+  assert.deepStrictEqual(D.legalBonuses(1), [0, 75, 200, 350, 500]);
+  assert.deepStrictEqual(D.legalBonuses(2), [0, 60, 160, 280, 400]);
+  assert.ok(D.legalBonuses(3).includes(225), 'decayed 350 tier is legal at round 3');
+
+  // applySworbGuess carries rounds through to the bonus
+  const entry = { sworb: 'ocean', themeWords: ['wave', 'tide', 'salt', 'reef', 'kelp'] };
+  const r1 = D.applySworbGuess({ input: 'ocean', entry, guessesUsed: 0, solved: false, foundCount: 0, total: 5, rounds: 1 });
+  assert.strictEqual(r1.bonus, 500, 'round 1 cold read = full jackpot');
+  const r3 = D.applySworbGuess({ input: 'ocean', entry, guessesUsed: 0, solved: false, foundCount: 0, total: 5, rounds: 3 });
+  assert.strictEqual(r3.bonus, 320, 'round 3 cold read = decayed jackpot');
+  const legacy = D.applySworbGuess({ input: 'ocean', entry, guessesUsed: 0, solved: false, foundCount: 0, total: 5 });
+  assert.strictEqual(legacy.bonus, 500, 'no rounds arg = full price (back-compat)');
+}
+console.log('sworbl-daily: round decay pinned');
+
 console.log('sworbl-daily: all passed');

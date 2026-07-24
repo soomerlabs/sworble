@@ -3,7 +3,8 @@
 // through here, where the words are RE-SCORED with the engine ITSELF —
 // the generated engine-core.js IS packages/engine/sworbl-core.js:
 //   word points = round(sum(letterVal) * 10 * lenMult(len))
-//   legal score = sum(word pts) + solve bonus in {0,75,200,350,500}
+//   legal score = sum(word pts) + a solve bonus from the engine's own
+//   round-decayed reward table (SworblDaily.legalBonuses(rounds))
 // Per-word slack ×8 covers streak (≤2×) and boost-stack tiles; the total
 // must reconcile EXACTLY against the reward table.
 // Deploy: npx supabase functions deploy submit-score
@@ -18,11 +19,12 @@ const CORE = (globalThis as any).SworblCore as {
   letterVal: (letter: string, boost?: number) => number;
   lenMult: (n: number) => number;
 };
+// deno-lint-ignore no-explicit-any
+const DAILY = (globalThis as any).SworblDaily as {
+  legalBonuses: (rounds?: number) => number[];
+};
 const scoreWord = (w: string) =>
   Math.round([...w].reduce((s, ch) => s + CORE.letterVal(ch), 0) * 10 * CORE.lenMult(w.length));
-
-// engine REWARD table (sworbl-daily.js) — the only legal solve bonuses
-const BONUSES = [0, 75, 200, 350, 500];
 
 const bad = (msg: string, status = 422) =>
   new Response(JSON.stringify({ ok: false, error: msg }), {
@@ -47,8 +49,9 @@ Deno.serve(async (req) => {
   let body: {
     day?: string; score?: number; solved?: boolean; guesses?: number;
     words?: { word?: string; pts?: number }[];
-    mode?: string; // 'regular' (keep-best) | 'hard' (one-shot) | 'practice'
+    mode?: string; // 'regular' (keep-best) | 'practice' (keep-best per seed)
     seed?: string; // practice only
+    rounds?: number; // rounds played at solve time — decays the legal bonus
   };
   try {
     body = await req.json();
@@ -57,8 +60,11 @@ Deno.serve(async (req) => {
   }
 
   const { day, score, solved, guesses, words } = body;
-  const mode = body.mode ?? "hard"; // pre-modes clients were one-shot days
-  if (!["regular", "hard", "practice"].includes(mode)) return bad("bad mode");
+  const mode = body.mode ?? "regular";
+  if (!["regular", "practice"].includes(mode)) return bad("bad mode");
+  const rounds = body.rounds ?? 1;
+  if (typeof rounds !== "number" || !Number.isInteger(rounds) || rounds < 1 || rounds > 99)
+    return bad("bad rounds");
   if (mode === "practice") {
     if (typeof body.seed !== "string" || !/^[a-z0-9-]{3,24}$/.test(body.seed))
       return bad("bad seed");
@@ -81,9 +87,10 @@ Deno.serve(async (req) => {
     sum += w.pts;
   }
   // the total must RECONCILE: score - word points is exactly a legal bonus
-  // (practice has NO sworb → no bonus: delta must be zero)
+  // for the declared round count (the engine's own decay math decides).
+  // Practice has NO sworb → no bonus: delta must be zero.
   const delta = score - sum;
-  if (mode === "practice" ? delta !== 0 : !BONUSES.includes(delta))
+  if (mode === "practice" ? delta !== 0 : !DAILY.legalBonuses(rounds).includes(delta))
     return bad("score does not reconcile");
   if (delta > 0 && !solved) return bad("bonus without solve");
 
@@ -133,8 +140,7 @@ Deno.serve(async (req) => {
   if (!error) return json({ ok: true, duplicate: false });
   if (error.code !== "23505") return bad(error.message, 500);
 
-  // duplicate day: hard = one-shot (delivered); regular = keep-best
-  if (mode === "hard") return json({ ok: true, duplicate: true });
+  // duplicate day: keep-best (ONE mode now — modes-spec round decay)
   const { data: prior } = await admin
     .from("submissions")
     .select("score")

@@ -61,6 +61,17 @@ for (let i = 0; i < 6; i++) {
 }
 assert.strictEqual(used, 5, 'five misses recorded before the lockout guess');
 
+// ROUND DECAY (modes-spec: ONE mode) — the solve bonus shrinks with rounds
+{
+  const r1 = applyGuess({ slots: ['b','l','o','o','m'], rows: [], guessesUsed: 0, sworb, foundCount: 0, clueTotal: 6, rounds: 1 });
+  const r3 = applyGuess({ slots: ['b','l','o','o','m'], rows: [], guessesUsed: 0, sworb, foundCount: 0, clueTotal: 6, rounds: 3 });
+  if (r1.kind === 'solved' && r3.kind === 'solved') {
+    assert.strictEqual(r1.bonus, 500, 'round 1 cold read = full jackpot');
+    assert.strictEqual(r3.bonus, 320, 'round 3 cold read = decayed');
+  } else {
+    assert.fail('both cold reads must solve');
+  }
+}
 console.log('finale-logic: caller contract pinned (miss carry, nextSlots chain, solve, lockout)');
 
 // ---- swipe decoder ----

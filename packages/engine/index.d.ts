@@ -43,6 +43,9 @@ export interface SworblDaily {
   isClue(word: string, entry: DailyEntry): boolean;
   checkGuess(input: string, entry: DailyEntry): boolean;
   guessReward(cluesFound: number, total: number): number;
+  roundDecay(rounds?: number): number;
+  decayedBonus(tier: number, rounds?: number): number;
+  legalBonuses(rounds?: number): number[];
   scoreGuess(guess: string, answer: string): GuessColor[];
   bankClue(found: string[], clue: string | null): string[];
   resolveCatch(args: {
@@ -58,6 +61,7 @@ export interface SworblDaily {
     solved: boolean;
     foundCount?: number;
     total?: number;
+    rounds?: number; // rounds played at guess time — decays the bonus
   }): {
     ok: boolean;
     lockedOut?: boolean;

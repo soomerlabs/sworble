@@ -30,13 +30,12 @@ export interface ShareArgs {
   guessesUsed: number;
   score: number;
   streak?: number; // 🔥 rides the score line when ≥2
-  mode?: 'regular' | 'hard' | null; // hard wears its badge; regular adds rounds
-  rounds?: number; // regular: rounds played today (shown when ≥2)
+  rounds?: number; // rounds played today — ≥2 wears the 'best of N' tag
 }
 
 export function buildShareText(a: ShareArgs): string {
   // HARD is the brag (one shot); regular stays unlabeled — it's the default
-  const head = `sworbl Nº ${puzzleNo(a.dayKey)}${a.mode === 'hard' ? ' · HARD' : ''}${a.archetypeLabel ? ` · ${a.archetypeLabel}` : ''}`;
+  const head = `sworbl Nº ${puzzleNo(a.dayKey)}${a.archetypeLabel ? ` · ${a.archetypeLabel}` : ''}`;
 
   const caught = a.clues.filter((c) => a.found.includes(c));
   const fan = a.clues.map((c, i) => (a.found.includes(c) ? SLOT_SQ[i % SLOT_SQ.length] : '⬛')).join('');
@@ -47,7 +46,7 @@ export function buildShareText(a: ShareArgs): string {
     ? `${'⬛'.repeat(Math.max(0, a.guessesUsed - 1))}🟪 cracked in ${a.guessesUsed}`
     : `${'⬛'.repeat(Math.max(1, a.guessesUsed))} ✗ not cracked`;
 
-  const roundsTag = a.mode !== 'hard' && (a.rounds ?? 0) >= 2 ? ` · best of ${a.rounds} rounds` : '';
+  const roundsTag = (a.rounds ?? 0) >= 2 ? ` · best of ${a.rounds} rounds` : '';
   const scoreLine = `${a.score.toLocaleString()} pts${roundsTag}${a.streak && a.streak >= 2 ? ` · 🔥 ${a.streak}` : ''}`;
   return `${head}\n${clueLine}\n${guessLine}\n${scoreLine}`;
 }

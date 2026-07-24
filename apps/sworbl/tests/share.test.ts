@@ -43,23 +43,21 @@ assert.ok(noFire.endsWith('2,000 pts'), 'a 1-day streak stays quiet');
 
 console.log('share: card format pinned (solved, failed, bonus, untagged, streak)');
 
-// MODES (modes-spec): hard wears its badge in the header; regular shows
-// "best of N rounds" on the score line when the day had 2+ rounds
+// MODES (modes-spec: ONE mode, round decay) — no hard badge anywhere;
+// ≥2 rounds wears the 'best of N rounds' tag on the score line
 {
-  const hard = buildShareText({
-    dayKey: '2026-07-21', archetypeLabel: null, clues: ['aa', 'bb'], found: [],
-    solved: false, guessesUsed: 2, score: 100, mode: 'hard',
+  const multi = buildShareText({
+    dayKey: '2026-07-24', archetypeLabel: null,
+    clues: ['a', 'b', 'c', 'd', 'e', 'f'], found: ['a'],
+    solved: false, guessesUsed: 1, score: 900, rounds: 4,
   });
-  assert.ok(hard.split('\n')[0].endsWith('· HARD'), 'hard badge in header');
-  const reg = buildShareText({
-    dayKey: '2026-07-21', archetypeLabel: null, clues: ['aa'], found: [],
-    solved: false, guessesUsed: 1, score: 900, mode: 'regular', rounds: 4,
+  assert.ok(!multi.includes('HARD'), 'no hard badge — the mode is dead');
+  assert.ok(multi.includes('· best of 4 rounds'), 'multi-round tag on the score line');
+  const single = buildShareText({
+    dayKey: '2026-07-24', archetypeLabel: null,
+    clues: ['a', 'b', 'c', 'd', 'e', 'f'], found: ['a'],
+    solved: false, guessesUsed: 1, score: 900, rounds: 1,
   });
-  assert.ok(reg.includes('900 pts · best of 4 rounds'), 'regular rounds tag');
-  const one = buildShareText({
-    dayKey: '2026-07-21', archetypeLabel: null, clues: ['aa'], found: [],
-    solved: false, guessesUsed: 1, score: 900, mode: 'regular', rounds: 1,
-  });
-  assert.ok(!one.includes('best of'), 'single round stays quiet');
+  assert.ok(!single.includes('best of'), 'single round wears no tag');
 }
 console.log('share: card format pinned (solved, failed, bonus, untagged, streak, modes)');

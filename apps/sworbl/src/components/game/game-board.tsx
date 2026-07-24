@@ -50,6 +50,7 @@ interface Props {
   // the STEPPER hosts the guess — the player never leaves the gameboard
   finale?: {
     sworb: string;
+    rounds?: number; // rounds played — the engine decays the solve bonus
     restore?: FinaleRestore;
     onProgress: (s: FinaleRestore) => void;
     onDone: (r: { solved: boolean; guessesUsed: number; bonus: number }) => void;
@@ -379,6 +380,7 @@ export function GameBoard({
     const out = applyGuess({
       slots: fSlots, rows: fRows, guessesUsed: fUsed,
       sworb: fin.sworb, foundCount: foundRef.current.length, clueTotal: deal.clues.length,
+      rounds: fin.rounds,
     });
     if (out.kind === 'reject') {
       haptic.bad();
