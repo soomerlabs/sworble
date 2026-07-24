@@ -198,20 +198,6 @@ function Chips({ word, red, fly }: { word: string; red?: boolean; fly?: boolean 
 }
 
 export function StepperCard({ width, traceWord, verdict, sworb, countIn, gs = GAME_DARK }: Props) {
-  if (countIn) {
-    const pal = PALETTE[BEAT_INK[countIn] ?? 0];
-    return (
-      <View style={[styles.card, { width, backgroundColor: gs.card, boxShadow: `0 4px 0 ${gs.cardEdge}` }]}>
-        <Animated.Text
-          key={countIn}
-          entering={ZoomIn.springify().mass(0.5).damping(13)}
-          exiting={FadeOut.duration(110)}
-          style={[styles.countDigit, { color: pal.bg, textShadowColor: pal.edge }]}>
-          {countIn}
-        </Animated.Text>
-      </View>
-    );
-  }
   const tracing = traceWord.length > 0;
   const mult = tracing ? engine.core.lenMult(traceWord.length) : 0;
   const pts = tracing && traceWord.length >= 3 ? scoreWord(traceWord) : 0;
@@ -246,6 +232,21 @@ export function StepperCard({ width, traceWord, verdict, sworb, countIn, gs = GA
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [verdict]);
   const thumpStyle = useAnimatedStyle(() => ({ transform: [{ scale: thumpS.value }] }));
+
+  if (countIn) {
+    const pal = PALETTE[BEAT_INK[countIn] ?? 0];
+    return (
+      <View style={[styles.card, { width, backgroundColor: gs.card, boxShadow: `0 4px 0 ${gs.cardEdge}` }]}>
+        <Animated.Text
+          key={countIn}
+          entering={ZoomIn.springify().mass(0.5).damping(13)}
+          exiting={FadeOut.duration(110)}
+          style={[styles.countDigit, { color: pal.bg, textShadowColor: pal.edge }]}>
+          {countIn}
+        </Animated.Text>
+      </View>
+    );
+  }
 
   // ONE persistent card, FIXED height — the two faces dissolve inside it
   // (owner: the card grew at the finale swap and jerked the board down)
