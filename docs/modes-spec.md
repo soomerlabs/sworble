@@ -73,6 +73,18 @@ system, one validated submission path.
 - `alltime_totals` trigger gains an UPDATE arm: `total += new - old`.
 - `daily_standings` view filtered/labeled by mode.
 
+## GROUPS / LEAGUES (owner 2026-07-23: "3 or 4, 10, 20 people... own
+## leaderboard, public or private") — generalizes duels (1v1 = group of 2)
+- groups table (name unique-ish, PUBLIC browsable / PRIVATE by invite —
+  join via group name or member username) + group_members join table.
+- A group leaderboard is a FILTER over existing validated data — no new
+  scoring paths: the group daily board (today, members only), group hard
+  board, group per-seed boards. Same submit-score gate everywhere.
+- Group seed events: the group plays one virgin seed; ghost race vs the
+  group's current leader instead of a random stranger.
+- Build after duels core (~2-3 extra sessions — tables, RLS, join/browse
+  UI, filtered views).
+
 ## GUESS UX TARGET (owner 2026-07-23): THE HERO IS THE INPUT
 - Tap the dashed word-of-the-day on home → the hero tiles become LIVE
   guess slots in place; the content below BLUR-REPLACES into the
