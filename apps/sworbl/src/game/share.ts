@@ -30,11 +30,11 @@ export interface ShareArgs {
   guessesUsed: number;
   score: number;
   streak?: number; // 🔥 rides the score line when ≥2
-  rounds?: number; // rounds played today — ≥2 wears the 'best of N' tag
+  rounds?: number; // rounds played today — ≥2 wears the 'best of N' tag (decay era)
 }
 
 export function buildShareText(a: ShareArgs): string {
-  // HARD is the brag (one shot); regular stays unlabeled — it's the default
+  // ONE mode now (hard removed 2026-07-23): the multi-round tag is the brag
   const head = `sworbl Nº ${puzzleNo(a.dayKey)}${a.archetypeLabel ? ` · ${a.archetypeLabel}` : ''}`;
 
   const caught = a.clues.filter((c) => a.found.includes(c));

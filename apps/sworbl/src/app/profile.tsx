@@ -2,7 +2,7 @@
 // 2×2 stat cards (BEST green · AVG · GAMES · WORDS FOUND), YOUR BEST word
 // as candy letter blocks with its pay badge, runner-up word pills, and the
 // 9-week PLAY HISTORY heat grid. All device-local stats (stats.ts).
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, useWindowDimensions, Modal, Pressable, Platform,
 } from 'react-native';
@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import { ScreenBar } from '@/components/screen-bar';
 import { ScreenHeader } from '@/components/screen-header';
 import { Floaters } from '@/components/home/floaters';
+import { fetchMyShowdownPoints } from '@/net/duels';
 import { useTheme, CLUE_GREEN } from '@/game/theme';
 import { PALETTE, tileColorFor } from '@/game/palette';
 import { loadStats, historyGrid, streakDays } from '@/game/stats';
@@ -77,11 +78,23 @@ export default function ProfileScreen() {
   const heat = theme.mode === 'dark' ? HEAT_DARK : HEAT_LIGHT;
   const cellS = Math.floor((Math.min(width, 480) - 36 - 8 * 6) / 2 / 4.6); // 9 cols fit
 
+  // SHOWDOWN POINTS (audit: the 1v1 payoff had no persistent surface) —
+  // cache-first via state; the fetch swaps in silently
+  const [sdPts, setSdPts] = useState<number | null>(null);
+  useEffect(() => {
+    let live = true;
+    void fetchMyShowdownPoints().then((v) => live && v != null && setSdPts(v));
+    return () => {
+      live = false;
+    };
+  }, []);
+
   const cards = [
     { label: 'STREAK', value: streakDays(stats), dot: PALETTE[5], accent: '#F58A66' },
     { label: 'BEST SCORE', value: stats.best, dot: PALETTE[2], accent: CLUE_GREEN },
     { label: 'AVG SCORE', value: stats.games ? Math.round(stats.total / stats.games) : 0, dot: PALETTE[0] },
     { label: 'GAMES', value: stats.games, dot: PALETTE[1] },
+    { label: 'SHOWDOWN PTS', value: sdPts ?? 0, dot: PALETTE[3] },
   ];
 
   return (

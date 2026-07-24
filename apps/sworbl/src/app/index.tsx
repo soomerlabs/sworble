@@ -108,7 +108,9 @@ export default function HomeScreen() {
   // inline per render, during the close-settle burst too)
   const dayWords = useMemo(() => (deal ? loadDayWords(deal.dayKey) : []), [deal, day]);
   const streak = useMemo(() => streakDays(stats), [stats]);
-  const played = day?.route === 'consumed'; // legacy one-shot days
+  // the day's sworb is DECIDED (solved or locked out) — drives the home
+  // reveal and the dock's next-sworbl countdown. NOT legacy; live behavior.
+  const played = day?.route === 'consumed';
   const solved = !!day?.sworb?.solved; // regular: solve reveals the hero mid-day
   const inProgress = day?.route === 'resume' || day?.route === 'finale';
   // REGULAR MODE (modes-spec): the day is a living thing — rounds banked,

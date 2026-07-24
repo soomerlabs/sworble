@@ -17,7 +17,7 @@ import {
 import { GameBoard } from '@/components/game/game-board';
 import { GuessStage } from '@/components/game/guess-stage';
 import { CountIn } from '@/components/game/count-in';
-import { type FinaleRestore } from '@/components/game/finale';
+import { type FinaleRestore } from '@/components/game/guess-stage';
 import { ResultView } from '@/components/game/result-view';
 import { ScoreHeader } from '@/components/game/score-header';
 import { Brand } from '@/components/brand';

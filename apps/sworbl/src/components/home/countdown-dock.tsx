@@ -49,6 +49,12 @@ export function CountdownDock({ played, sLit, sPoke, armed, tile, gap }: {
     opacity: sPose.value,
     transform: [{ translateY: (1 - sPose.value) * 16 }, { scale: 0.85 + sPose.value * 0.15 }],
   }));
+  // FIRST-RUN COACH (audit: bare P·L·A·Y tiles carried zero instruction
+  // until AFTER a successful trace) — the un-armed pose wears the hint,
+  // inverse of the chevron so exactly one caption ever shows
+  const hintPose = useAnimatedStyle(() => ({
+    opacity: (1 - sPose.value) * 0.85,
+  }));
 
   const bob = useSharedValue(0);
   useEffect(() => {
@@ -82,6 +88,9 @@ export function CountdownDock({ played, sLit, sPoke, armed, tile, gap }: {
             <Animated.Text style={[styles.chev, bobStyle]}>︿</Animated.Text>
             <Text style={[styles.swipeLabel, { color: theme.ink }]}>swipe up to start</Text>
           </Animated.View>
+          <Animated.View style={[styles.hintPose, hintPose]} pointerEvents="none">
+            <Text style={[styles.hintLabel, { color: theme.sub }]}>trace P·L·A·Y</Text>
+          </Animated.View>
         </View>
       )}
     </View>
@@ -89,6 +98,18 @@ export function CountdownDock({ played, sLit, sPoke, armed, tile, gap }: {
 }
 
 const styles = StyleSheet.create({
+  hintPose: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 4,
+    alignItems: 'center',
+  },
+  hintLabel: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 11,
+    letterSpacing: 1.2,
+  },
   wrap: {
     alignItems: 'center',
     gap: 2,

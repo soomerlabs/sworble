@@ -97,6 +97,21 @@ export async function fetchStormCrowns(
   }
 }
 
+// your points ledger (profile stat card) — null offline
+export async function fetchMyShowdownPoints(): Promise<number | null> {
+  const sb = supabase();
+  if (!sb) return null;
+  try {
+    const uid = (await sb.auth.getSession()).data.session?.user.id;
+    if (!uid) return null;
+    const { data, error } = await sb.from('players').select('showdown_points').eq('id', uid).maybeSingle();
+    if (error || !data) return null;
+    return Number(data.showdown_points) || 0;
+  } catch {
+    return null;
+  }
+}
+
 // SHOWDOWN lifecycle (owner: taking claims it; decided = off the rail)
 export async function claimShowdown(id: number): Promise<'ok' | 'taken' | 'error'> {
   const sb = supabase();

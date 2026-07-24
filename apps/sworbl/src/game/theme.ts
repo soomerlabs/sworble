@@ -11,7 +11,7 @@ export interface Theme {
   bg: string;
   ink: string; // primary text
   sub: string; // secondary text
-  faint: string; // tertiary labels (DAILY PUZZLE ·, WHAT YOU GOT)
+  faint: string; // tertiary labels (eyebrows, section tails)
   hairline: string;
   dashed: string; // dashed ghost borders (empty tiles, got-away pills)
   icon: string;

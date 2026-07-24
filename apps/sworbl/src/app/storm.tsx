@@ -25,7 +25,7 @@ import { RaceBar } from '@/components/game/race-bar';
 import { claimShowdown, fetchDuelGhost, postDuel, resolveShowdown, type ShowdownVerdict } from '@/net/duels';
 import { enqueuePractice, fetchPractice } from '@/net/standings-remote';
 
-type Phase = 'ready' | 'countin' | 'live' | 'done';
+type Phase = 'ready' | 'settling' | 'live' | 'done';
 
 const SEED_RE = /^[a-z0-9-]{3,24}$/;
 
@@ -87,7 +87,6 @@ export default function StormScreen() {
 
   const [phase, setPhase] = useState<Phase>('ready');
   const [board, setBoard] = useState<Array<{ name: string; score: number; isMe: boolean }> | null>(null);
-  const [countStep, setCountStep] = useState<'3' | '2' | '1' | null>(null);
   const [score, setScore] = useState(0);
   const wordsRef = useRef<BestWord[]>([]);
 
@@ -112,11 +111,10 @@ export default function StormScreen() {
       });
     }
     // NO COUNTDOWN (owner) — one settle beat, then the wake is the ramp
-    phaseRef.current = 'countin';
-    setPhase('countin');
+    phaseRef.current = 'settling';
+    setPhase('settling');
     countTimers.current.push(
       setTimeout(() => {
-        setCountStep(null);
         clockRef.current = clockStart(mkClock(), Date.now());
         phaseRef.current = 'live';
         setPhase('live');
@@ -278,7 +276,7 @@ export default function StormScreen() {
       </View>
 
       <View style={styles.boardWrap}>
-        {duel && (phase === 'live' || phase === 'countin') && (
+        {duel && (phase === 'live' || phase === 'settling') && (
           <RaceBar
             theme={theme}
             width={Math.min(winW, 480) - 40}
@@ -298,7 +296,7 @@ export default function StormScreen() {
             onScore={setScore}
             onWordSpelled={onWordSpelled}
             concealed={phase !== 'live'}
-            countIn={phase === 'countin' ? countStep : null}
+            countIn={null}
           />
         )}
 
@@ -322,7 +320,7 @@ export default function StormScreen() {
         {phase === 'done' && (
           <View style={styles.cover}>
             <Text style={[styles.eyebrow, { color: theme.faint }]}>
-              {duel ? (score > duel.score ? 'DUEL WON ✦' : 'DUEL LOST') : 'RUN BANKED'}
+              {duel ? (score > duel.score ? 'SHOWDOWN WON ✦' : 'SHOWDOWN LOST') : 'RUN BANKED'}
             </Text>
             <Text style={[styles.bigScore, { color: theme.ink }]}>{score}</Text>
             {duel && (
@@ -379,7 +377,7 @@ export default function StormScreen() {
             <Pressable
               onPress={() =>
                 Share.share({
-                  message: `sworbl storm ⛈ ${seed} — ${score} pts in 3:00. same board, every player. beat my run: sworbl://storm?seed=${seed}`,
+                  message: `sworbl storm ⛈ ${stormName(seed)} — ${score} pts in ${blitz ? '2:00' : '3:00'}. same board, every player. beat my run: sworbl://storm?seed=${seed}${blitz ? '&clock=120' : ''}`,
                 }).catch(() => {})
               }
               style={[styles.cta, styles.ctaCard, { backgroundColor: theme.card }]}>

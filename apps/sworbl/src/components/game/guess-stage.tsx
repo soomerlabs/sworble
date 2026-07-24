@@ -14,8 +14,16 @@ import { haptic } from '@/game/haptics';
 import { GAME_DARK, type GameSurface } from '@/game/palette';
 import { BoardKeyboard } from './board-keyboard';
 import { ClueFan } from './clue-fan';
-import type { FinaleRestore } from './finale';
 import { StepperCard } from './stepper-card';
+
+// the guess's restore shape — lived in finale.tsx before the decoupling
+export interface FinaleRestore {
+  rows: { letters: string[]; colors: string[] }[];
+  slots: string[];
+  colors: (string | null)[];
+  guessesUsed: number;
+}
+
 
 interface Props {
   sworb: string;

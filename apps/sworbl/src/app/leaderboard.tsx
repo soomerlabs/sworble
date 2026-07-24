@@ -1,7 +1,7 @@
 // LEADERBOARD (handoff 5a): back · wordmark · share app bar, big daily /
 // all-time title, a crossfade pager (swipe or dots) over the floating
 // stepped podium, the ranked list with the player's row pinned INLINE
-// (indigo), and the NEXT SWORBL IN countdown. Stub fields until Supabase.
+// (indigo). Long-press any row to report a name (App Store 1.2).
 import React, { useMemo, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Pressable, Share, useWindowDimensions, RefreshControl,
@@ -228,6 +228,9 @@ export default function LeaderboardScreen() {
                     <Text style={[styles.ghostName, { color: theme.faint }]}>open seat</Text>
                   </View>
                 ))}
+                <Text style={[styles.reportHint, { color: theme.faint }]}>
+                  long-press a name to report it
+                </Text>
                 {!played && (
                   <Text style={[styles.joinLine, { color: theme.faint }]}>
                     play today to land on the board
@@ -244,6 +247,12 @@ export default function LeaderboardScreen() {
 }
 
 const styles = StyleSheet.create({
+  reportHint: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 10.5,
+    textAlign: 'center',
+    marginTop: 6,
+  },
   ghostSeat: {
     flexDirection: 'row',
     alignItems: 'center',
