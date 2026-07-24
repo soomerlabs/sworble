@@ -24,22 +24,13 @@ interface Props {
 export function StandingsSection({ theme, entries, standings, hasYou, devCount }: Props) {
   return (
     <View style={styles.standingsWrap}>
-      <View style={styles.standingsHead}>
-        {/* title gone (owner: "get rid of the standings title") — the
-            podium IS the label; the chart button keeps the door visible */}
-        <View />
-        {__DEV__ && devCount && (
-          <Text style={[styles.standingsTitle, { color: theme.sub }]}>
-            {entries.length} in field
-          </Text>
-        )}
-        <Pressable
-          onPress={() => router.push('/leaderboard')}
-          hitSlop={10}
-          style={[styles.chartBtn, { backgroundColor: theme.card }]}>
-          <Icon name="chart" size={16} color="#8971FF" />
-        </Pressable>
-      </View>
+      {/* head fully gone (owner): no title, no chart button — the podium
+          IS the label and every row is already the leaderboard door */}
+      {__DEV__ && devCount && (
+        <Text style={[styles.standingsTitle, { color: theme.sub }]}>
+          {entries.length} in field
+        </Text>
+      )}
       <Arrive ready={entries.length > 0} style={styles.arriveWrap}>
         {/* the field itself is a door too (owner) — any row opens the
             full leaderboard; the chart button stays for discoverability */}
