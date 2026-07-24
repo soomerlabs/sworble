@@ -47,7 +47,7 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, flight, nope, nope
   const x = tile.col * cell;
   const targetY = tile.row * cell;
   const lift = Math.max(3, Math.round(size * 0.08));
-  const rad = Math.round(size * 0.2);
+  const rad = Math.round(size * 0.26); // squircle territory (owner)
 
   const y = useSharedValue(tile.spawnDrop ? -1.6 * cell : targetY);
   const scale = useSharedValue(1);
@@ -239,19 +239,19 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, flight, nope, nope
           style={[
             styles.ledge,
             ledgeStyle,
-            { width: size, height: size, borderRadius: rad },
+            { width: size, height: size, borderRadius: rad, borderCurve: 'continuous' },
             // one static shadow property — never the old 30-glow-views mistake
             gs.tileAmbient ? { boxShadow: gs.tileAmbient } : null,
           ]}
         />
         <Animated.View
-          style={[styles.face, faceStyle, { width: size, height: size, borderRadius: rad }]}>
+          style={[styles.face, faceStyle, { width: size, height: size, borderRadius: rad, borderCurve: 'continuous' }]}>
           {/* bevel on its OWN static layer — inset shadows on the color-
               animated face forced per-frame shadow recompute (the wave-no
               hesitation, owner: "jenk!") */}
           <View
             pointerEvents="none"
-            style={[StyleSheet.absoluteFill, { borderRadius: rad, boxShadow: gs.tileBevel }]}
+            style={[StyleSheet.absoluteFill, { borderRadius: rad, borderCurve: 'continuous', boxShadow: gs.tileBevel }]}
           />
           <Animated.Text
             style={[
