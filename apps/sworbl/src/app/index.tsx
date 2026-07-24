@@ -108,12 +108,12 @@ export default function HomeScreen() {
   // First-ever launch has no cache → the honest ghost skeleton, and the
   // field FADES IN when data arrives (never a spinner, never a stub).
   const [remote, setRemote] = useState<RemoteField | null>(() =>
-    deal ? readCachedField(deal.dayKey) : null
+    deal ? readCachedField(deal.dayKey + ':regular') : null
   );
   useEffect(() => {
     let live = true;
     if (deal) {
-      fetchDaily(deal.dayKey).then((r) => {
+      fetchDaily(deal.dayKey, day?.mode ?? 'regular').then((r) => {
         if (live && r && r.entries.length) setRemote(r);
       });
       // server-driven day spec (owner: swap tester content rapidly) — a
@@ -132,11 +132,12 @@ export default function HomeScreen() {
   const [homeRefreshing, setHomeRefreshing] = useState(false);
   const homeRefresh = useCallback(async () => {
     if (!deal) return;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     haptic.soft(); // the native PTR thunk RN doesn't give you (owner)
     setHomeRefreshing(true);
     try {
       const [field, changed] = await Promise.all([
-        fetchDaily(deal.dayKey),
+        fetchDaily(deal.dayKey, day?.mode ?? 'regular'),
         fetchRemoteEntry(deal.dayKey),
       ]);
       if (field?.entries.length) setRemote(field);
@@ -144,7 +145,7 @@ export default function HomeScreen() {
     } finally {
       setHomeRefreshing(false);
     }
-  }, [deal]);
+  }, [deal, day?.mode]);
   const entries = useMemo(
     () => remote?.entries ?? (deal ? standingsStub(deal.dayKey) : []),
     [remote, deal]
@@ -699,6 +700,7 @@ export default function HomeScreen() {
             <DateHeader
               theme={theme}
               dayKey={deal.dayKey}
+              mode={day?.mode}
               score={myScore > 0 ? myScore : null}
               streak={streak}
               onInfo={!played ? () => router.push('/how-to') : undefined}

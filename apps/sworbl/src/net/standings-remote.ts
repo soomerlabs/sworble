@@ -17,18 +17,23 @@ export interface RemoteField {
 }
 
 // ---- fetch (cache-backed) ----
-export async function fetchDaily(dayKey: string): Promise<RemoteField | null> {
+export async function fetchDaily(
+  dayKey: string,
+  mode: 'regular' | 'hard' = 'regular'
+): Promise<RemoteField | null> {
   const sb = supabase();
   if (!sb) return null;
+  const cacheKey = `${dayKey}:${mode}`;
   try {
     const uid = (await sb.auth.getSession()).data.session?.user.id ?? null;
     const { data, error } = await sb
       .from('daily_standings')
       .select('name, score, solved, rank, player_id')
       .eq('day', dayKey)
+      .eq('mode', mode)
       .order('rank', { ascending: true })
       .limit(100);
-    if (error || !data) return readCache(dayKey);
+    if (error || !data) return readCache(cacheKey);
     const entries: LbEntry[] = data.map((r) => ({
       name: String(r.name),
       score: Number(r.score),
@@ -40,10 +45,10 @@ export async function fetchDaily(dayKey: string): Promise<RemoteField | null> {
       entries,
       me: mine ? { rank: Number(mine.rank), score: Number(mine.score) } : null,
     };
-    engine.store.setJSON(CACHE_KEY + dayKey, out);
+    engine.store.setJSON(CACHE_KEY + cacheKey, out);
     return out;
   } catch {
-    return readCache(dayKey);
+    return readCache(cacheKey);
   }
 }
 

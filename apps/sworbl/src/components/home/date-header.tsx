@@ -11,13 +11,14 @@ import { puzzleNo } from '@/game/share';
 interface Props {
   theme: Theme;
   dayKey: string;
+  mode?: 'regular' | 'hard' | null; // the day's chosen fork (badge)
   score?: number | null; // completed day → docks right of the title
   streak?: number; // 🔥 in the eyebrow when ≥2
   onShare?: () => void;
   onInfo?: () => void; // pre-play: the ⓘ lives where the score will
 }
 
-export function DateHeader({ theme, dayKey, score, streak, onShare, onInfo }: Props) {
+export function DateHeader({ theme, dayKey, score, streak, onShare, onInfo, mode }: Props) {
   const now = new Date();
   const weekday = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
   const monthDay = now
@@ -26,7 +27,7 @@ export function DateHeader({ theme, dayKey, score, streak, onShare, onInfo }: Pr
   return (
     <ScreenHeader
       theme={theme}
-      eyebrow={`DAILY PUZZLE · Nº ${puzzleNo(dayKey)}${streak && streak >= 2 ? `  ·  🔥 ${streak}` : ''}`}
+      eyebrow={`DAILY PUZZLE · Nº ${puzzleNo(dayKey)}${mode ? ` · ${mode.toUpperCase()}` : ''}${streak && streak >= 2 ? `  ·  🔥 ${streak}` : ''}`}
       title={weekday}
       titleAccent={monthDay}
       right={

@@ -68,17 +68,19 @@ function Row({
 export default function LeaderboardScreen() {
   const theme = useTheme();
   const dims = useWindowDimensions();
-  const [page, setPage] = useState(0); // 0 daily · 1 all-time
+  const [page, setPage] = useState(0); // 0 regular · 1 hard · 2 all-time
   const dayKey = engine.core.dayKey(new Date());
   const name = getPlayerName();
 
   // cache-first (owner: no stub flash) — last-known real fields render on
   // the first frame; the fresh fetch swaps in silently
-  const [remoteDaily, setRemoteDaily] = useState<RemoteField | null>(() => readCachedField(dayKey));
+  const [remoteDaily, setRemoteDaily] = useState<RemoteField | null>(() => readCachedField(`${dayKey}:regular`));
+  const [remoteHard, setRemoteHard] = useState<RemoteField | null>(() => readCachedField(`${dayKey}:hard`));
   const [remoteAll, setRemoteAll] = useState<RemoteField | null>(() => readCachedField('alltime'));
   useEffect(() => {
     let live = true;
-    fetchDaily(dayKey).then((r) => live && r?.entries.length && setRemoteDaily(r));
+    fetchDaily(dayKey, 'regular').then((r) => live && r?.entries.length && setRemoteDaily(r));
+    fetchDaily(dayKey, 'hard').then((r) => live && r?.entries.length && setRemoteHard(r));
     fetchAllTime().then((r) => live && r?.entries.length && setRemoteAll(r));
     return () => {
       live = false;
@@ -88,13 +90,14 @@ export default function LeaderboardScreen() {
     () => remoteDaily?.entries ?? standingsStub(dayKey),
     [remoteDaily, dayKey]
   );
+  const hard = useMemo(() => remoteHard?.entries ?? [], [remoteHard]);
   const allTime = useMemo(() => remoteAll?.entries ?? standingsAllTime(), [remoteAll]);
   const myDaily = useMemo(() => loadDay(dayKey).score, [dayKey]);
   const myTotal = useMemo(() => loadStats().total, []);
 
-  const entries = page === 0 ? daily : allTime;
-  const isRemote = page === 0 ? !!remoteDaily : !!remoteAll;
-  const myScore = page === 0 ? myDaily : myTotal;
+  const entries = page === 0 ? daily : page === 1 ? hard : allTime;
+  const isRemote = page === 0 ? !!remoteDaily : page === 1 ? !!remoteHard : !!remoteAll;
+  const myScore = page === 2 ? myTotal : myDaily;
   const played = myScore > 0;
   const myRank = played ? rankFor(entries, myScore) : null;
 
@@ -128,8 +131,11 @@ export default function LeaderboardScreen() {
     haptic.soft(); // the native PTR thunk RN doesn't give you (owner)
     setRefreshing(true);
     try {
-      const [d, a] = await Promise.all([fetchDaily(dayKey), fetchAllTime()]);
+      const [d, h, a] = await Promise.all([
+        fetchDaily(dayKey, 'regular'), fetchDaily(dayKey, 'hard'), fetchAllTime(),
+      ]);
       if (d?.entries.length) setRemoteDaily(d);
+      if (h?.entries.length) setRemoteHard(h);
       if (a?.entries.length) setRemoteAll(a);
     } finally {
       setRefreshing(false);
@@ -160,11 +166,11 @@ export default function LeaderboardScreen() {
             <ScreenHeader
               theme={theme}
               eyebrow="STANDINGS"
-              title={page === 0 ? 'daily' : 'all-time'}
+              title={page === 0 ? 'daily' : page === 1 ? 'hard' : 'all-time'}
             />
             {/* PILL FILTER (owner: the swipe pager fought iOS back-swipe) */}
             <View style={styles.pills}>
-              {(['daily', 'all-time'] as const).map((label, i) => (
+              {(['daily', 'hard', 'all-time'] as const).map((label, i) => (
                 <Pressable
                   key={label}
                   onPress={() => setPage(i)}

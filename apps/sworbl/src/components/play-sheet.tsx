@@ -25,8 +25,8 @@ import { useTheme } from '@/game/theme';
 import { dealDaily, bumpNextId } from '@/game/daily';
 import { type TileT } from '@/game/types';
 import {
-  loadDay, loadDayWords, saveProgress, finishRound, recordSworb, saveRun,
-  type RunSnap, type BestWord,
+  loadDay, loadDayWords, saveProgress, finishRound, finishDay, recordSworb, saveRun,
+  getDayMode, setDayMode, type DayMode, type RunSnap, type BestWord,
 } from '@/game/persist';
 import { enqueueSubmission } from '@/net/standings-remote';
 import { loadLadder } from '@/game/hints';
@@ -38,7 +38,7 @@ import Animated, {
 
 // TIME FUEL: three minutes given, the Seven if you earn it (engine.run.timeForWord)
 
-type Phase = 'idle' | 'countin' | 'live' | 'paused' | 'roundend' | 'finale' | 'done';
+type Phase = 'idle' | 'modechoice' | 'countin' | 'live' | 'paused' | 'roundend' | 'finale' | 'done';
 
 export interface PlaySheetHandle {
   pauseForClose: () => void; // home calls this before sliding the sheet away
@@ -104,9 +104,23 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   // wake is the reaction ramp). Arming is still EDGE-TRIGGERED (dock /
   // foreground arrival), never level-triggered.
   const arm = useCallback(() => {
+    // THE FORK (modes-spec): an unchosen day asks BEFORE its first round —
+    // regular (play all day) or hard (one round, one shot). Resumed days
+    // and in-progress days never re-ask.
+    if (deal && !getDayMode(deal.dayKey) && loadDay(deal.dayKey).rounds.played === 0) {
+      setPhase('modechoice');
+      return;
+    }
     setCountInMounted(true);
     setPhase('countin');
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deal]);
+  const chooseMode = useCallback((m: DayMode) => {
+    if (deal) setDayMode(deal.dayKey, m);
+    setCountInMounted(true);
+    setPhase('countin');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deal]);
   // GUESS INTENT (modes-spec): home opens the sheet straight into the
   // finale — no round, no count-in. The dock-arm effect's cleanup clears
   // its pending timer when phase leaves idle, so the two cannot race.
@@ -143,7 +157,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   // SAFETY NET: a count-in may never survive a closed sheet, whatever path
   // closed it — reopening must always start from 3 (owner rule)
   useEffect(() => {
-    if (!active && phase === 'countin') {
+    if (!active && (phase === 'countin' || phase === 'modechoice')) {
       setCountInMounted(false);
       setPhase('idle');
     }
@@ -230,8 +244,13 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
         // round banks (best-round keeps the max, clues merge, submission
         // rides the outbox) and the round-end cover offers the guess
         morph = setTimeout(() => {
-          bankRoundRef.current();
-          setPhase('roundend');
+          if (deal && getDayMode(deal.dayKey) === 'hard') {
+            // HARD (modes-spec): one round, one shot — straight to the guess
+            setPhase('finale');
+          } else {
+            bankRoundRef.current();
+            setPhase('roundend');
+          }
         }, 1000);
       }
     }, 250);
@@ -405,12 +424,18 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
       setResult(r);
       const finalScore = score + (r.bonus > 0 ? r.bonus : 0);
       if (r.bonus > 0) setScore(finalScore);
-      // REGULAR (modes-spec): the sworb outcome records, the day does NOT
-      // lock — rounds keep playing; the derived day score rides the outbox
       if (deal) {
         const sworb = { guessesUsed: r.guessesUsed, solved: r.solved, bonus: r.bonus };
-        const dayScore = recordSworb(deal.dayKey, sworb);
-        enqueueSubmission(deal.dayKey, dayScore, sworb, loadDayWords(deal.dayKey), 'regular');
+        if (getDayMode(deal.dayKey) === 'hard') {
+          // HARD: the day ends exactly once — result, DONE lock, one-shot
+          finishDay(deal.dayKey, finalScore, found, sworb, wordsRef.current);
+          enqueueSubmission(deal.dayKey, finalScore, sworb, wordsRef.current, 'hard');
+        } else {
+          // REGULAR: the sworb outcome records, the day does NOT lock —
+          // rounds keep playing; the derived day score rides the outbox
+          const dayScore = recordSworb(deal.dayKey, sworb);
+          enqueueSubmission(deal.dayKey, dayScore, sworb, loadDayWords(deal.dayKey), 'regular');
+        }
       }
       // owner loop: solved or failed, the sheet CLOSES — home is the reveal.
       // The close WAITS for the celebration beat (confetti / quick fail exit),
@@ -596,6 +621,22 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
               )}
             </Animated.View>
           )}
+          {phase === 'modechoice' && deal && (
+            <View style={styles.doneWrap}>
+              <Text style={[styles.roundEndTitle, { color: gs.ink }]}>how do you want today?</Text>
+              <Pressable onPress={() => chooseMode('regular')} style={styles.modeBtn}>
+                <Text style={styles.modeBtnTitle}>REGULAR</Text>
+                <Text style={styles.modeBtnSub}>play all day · best round counts</Text>
+              </Pressable>
+              <Pressable onPress={() => chooseMode('hard')} style={[styles.modeBtn, styles.modeBtnHard]}>
+                <Text style={styles.modeBtnTitle}>HARD</Text>
+                <Text style={styles.modeBtnSub}>one round · one shot · own board</Text>
+              </Pressable>
+              <Text style={[styles.roundEndSub, { color: gs.sub, marginTop: 10 }]}>
+                locked in for the day
+              </Text>
+            </View>
+          )}
           {phase === 'roundend' && deal && (() => {
             const d = loadDay(deal.dayKey);
             const sworbPending = !d.sworb?.solved && (d.sworb?.guessesUsed ?? 0) < 6;
@@ -667,6 +708,33 @@ const styles = StyleSheet.create({
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 13,
     marginBottom: 14,
+  },
+  modeBtn: {
+    alignSelf: 'stretch',
+    marginHorizontal: 34,
+    marginTop: 12,
+    borderRadius: 16,
+    borderCurve: 'continuous',
+    paddingVertical: 14,
+    alignItems: 'center',
+    backgroundColor: '#8971FF',
+    boxShadow: '0 4px 0 #6A54D8',
+  },
+  modeBtnHard: {
+    backgroundColor: '#E5484D',
+    boxShadow: '0 4px 0 #8C2328',
+  },
+  modeBtnTitle: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 16,
+    letterSpacing: 1.5,
+    color: '#FFFFFF',
+  },
+  modeBtnSub: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
   },
   guessBtn: {
     backgroundColor: '#8971FF',
