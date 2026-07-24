@@ -15,6 +15,7 @@ import {
 } from '@/game/round-clock';
 
 import { GameBoard } from '@/components/game/game-board';
+import { GuessStage } from '@/components/game/guess-stage';
 import { CountIn } from '@/components/game/count-in';
 import { type FinaleRestore } from '@/components/game/finale';
 import { ResultView } from '@/components/game/result-view';
@@ -30,7 +31,9 @@ import {
   type RunSnap, type BestWord,
 } from '@/game/persist';
 import { enqueueSubmission } from '@/net/standings-remote';
-import { loadLadder } from '@/game/hints';
+import { loadLadder, saveLadder, FINALE_FLOOR } from '@/game/hints';
+import { loadSwaps, applySwaps } from '@/game/clue-swaps';
+import { activeClues } from '@/game/daily';
 import { getDiagnostics, getShortRounds } from '@/game/dev-flags';
 import { TUNING } from '@/game/tuning';
 import Animated, {
@@ -477,20 +480,48 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     [deal, score, found, onClose]
   );
 
-  // ONE object per finale entry (perf audit: rebuilding this every render
-  // churned identity into the memoized board, and the loadDay read landed
-  // in the render path during finale keystrokes)
-  const finaleProp = useMemo(() => {
+  // GUESS CONTEXT (decoupled — owner: "they should be decoupled anyway"):
+  // one object per finale entry; the SHEET owns the intel grants now.
+  const guessCtx = useMemo(() => {
     if (phase !== 'finale' || !deal) return null;
     return {
-      sworb: deal.sworb,
-      // the engine decays the solve bonus by rounds played at guess time
       rounds: Math.max(1, loadDay(deal.dayKey).rounds.played),
       restore: finaleRestore.current ?? loadFinaleProgress(deal.dayKey) ?? undefined,
-      onProgress: onFinaleProgress,
-      onDone: onFinaleDone,
+      swapped: applySwaps(deal.clues, loadSwaps(deal.dayKey)),
+      nudged: loadLadder(deal.dayKey).nudged,
     };
-  }, [phase, deal, onFinaleProgress, onFinaleDone]);
+  }, [phase, deal]);
+
+  // THE GUESSING FLOOR (moved from the board): entering the guess with
+  // fewer than FINALE_FLOOR clues grants up to the floor — pure intel
+  useEffect(() => {
+    if (phase !== 'finale' || !deal || !guessCtx) return;
+    const l = loadLadder(deal.dayKey);
+    if (l.floorGiven) return;
+    saveLadder(deal.dayKey, { ...l, floorGiven: true });
+    const need = FINALE_FLOOR - found.length;
+    if (need > 0) {
+      const grants = guessCtx.swapped.filter((c) => !found.includes(c)).slice(0, need);
+      if (grants.length) setFound((cur) => [...cur, ...grants.filter((c) => !cur.includes(c))]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, deal, guessCtx]);
+
+  // the 3rd-miss FREEBIE (moved from the board): one more clue releases
+  // mid-guessing — banked as intel
+  const onGuessMiss = useCallback(
+    (usedNow: number) => {
+      if (usedNow !== 3 || !deal || !guessCtx) return;
+      const l = loadLadder(deal.dayKey);
+      if (l.guess3Given) return;
+      const clue = guessCtx.swapped.find((c) => !found.includes(c));
+      if (clue) {
+        saveLadder(deal.dayKey, { ...l, guess3Given: true });
+        setFound((cur) => (cur.includes(clue) ? cur : [...cur, clue]));
+      }
+    },
+    [deal, guessCtx, found]
+  );
 
   const tile = Math.min(64, Math.floor((Math.min(width, 480) - 32) / (5 + 4 * 0.16)));
   const gap = Math.round(tile * 0.16);
@@ -612,23 +643,44 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
                 pointerEvents={
                   (phase === 'live' && remaining > 0) || phase === 'finale' ? 'auto' : 'none'
                 }>
-                <GameBoard
-                  deal={deal}
-                  size={tile}
-                  gap={gap}
-                  initialTiles={initialTiles}
-                  initialFound={boot?.run?.found ?? boot?.found}
-                  initialScore={boot?.run?.score}
-                  secsLeft={phase === 'live' ? remaining : undefined}
-                  onScore={setScore}
-                  onClues={setFound}
-                  onTiles={onTiles}
-                  onWordSpelled={onWordSpelled}
-                  gestureRef={boardPanRef}
-                  concealed={phase !== 'live' && phase !== 'finale'}
-                  countIn={phase === 'countin' ? countStep : null}
-                  finale={finaleProp}
-                />
+                {phase === 'finale' && deal && guessCtx ? (
+                  <GuessStage
+                    sworb={deal.sworb}
+                    rounds={guessCtx.rounds}
+                    restore={guessCtx.restore}
+                    found={found}
+                    clues={activeClues(
+                      guessCtx.swapped,
+                      deal.poolExtras.filter((w) => !guessCtx.swapped.includes(w)),
+                      found
+                    )}
+                    clueTotal={deal.clues.length}
+                    nudged={guessCtx.nudged}
+                    size={tile}
+                    gap={gap}
+                    gs={gs}
+                    onProgress={onFinaleProgress}
+                    onMiss={onGuessMiss}
+                    onDone={onFinaleDone}
+                  />
+                ) : (
+                  <GameBoard
+                    deal={deal}
+                    size={tile}
+                    gap={gap}
+                    initialTiles={initialTiles}
+                    initialFound={boot?.run?.found ?? boot?.found}
+                    initialScore={boot?.run?.score}
+                    secsLeft={phase === 'live' ? remaining : undefined}
+                    onScore={setScore}
+                    onClues={setFound}
+                    onTiles={onTiles}
+                    onWordSpelled={onWordSpelled}
+                    gestureRef={boardPanRef}
+                    concealed={phase !== 'live'}
+                    countIn={phase === 'countin' ? countStep : null}
+                  />
+                )}
                 {/* THE RELEASE VALVE (owner): the guess opens automatically
                     at round end, but nobody is trapped — swipe down keeps
                     every guess for later */}

@@ -20,15 +20,12 @@ import { beginW, moveW, type TraceCtx } from '@/game/trace';
 import { haptic } from '@/game/haptics';
 import { loadLadder, saveLadder, NUDGE_AT_WORDS, FREE_CLUE_AT_WORDS, FINALE_FLOOR, type HintLadder } from '@/game/hints';
 import { PingRings } from './ping-rings';
-import { StepperCard, type SworbFace } from './stepper-card';
-import { BoardKeyboard } from './board-keyboard';
-import { applyGuess } from '@/game/finale-logic';
+import { StepperCard } from './stepper-card';
 import { getClueAudit } from '@/game/dev-flags';
 import { loadSwaps, saveSwaps, applySwaps, STARVE_REFILLS, type SwapMap } from '@/game/clue-swaps';
 import { FlightGhosts, type FlightGhostT } from './flight-ghosts';
 import { BoardAura, type AuraState } from './board-aura';
 import { DevClueAudit, DevFlash } from './dev-clue-audit';
-import type { FinaleRestore } from './finale';
 
 interface Props {
   deal: DailyDeal; // the screen owns the deal — resume injects restored state
@@ -46,23 +43,13 @@ interface Props {
   gestureRef?: React.MutableRefObject<PanGesture | undefined>; // the sheet's close-drag yields to this
   concealed?: boolean; // pre-GO / paused: blocks render, letters DON'T (anti-stare)
   countIn?: string | null; // the stepper speaks the 3·2·1 (no overlay)
-  // THE IN-PLACE FINALE (owner loop): at 0:00 the BOARD becomes the keyboard,
-  // the STEPPER hosts the guess — the player never leaves the gameboard
-  finale?: {
-    sworb: string;
-    rounds?: number; // rounds played — the engine decays the solve bonus
-    restore?: FinaleRestore;
-    onProgress: (s: FinaleRestore) => void;
-    onDone: (r: { solved: boolean; guessesUsed: number; bonus: number }) => void;
-  } | null;
 }
 
 function GameBoardInner({
-  deal, size, gap, initialTiles, initialFound, initialScore, secsLeft, onScore, onClues, onTiles, onWordSpelled, mercySecs, gestureRef, finale, concealed, countIn,
+  deal, size, gap, initialTiles, initialFound, initialScore, secsLeft, onScore, onClues, onTiles, onWordSpelled, mercySecs, gestureRef, concealed, countIn,
 }: Props) {
   // LIGHT MODE (owner): one stable surface object per scheme — memo-safe props
   const gs = gameSurface(useTheme().mode);
-  const inFinale = !!finale;
   const cell = size + gap;
   const boardW = COLS * cell - gap;
   const boardH = ROWS * cell - gap;
@@ -315,32 +302,9 @@ function GameBoardInner({
   const sTrail = useSharedValue<TraceTile[]>([]);
   const sTrailFade = useSharedValue(0);
 
-  // the tile layer ACTUALLY crossfades under the finale keyboard now — the
-  // comment always said crossfade; the style was an instant opacity swap
-  const sTiles = useSharedValue(inFinale ? 0 : 1);
-  useEffect(() => {
-    sTiles.value = withTiming(inFinale ? 0 : 1, { duration: 320 });
-  }, [inFinale]);
-  const tilesStyle = useAnimatedStyle(() => ({ opacity: sTiles.value }));
 
   // FINALE FLOOR: enter the guess round with at least 2 clues banked. Keyed on
   // the finale prop ARRIVING — the old secsLeft<=0 trigger never fired (the
-  // sheet flips remaining=0 and phase='finale' in ONE batched update, so the
-  // board never renders secsLeft===0; owner's zero-word game got no hints).
-  // No findability gate here: the hunt is over, these are pure guessing intel.
-  useEffect(() => {
-    if (!finale || ladder.floorGiven) return;
-    setLadder((l) => ({ ...l, floorGiven: true }));
-    const need = FINALE_FLOOR - foundRef.current.length;
-    if (need <= 0) return;
-    const grants = applySwaps(deal.clues, swapsRef.current)
-      .filter((c) => !foundRef.current.includes(c))
-      .slice(0, need);
-    if (grants.length) {
-      setFound((cur) => [...cur, ...grants.filter((c) => !cur.includes(c))]);
-      haptic.good();
-    }
-  }, [finale, ladder.floorGiven, deal]);
 
   // ---- UI-thread state (tier-2) ----
   const sGrid = useSharedValue<(TraceTile | null)[][]>([]);
@@ -381,99 +345,6 @@ function GameBoardInner({
       return () => clearTimeout(h);
     }
   }, [tiles, clearingIds, landTick]);
-
-  // ---- IN-PLACE FINALE state (fossil sworb face; engine decides) ----
-  const fin = finale;
-  const fLen = fin ? fin.sworb.length : 0;
-  const [fRows, setFRows] = useState<{ letters: string[]; colors: string[] }[]>(
-    fin?.restore?.rows ?? []
-  );
-  const [fSlots, setFSlots] = useState<string[]>(
-    fin?.restore?.slots?.length === fLen ? fin.restore.slots : Array(fLen).fill('')
-  );
-  const [fColors, setFColors] = useState<(string | null)[]>(
-    fin?.restore?.colors?.length === fLen ? fin.restore.colors : Array(fLen).fill(null)
-  );
-  const [fUsed, setFUsed] = useState(fin?.restore?.guessesUsed ?? 0);
-  const [fLocked, setFLocked] = useState(false);
-  const [fShake, setFShake] = useState(0);
-  const [fBurst, setFBurst] = useState(0);
-
-  useEffect(() => {
-    if (!fin) return;
-    if (fSlots.length !== fLen) {
-      setFRows(fin.restore?.rows ?? []);
-      setFSlots(fin.restore?.slots?.length === fLen ? fin.restore.slots : Array(fLen).fill(''));
-      setFColors(fin.restore?.colors?.length === fLen ? fin.restore.colors : Array(fLen).fill(null));
-      setFUsed(fin.restore?.guessesUsed ?? 0);
-    }
-  }, [fin, fLen, fSlots.length]);
-
-  const fKey = useCallback(
-    (ch: string) => {
-      if (!fin || fLocked) return;
-      const next = engine.daily.nextSlots({ slots: fSlots, colors: fColors, ch, len: fLen });
-      if (!next) return;
-      setFSlots(next.slots);
-      setFColors(next.colors || Array(fLen).fill(null));
-      haptic.soft();
-    },
-    [fin, fLocked, fSlots, fColors, fLen]
-  );
-  const fSubmit = useCallback(() => {
-    if (!fin || fLocked) return;
-    const out = applyGuess({
-      slots: fSlots, rows: fRows, guessesUsed: fUsed,
-      sworb: fin.sworb, foundCount: foundRef.current.length, clueTotal: deal.clues.length,
-      rounds: fin.rounds,
-    });
-    if (out.kind === 'reject') {
-      haptic.bad();
-      setFShake((k) => k + 1);
-      return;
-    }
-    setFRows(out.rows);
-    setFUsed(out.usedNow);
-    if (out.kind === 'solved' || out.kind === 'lockout') {
-      const solved = out.kind === 'solved';
-      setFLocked(true);
-      if (solved) {
-        // LOTS of confetti (owner) — the win pops in the stepper
-        setFColors(Array(fLen).fill('green'));
-        setFSlots([...fin.sworb]);
-        setFBurst((k) => k + 1);
-        haptic.good();
-      } else {
-        haptic.bad();
-      }
-      // BANK IMMEDIATELY (kill-window fix): the result is committed the
-      // instant it's decided — the celebration that follows is pure theater
-      // over an already-locked day. The sheet owns the close delay.
-      fin.onDone({ solved, guessesUsed: out.usedNow, bonus: solved ? out.bonus : 0 });
-      return;
-    }
-    setFSlots(out.slots);
-    setFColors(out.colors);
-    fin.onProgress({ rows: out.rows, slots: out.slots, colors: out.colors, guessesUsed: out.usedNow });
-    setFShake((k) => k + 1);
-    haptic.bad();
-    // the 3rd-miss FREEBIE (owner): another clue releases mid-guessing —
-    // banked as intel (no location claim, so no findability requirement)
-    if (out.usedNow === 3 && !ladder.guess3Given) {
-      const clue = applySwaps(deal.clues, swapsRef.current).find(
-        (c) => !foundRef.current.includes(c)
-      );
-      if (clue) {
-        setFound((cur) => (cur.includes(clue) ? cur : [...cur, clue]));
-        setLadder((l) => ({ ...l, guess3Given: true }));
-        haptic.good();
-      }
-    }
-  }, [fin, fLocked, fSlots, fRows, fUsed, deal, ladder.guess3Given]);
-
-  const sworbFace: SworbFace | null = fin
-    ? { slots: fSlots, colors: fColors, guessesUsed: fUsed, shakeKey: fShake, burstKey: fBurst }
-    : null;
 
   const ctx: TraceCtx = useMemo(
     () => ({
@@ -763,15 +634,10 @@ function GameBoardInner({
     );
   }
 
-  // aura state, first match wins (handoff table): danger is clock-bound,
-  // charged is the finale's heat, calm is the default; aurora reserved for
-  // the finished board (the board unmounts to the result view today)
+  // aura state (decoupled): danger is clock-bound, calm otherwise — the
+  // guess stage owns its own heat now
   const auraState: AuraState =
-    !finale && typeof secsLeft === 'number' && secsLeft > 0 && secsLeft <= 12
-      ? 'danger'
-      : finale
-        ? 'charged'
-        : 'calm';
+    typeof secsLeft === 'number' && secsLeft > 0 && secsLeft <= 12 ? 'danger' : 'calm';
 
   return (
     <View style={{ alignItems: 'center' }}>
@@ -780,7 +646,7 @@ function GameBoardInner({
         width={boardW + 24}
         traceWord={trace.word}
         verdict={verdict}
-        sworb={sworbFace}
+        sworb={null}
         countIn={countIn}
         gs={gs}
       />
@@ -823,8 +689,7 @@ function GameBoardInner({
           }}>
         <GestureDetector gesture={pan}>
         <View style={{ width: boardW, height: boardH, marginTop: 12, marginLeft: 12 }}>
-          {/* the tile layer fades under the incoming keyboard (fossil crossfade) */}
-          <Animated.View style={tilesStyle} pointerEvents={inFinale ? 'none' : 'auto'}>
+          <View>
           {Array.from({ length: COLS * ROWS }, (_, i) => (
             <View
               key={`bgc${i}`}
@@ -889,20 +754,7 @@ function GameBoardInner({
               onFinish={() => setPing(null)}
             />
           )}
-          </Animated.View>
-          {inFinale && fin && (
-            <View style={StyleSheet.absoluteFill}>
-            <BoardKeyboard
-              gs={gs}
-              size={size}
-              gap={gap}
-              full={fSlots.length > 0 && fSlots.every(Boolean)}
-              onKey={fKey}
-              onBackspace={() => fKey(engine.daily.BACKSPACE)}
-              onSubmit={fSubmit}
-            />
-            </View>
-          )}
+          </View>
         </View>
         </GestureDetector>
         </View>
