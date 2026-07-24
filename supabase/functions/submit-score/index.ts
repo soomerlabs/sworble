@@ -111,6 +111,9 @@ Deno.serve(async (req) => {
       player_id: user.id,
       seed: body.seed!,
       score,
+      // the run's word list rides along (schema v6) — a stored run is a
+      // future GHOST opponent
+      words: words.map((w) => ({ word: w.word, pts: w.pts })),
       updated_at: new Date().toISOString(),
     });
     if (error) return bad(error.message, 500);
