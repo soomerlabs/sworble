@@ -14,7 +14,8 @@ import { fetchOpenDuels, readCachedDuels, type OpenDuel } from '@/net/duels';
 
 export function ShowdownsRail({ theme, refreshNonce }: { theme: Theme; refreshNonce?: number }) {
   const [duels, setDuels] = useState<OpenDuel[]>(() => readCachedDuels());
-  const firstBoard = useMemo(() => dailyStormBoards()[0], []);
+  // showdowns default to the SQUALL (the 2:00 standard contract)
+  const squall = useMemo(() => dailyStormBoards()[1], []);
   useEffect(() => {
     let live = true;
     fetchOpenDuels().then((d) => live && d && setDuels(d));
@@ -31,7 +32,7 @@ export function ShowdownsRail({ theme, refreshNonce }: { theme: Theme; refreshNo
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.rowContent}>
         <Pressable
-          onPress={() => router.push(`/storm?seed=${firstBoard.seed}&clock=120`)}
+          onPress={() => router.push(`/storm?seed=${squall.seed}`)}
           style={[styles.block, styles.startBlock]}>
           <View style={styles.startPlus}>
             <Text style={styles.startPlusGlyph}>+</Text>

@@ -152,8 +152,13 @@ export function dealDaily(now = new Date(), opts: DealOpts = {}): DailyDeal | nu
 // is the entire premise of per-seed leaderboards and ghost races.
 export function dealPractice(seed: string): DailyDeal {
   const qr = engine.core.mulberry32(engine.core.hashSeed('storm|' + seed) ^ 0x51ac1e);
+  // INTENSITY IS IN THE SEED (owner ladder): hurricanes get no FRIENDLY
+  // on-ramp — pure bag, same for every player on this board
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { stormIntensity } = require('./storm-seeds') as typeof import('./storm-seeds');
+  const onRamp = stormIntensity(seed).friendly ? engine.core.FRIENDLY : engine.core.BAG;
   const queue: string[] = engine.core
-    .shuffledBag(engine.core.FRIENDLY, qr)
+    .shuffledBag(onRamp, qr)
     .concat(
       engine.core.shuffledBag(engine.core.BAG, qr),
       engine.core.shuffledBag(engine.core.BAG, qr),

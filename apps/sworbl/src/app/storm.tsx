@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GameBoard } from '@/components/game/game-board';
 import { dealPractice } from '@/game/daily';
-import { stormName } from '@/game/storm-seeds';
+import { stormIntensity, stormName } from '@/game/storm-seeds';
 import { haptic } from '@/game/haptics';
 import { type BestWord } from '@/game/persist';
 import {
@@ -39,9 +39,10 @@ export default function StormScreen() {
   const params = useLocalSearchParams<{ seed?: string; clock?: string; vs?: string; target?: string; did?: string }>();
   const rawSeed = typeof params.seed === 'string' ? params.seed : '';
   const seed = SEED_RE.test(rawSeed) ? rawSeed : null;
-  // DUEL CONTEXT (open duels): vs+target = a posted run to beat; clock=120
-  // is the blitz format (2:00, pure points)
-  const blitz = params.clock === '120';
+  // THE LADDER (owner): rules derive from the seed itself — the clock
+  // param survives only for foreign/legacy links
+  const intensity = stormIntensity(rawSeed);
+  const blitz = intensity.key !== 'drizzle' || params.clock === '120';
   const vsName = typeof params.vs === 'string' && params.vs.length <= 24 ? params.vs : null;
   const vsScore = Number(params.target);
   const duel = vsName && Number.isFinite(vsScore) ? { name: vsName, score: vsScore } : null;
@@ -90,7 +91,7 @@ export default function StormScreen() {
   const [score, setScore] = useState(0);
   const wordsRef = useRef<BestWord[]>([]);
 
-  const CT = { baseSecs: blitz ? 120 : TUNING.BASE_SECS, capSecs: blitz ? 200 : TUNING.CAP_SECS };
+  const CT = { baseSecs: intensity.clockSecs, capSecs: intensity.capSecs };
   const clockRef = useRef<ClockState>(mkClock());
   const [remaining, setRemaining] = useState(CT.baseSecs);
 
@@ -308,8 +309,8 @@ export default function StormScreen() {
               {claimLost
                 ? 'someone took this showdown first — the board is still yours to run.'
                 : duel
-                  ? `${duel.name.toLowerCase()} put up ${duel.score.toLocaleString()} on this board.\n${blitz ? '2:00, pure points' : '3 minutes'} — beat it.`
-                  : `everyone gets this exact board.\n${blitz ? '2:00, pure points' : '3 minutes'} — best run counts.`}
+                  ? `${duel.name.toLowerCase()} put up ${duel.score.toLocaleString()} on this board.\n${intensity.label} · ${fmtClock(intensity.clockSecs)} — beat it.`
+                  : `everyone gets this exact board.\n${intensity.label} · ${fmtClock(intensity.clockSecs)} — best run counts.`}
             </Text>
             <Pressable onPress={startRun} style={[styles.cta, { backgroundColor: ACCENT, boxShadow: `0 4px 0 ${ACCENT_EDGE}` }]}>
               <Text style={[styles.ctaText, { color: '#FFFFFF' }]}>RUN IT</Text>
@@ -377,7 +378,7 @@ export default function StormScreen() {
             <Pressable
               onPress={() =>
                 Share.share({
-                  message: `sworbl storm ⛈ ${stormName(seed)} — ${score} pts in ${blitz ? '2:00' : '3:00'}. same board, every player. beat my run: sworbl://storm?seed=${seed}${blitz ? '&clock=120' : ''}`,
+                  message: `sworbl storm ⛈ ${stormName(seed)} — ${score} pts in the ${intensity.label}. same board, every player. beat my run: sworbl://storm?seed=${seed}`,
                 }).catch(() => {})
               }
               style={[styles.cta, styles.ctaCard, { backgroundColor: theme.card }]}>

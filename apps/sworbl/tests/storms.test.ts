@@ -2,7 +2,7 @@
 // minting (determinism, server seed law, name dealing) and the swap
 // guard that ended the duplicate-pill crash.
 import assert from 'assert';
-import { dailyStormBoards, stormName } from '../src/game/storm-seeds';
+import { dailyStormBoards, stormIntensity, stormName } from '../src/game/storm-seeds';
 import { applySwaps } from '../src/game/clue-swaps';
 
 const DAY = new Date('2026-07-23T15:00:00');
@@ -61,3 +61,39 @@ console.log('storms: daily mint pinned (determinism, seed law, names)');
   assert.strictEqual(new Set(out).size, out.length, 'unique floor holds');
 }
 console.log('storms: swap collision guard pinned');
+
+// ---- THE INTENSITY LADDER (owner: a ladder, not an XP gate) ----
+{
+  const bs = dailyStormBoards(DAY);
+  assert.deepStrictEqual(
+    bs.map((b) => b.intensity.key),
+    ['drizzle', 'squall', 'hurricane'],
+    'slot a/b/c IS the tier'
+  );
+  assert.strictEqual(stormIntensity(bs[0].seed).clockSecs, 180, 'drizzle = 3:00');
+  assert.strictEqual(stormIntensity(bs[1].seed).clockSecs, 120, 'squall = 2:00');
+  assert.strictEqual(stormIntensity(bs[2].seed).clockSecs, 60, 'hurricane = 1:00');
+  assert.strictEqual(stormIntensity(bs[2].seed).friendly, false, 'hurricane: no friendly on-ramp');
+  assert.strictEqual(stormIntensity('first-storm').key, 'squall', 'foreign seeds play the standard contract');
+}
+
+// the hurricane's harsher bag still deals deterministically — and differs
+// from what the friendly bag would have dealt
+{
+  const { dealPractice } = require('../src/game/daily') as typeof import('../src/game/daily');
+  const dk = '20990101';
+  const h1 = dealPractice(`s-${dk}-c`);
+  const h2 = dealPractice(`s-${dk}-c`);
+  assert.deepStrictEqual(
+    h1.tiles.map((t) => `${t.row},${t.col}:${t.letter}`),
+    h2.tiles.map((t) => `${t.row},${t.col}:${t.letter}`),
+    'hurricane deal is deterministic'
+  );
+  const d1 = dealPractice(`s-${dk}-a`);
+  assert.notDeepStrictEqual(
+    h1.tiles.map((t) => t.letter),
+    d1.tiles.map((t) => t.letter),
+    'hurricane bag differs from the drizzle bag'
+  );
+}
+console.log('storms: intensity ladder pinned (tiers, clocks, hurricane bag)');
