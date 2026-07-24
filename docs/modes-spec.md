@@ -123,3 +123,28 @@ confusion points become the curriculum.
 3. ~~Hard mode~~ REMOVED (2026-07-23): round decay replaced the fork.
 4. Ghost duels (seed boards + ghost race bar + pick-opponent function +
    per-seed boards/featured list). ~3-4 sessions.
+
+## THE UNIVERSAL PLAY DOOR (owner 2026-07-23 — "use the play button for
+## everything"): SELECT A BLOCK, TRACE, SWIPE UP
+- HOME becomes a shelf of PLAYABLE BLOCKS: the sworb-of-the-day block
+  (hero card: dashed word + day status), the three daily STORM boards,
+  and open SHOWDOWN posts.
+- Tap a block → SELECTED (lift + glow in its candy color). The P·L·A·Y
+  dock arms LINKED to that context; swipe up opens the ONE sheet hosting
+  the selection. Default selection = the daily (no-tap behavior today).
+- Sheet content switches by context: daily → the existing full arc;
+  storm/showdown → a lighter runner inside the same shell (2:00 clock,
+  race bar, run-banked cover). The /storm route survives only for deep
+  links (redirects home with the selection pre-armed).
+- One launch grammar everywhere: trace P·L·A·Y ticks → silent swipe →
+  GO wake, regardless of what's being played.
+
+## STORMS + SHOWDOWNS (owner rulings 2026-07-23, superseding "open duels")
+- STORMS = the arcade shelf: THREE FRESH boards mint per local day
+  (s-YYYYMMDD-a/b/c, pure day-key derivation — no rotation, owner:
+  "won't people get bored?"; no authoring; leaderboards persist as
+  history). Codenames dealt by hash off a curated storm list.
+- SHOWDOWN (owner rename of 1v1 duels): posting a validated run opens a
+  showdown; TAKING IT CLAIMS IT (atomic, 1v1); the taker's validated
+  keep-best resolves it server-side; decided = OFF THE RAIL (history
+  later). Points for now: +10 win, +2 played (players.showdown_points).
