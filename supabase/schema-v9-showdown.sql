@@ -12,8 +12,11 @@ alter table public.open_duels
 alter table public.players
   add column if not exists showdown_points int not null default 0;
 
--- the rail shows OPEN showdowns only — decided ones are history
-create or replace view public.open_duel_board as
+-- the rail shows OPEN showdowns only — decided ones are history.
+-- DROP first (42P16): create-or-replace cannot reorder/insert columns,
+-- and this view adds `words` mid-list vs the v8 shape.
+drop view if exists public.open_duel_board;
+create view public.open_duel_board as
   select d.id, d.seed, d.format, d.score, d.words, d.created_at, d.poster, p.name
   from public.open_duels d
   join public.players p on p.id = d.poster
