@@ -7,6 +7,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing,
+} from 'react-native-reanimated';
 
 import { PALETTE } from '@/game/palette';
 import { dailyStormBoards } from '@/game/storm-seeds';
@@ -14,6 +17,27 @@ import { ACCENT, type Theme } from '@/game/theme';
 import { fetchStormCrowns } from '@/net/duels';
 
 type Crowns = Record<string, { top: { name: string; score: number } | null; mine: number | null }>;
+
+// the warning flag, ALIVE (owner: "make hurricane pulse red haha") — a
+// slow red breath on the glow, UI-thread only
+function HurricaneFlag() {
+  const t = useSharedValue(0);
+  useEffect(() => {
+    t.value = withRepeat(withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.sin) }), -1, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const pulse = useAnimatedStyle(() => ({
+    opacity: 0.35 + t.value * 0.65,
+  }));
+  return (
+    <View style={styles.bigFlagWrap}>
+      <Animated.View style={[styles.flagGlow, pulse]} />
+      <View style={styles.bigFlag}>
+        <View style={styles.bigFlagCenter} />
+      </View>
+    </View>
+  );
+}
 
 export function StormShelf({ theme, refreshNonce }: { theme: Theme; refreshNonce?: number }) {
   const boards = useMemo(() => dailyStormBoards(), []);
@@ -37,7 +61,6 @@ export function StormShelf({ theme, refreshNonce }: { theme: Theme; refreshNonce
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.rowContent}>
         {boards.map((b) => {
-          const pal = PALETTE[b.intensity.pal];
           const c = crowns?.[b.seed];
           const mins = Math.floor(b.intensity.clockSecs / 60);
           const secs = b.intensity.clockSecs % 60;
@@ -46,32 +69,30 @@ export function StormShelf({ theme, refreshNonce }: { theme: Theme; refreshNonce
               key={b.seed}
               onPress={() => router.push(`/lobby?seed=${b.seed}`)}
               style={[styles.block, { backgroundColor: theme.card }]}>
-              {/* the LOGO chip: bolts for the lower tiers; the hurricane
-                  IS the maritime warning flag (owner: "get it") */}
-              {b.intensity.key === 'hurricane' ? (
-                <View style={[styles.chip, styles.flagChip]}>
-                  <View style={styles.flagCenter} />
-                </View>
-              ) : (
-                <View style={[styles.chip, { backgroundColor: pal.bg, boxShadow: `inset 0 -3px 0 ${pal.edge}` }]}>
-                  <Text style={styles.chipGlyph}>
-                    {'⚡'.repeat(b.intensity.bolts)}
-                  </Text>
-                </View>
-              )}
-              <Text style={[styles.name, { color: theme.ink }]} numberOfLines={1}>
-                {b.name}
-              </Text>
-              <Text style={[styles.stat, { color: theme.sub }]} numberOfLines={1}>
-                {c?.top
-                  ? `${c.top.score.toLocaleString()} · ${c.top.name.toLowerCase()}`
-                  : 'no crown yet'}
-              </Text>
-              <Text style={[styles.meta, { color: c?.mine != null ? theme.faint : ACCENT }]}>
-                {mins}:{String(secs).padStart(2, '0')}
-                {b.intensity.key === 'hurricane' ? ' · no mercy' : ''}
-                {c?.mine != null ? ` · best ${c.mine.toLocaleString()}` : ' · play ›'}
-              </Text>
+              {/* SPLIT CELL (owner): the weather OWNS the left half —
+                  big emoji (the flag for hurricane, pulsing red); data
+                  stacks on the right */}
+              <View style={styles.iconZone}>
+                {b.intensity.key === 'hurricane' ? (
+                  <HurricaneFlag />
+                ) : (
+                  <Text style={styles.bigWeather}>{b.intensity.emoji}</Text>
+                )}
+              </View>
+              <View style={styles.dataZone}>
+                <Text style={[styles.name, { color: theme.ink }]} numberOfLines={1}>
+                  {b.name}
+                </Text>
+                <Text style={[styles.stat, { color: theme.sub }]} numberOfLines={1}>
+                  {c?.top
+                    ? `${c.top.score.toLocaleString()} · ${c.top.name.toLowerCase()}`
+                    : 'no crown yet'}
+                </Text>
+                <Text style={[styles.meta, { color: c?.mine != null ? theme.faint : ACCENT }]}>
+                  {mins}:{String(secs).padStart(2, '0')}
+                  {c?.mine != null ? ` · best ${c.mine.toLocaleString()}` : ' · play ›'}
+                </Text>
+              </View>
             </Pressable>
           );
         })}
@@ -126,25 +147,57 @@ const styles = StyleSheet.create({
     width: 36,
   },
   block: {
-    width: 128,
-    minHeight: 118,
+    width: 170,
+    minHeight: 86,
     borderRadius: 16,
     borderCurve: 'continuous',
-    paddingVertical: 13,
-    paddingHorizontal: 12,
-    gap: 3,
-    alignItems: 'flex-start',
+    paddingVertical: 12,
+    paddingLeft: 8,
+    paddingRight: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  chip: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
-    borderCurve: 'continuous',
+  iconZone: {
+    width: 54,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
   },
-  chipGlyph: { fontSize: 11, letterSpacing: -2 },
+  bigWeather: {
+    fontSize: 34,
+  },
+  dataZone: {
+    flex: 1,
+    gap: 2,
+  },
+  bigFlagWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  flagGlow: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    boxShadow: '0 0 14px 3px #E5484D',
+  },
+  bigFlag: {
+    width: 40,
+    height: 40,
+    borderRadius: 11,
+    borderCurve: 'continuous',
+    backgroundColor: '#E5484D',
+    boxShadow: 'inset 0 -4px 0 #8C2328',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bigFlagCenter: {
+    width: 15,
+    height: 15,
+    borderRadius: 4,
+    borderCurve: 'continuous',
+    backgroundColor: '#17171C',
+  },
   chipRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -152,18 +205,6 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   // the maritime hurricane warning AS the logo: red square, black center
-  flagChip: {
-    backgroundColor: '#E5484D',
-    boxShadow: 'inset 0 -3px 0 #8C2328',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  flagCenter: {
-    width: 11,
-    height: 11,
-    borderRadius: 3, borderCurve: 'continuous',
-    backgroundColor: '#17171C',
-  },
   name: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 14.5,

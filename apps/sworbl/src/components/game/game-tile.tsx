@@ -110,13 +110,16 @@ function GameTileInner({ tile, size, gap, sPath, sSubmit, clearingSeq, flight, n
   const deflate = useSharedValue(1);
   useEffect(() => {
     if (!nope) return;
-    const drainDelay = 280 + (nopeTotal - 1 - nopeSeq) * 35; // web stagger, our hold
+    // WEB-EXACT rhythm (owner: the halved timings read as a jarring
+    // blink): rjArrive 260ms ease → hold to 500ms(+stagger) → rjDrainOut
+    // 420ms. The red ROLLS in and drains out — never flashes.
+    const drainDelay = 500 + (nopeTotal - 1 - nopeSeq) * 35;
     sNopeBase.value = 0;
-    sNopeBase.value = withDelay(200, withTiming(1, { duration: 1 })); // swap mid-red
+    sNopeBase.value = withDelay(340, withTiming(1, { duration: 1 })); // swap mid-red
     sRed.value = withSequence(
-      withTiming(1, { duration: 130, easing: Easing.out(Easing.quad) }), // candy→red
-      withTiming(1, { duration: Math.max(0, drainDelay - 130) }),
-      withTiming(0, { duration: 300, easing: Easing.bezier(0.3, 0, 0.35, 1) }) // rjDrainOut
+      withTiming(1, { duration: 260, easing: Easing.inOut(Easing.quad) }), // rjArrive
+      withTiming(1, { duration: Math.max(0, drainDelay - 260) }),
+      withTiming(0, { duration: 420, easing: Easing.bezier(0.3, 0, 0.35, 1) }) // rjDrainOut
     );
     // tileDeflate, web-exact keyframe rhythm (0.46s: 1.07 → 0.94 → 1.005 → 1)
     deflate.value = withSequence(

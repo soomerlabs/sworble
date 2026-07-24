@@ -28,13 +28,14 @@ export interface StormIntensity {
   friendly: boolean; // FRIENDLY bag on-ramp in the deal
   pal: number; // PALETTE index (mint 2 · amber 4 · coral 5)
   bolts: number; // 1-3 on the card chip
+  emoji: string; // the weather itself (hurricane renders the FLAG instead)
 }
 
 export const INTENSITIES: Record<'a' | 'b' | 'c' | 'd', StormIntensity> = {
-  a: { key: 'drizzle', label: 'drizzle', clockSecs: 180, capSecs: 300, friendly: true, pal: 2, bolts: 1 },
-  b: { key: 'squall', label: 'squall', clockSecs: 120, capSecs: 200, friendly: true, pal: 4, bolts: 2 },
-  c: { key: 'thunder', label: 'thunder', clockSecs: 90, capSecs: 150, friendly: false, pal: 0, bolts: 3 },
-  d: { key: 'hurricane', label: 'hurricane', clockSecs: 60, capSecs: 100, friendly: false, pal: 5, bolts: 4 },
+  a: { key: 'drizzle', label: 'drizzle', clockSecs: 180, capSecs: 300, friendly: true, pal: 2, bolts: 1, emoji: '🌧️' },
+  b: { key: 'squall', label: 'squall', clockSecs: 120, capSecs: 200, friendly: true, pal: 4, bolts: 2, emoji: '💨' },
+  c: { key: 'thunder', label: 'thunder', clockSecs: 90, capSecs: 150, friendly: false, pal: 0, bolts: 3, emoji: '⛈️' },
+  d: { key: 'hurricane', label: 'hurricane', clockSecs: 60, capSecs: 100, friendly: false, pal: 5, bolts: 4, emoji: '🌀' },
 };
 
 // rules from the seed alone — foreign seeds (first-storm, shares) play

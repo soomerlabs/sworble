@@ -5,7 +5,7 @@
 // geometry/color/opacity from the shared path — unused segments park off-board.
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { BlurMask, Canvas, Path, DashPathEffect } from '@shopify/react-native-skia';
+import { BlurMask, Canvas, Path } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import { PALETTE } from '@/game/palette';
 import type { TraceTile } from '@/game/types';
@@ -43,20 +43,43 @@ function Seg({ sPath, sTrail, sTrailFade, idx, size, cell }: SegProps) {
     const held = !live.length;
     const p = live.length ? live : (sTrail?.value ?? live);
     if (idx >= p.length - 1) return 0;
-    const base = idx === p.length - 2 ? 0.85 : 0.45; // tip glows hardest (web)
+    // the pipe: clear-solid core, tip a touch brighter
+    const base = idx === p.length - 2 ? 0.8 : 0.55;
     return held ? base * (sTrailFade?.value ?? 0) : base;
+  });
+  const glowOpacity = useDerivedValue(() => {
+    const live = sPath.value;
+    const held = !live.length;
+    const p = live.length ? live : (sTrail?.value ?? live);
+    if (idx >= p.length - 1) return 0;
+    const base = idx === p.length - 2 ? 0.4 : 0.26;
+    return held ? base * (sTrailFade?.value ?? 0) : base;
+  });
+  const glowWidth = useDerivedValue(() => {
+    const live = sPath.value;
+    const p = live.length ? live : (sTrail?.value ?? live);
+    return (idx === p.length - 2 ? Math.max(6, size * 0.13) : Math.max(5, size * 0.11)) * 2.1;
   });
   const strokeWidth = useDerivedValue(() => {
     const live = sPath.value;
     const p = live.length ? live : (sTrail?.value ?? live);
     return idx === p.length - 2 ? Math.max(6, size * 0.13) : Math.max(5, size * 0.11);
   });
+  // THE PIPE (owner): a solid translucent tube with a soft glow under it
+  // — no dots, no blur on the core. Two pooled paths per segment.
   return (
-    <Path path={d} style="stroke" color={color} opacity={opacity} strokeWidth={strokeWidth} strokeCap="round">
-      <DashPathEffect intervals={[1, 9]} />
-      {/* web trailSegs: blur(1.5px) tip / blur(2px) body — the ember softness */}
-      <BlurMask blur={1.8} style="normal" />
-    </Path>
+    <>
+      <Path
+        path={d}
+        style="stroke"
+        color={color}
+        opacity={glowOpacity}
+        strokeWidth={glowWidth}
+        strokeCap="round">
+        <BlurMask blur={6} style="normal" />
+      </Path>
+      <Path path={d} style="stroke" color={color} opacity={opacity} strokeWidth={strokeWidth} strokeCap="round" />
+    </>
   );
 }
 

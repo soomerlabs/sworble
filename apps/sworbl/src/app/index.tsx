@@ -1031,7 +1031,7 @@ const styles = StyleSheet.create({
   },
   guessPill: {
     backgroundColor: '#8971FF',
-    borderRadius: 999, borderCurve: 'continuous',
+    borderRadius: 999,
     paddingVertical: 6,
     paddingHorizontal: 13,
     boxShadow: '0 3px 0 #6A54D8',

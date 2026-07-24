@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   grayBlock: { backgroundColor: '#3A3A44', boxShadow: '0 3px 0 #26262E' },
   blockText: { fontFamily: 'Fredoka_600SemiBold', includeFontPadding: false },
   twistPill: {
-    borderRadius: 999, borderCurve: 'continuous',
+    borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 6,
     backgroundColor: 'rgba(137,113,255,0.14)',

@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   pill: {
-    borderRadius: 999, borderCurve: 'continuous',
+    borderRadius: 999,
     paddingHorizontal: 18,
     paddingVertical: 8,
   },

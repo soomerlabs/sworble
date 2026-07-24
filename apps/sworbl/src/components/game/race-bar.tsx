@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
   laneScore: { fontFamily: 'Fredoka_600SemiBold', fontSize: 11, fontVariant: ['tabular-nums'] },
   lane: {
     height: 5,
-    borderRadius: 999, borderCurve: 'continuous',
+    borderRadius: 999,
     overflow: 'hidden',
   },
   fill: {
@@ -68,6 +68,6 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    borderRadius: 999, borderCurve: 'continuous',
+    borderRadius: 999,
   },
 });

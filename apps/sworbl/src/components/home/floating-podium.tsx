@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 96,
     height: 96,
-    borderRadius: 999, borderCurve: 'continuous',
+    borderRadius: 999,
     left: '50%',
     top: '50%',
     marginLeft: -48,

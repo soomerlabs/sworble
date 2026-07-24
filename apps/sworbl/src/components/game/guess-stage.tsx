@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   twistPill: {
-    borderRadius: 999, borderCurve: 'continuous',
+    borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 6,
     backgroundColor: 'rgba(137,113,255,0.14)',

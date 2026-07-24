@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   pill: {
-    borderRadius: 999, borderCurve: 'continuous',
+    borderRadius: 999,
     paddingHorizontal: 18,
     paddingVertical: 8,
   },
