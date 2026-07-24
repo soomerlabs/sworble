@@ -159,7 +159,7 @@ const stepChipIn = new Keyframe({
 });
 
 function Chips({ word, red, fly }: { word: string; red?: boolean; fly?: boolean }) {
-  const hs = Math.min(30, Math.floor(220 / Math.max(1, word.length)));
+  const hs = Math.min(34, Math.floor(252 / Math.max(1, word.length)));
   return (
     <View style={styles.chipRow}>
       {[...word].map((ch, i) => {
@@ -316,23 +316,15 @@ export function StepperCard({ width, traceWord, verdict, sworb, countIn, gs = GA
           key={`${verdict.word}-${verdict.ok}-${verdict.pts ?? ''}`}
           entering={verdict.ok ? ChipFadeIn.duration(180) : missShakeIn}
           style={styles.bannerRow}>
+          {/* WEB-PRIME (owner): the chips land ALONE and centered — the
+              points rise at the score, never beside the blocks */}
           <Chips word={verdict.word.toLowerCase()} red={!verdict.ok} fly={verdict.fly} />
-          {verdict.ok && verdict.mult != null && (
-            <Animated.Text entering={FadeIn.duration(150)} style={styles.pts}>
-              ×{verdict.mult}
-            </Animated.Text>
-          )}
-          {verdict.ok && verdict.pts != null && (
-            <Animated.Text
-              entering={
-                verdict.fly
-                  ? FadeIn.duration(150).delay(verdict.word.length * 40 + 280)
-                  : FadeIn.duration(150)
-              }
-              style={styles.pts}>
-              +{verdict.pts}
-              {verdict.clue ? '  ✦' : ''}
-            </Animated.Text>
+          {verdict.ok && !!verdict.clue && (
+            <Animated.View
+              entering={FadeIn.duration(160).delay(verdict.fly ? verdict.word.length * 40 + 300 : 120)}
+              style={styles.cluePill}>
+              <Text style={styles.cluePillText}>★ CLUE</Text>
+            </Animated.View>
           )}
         </Animated.View>
       ) : tracing ? (
@@ -354,6 +346,18 @@ export function StepperCard({ width, traceWord, verdict, sworb, countIn, gs = GA
 }
 
 const styles = StyleSheet.create({
+  cluePill: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(95,214,168,0.16)',
+  },
+  cluePillText: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 11,
+    letterSpacing: 1,
+    color: '#5FD6A8',
+  },
   card: {
     backgroundColor: CARD.bg,
     borderRadius: 16, borderCurve: 'continuous',
