@@ -777,7 +777,7 @@ export default function HomeScreen() {
               played={played || solved}
               solved={solved}
               width={width}
-              onGuess={dayInProgress && !played && sworbPending && deal ? openForGuess : undefined}
+              onGuess={!played && sworbPending && deal ? openForGuess : undefined}
             />
 
             {/* the strip carries the day's numbers now (owner) — only the
