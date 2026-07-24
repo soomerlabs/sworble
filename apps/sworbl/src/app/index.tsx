@@ -357,12 +357,6 @@ export default function HomeScreen() {
   const nudgeBeat = useCallback(() => {
     haptic.soft();
   }, []);
-  // THE SUCCESS BEAT (owner): fires when the pull crosses the commit line —
-  // the moment the launch is won — not back at the Y. Hand-rolled spacing
-  // (owner: the canned Success pulses were too close together)
-  const commitBeat = useCallback(() => {
-    haptic.launch();
-  }, []);
   // stage 1 complete: PLAY lit → the row morphs to the chevron, swipe unlocks.
   // No swipe within the window → DISARM: the chevron gives way and the tiles
   // melt back in a reverse cascade (owner: the return must feel gratifying).
@@ -474,13 +468,8 @@ export default function HomeScreen() {
           // stage 2: the pull preserves the grab offset — continuous from
           // wherever the sheet was resting (assist rise included)
           sheetY.value = Math.min(closedY, Math.max(0, e.absoluteY - sGrab.value));
-          // SUCCESS at the commit line (owner): one beat, exactly when the
-          // pull crosses the point where releasing launches. sDetent is the
-          // once-per-pull latch; onEnd resets it.
-          if (!sDetent.value && closedY - sheetY.value > height * 0.22) {
-            sDetent.value = 1;
-            runOnJS(commitBeat)();
-          }
+          // (the commit-line success beat is owner-removed — the swipe is
+          // SILENT; the trace ticks open, the board's GO wake answers)
         })
         .onEnd((e) => {
           'worklet';
@@ -497,10 +486,6 @@ export default function HomeScreen() {
           const risen = closedY - sheetY.value;
           if (risen > height * 0.22 || e.velocityY < -900) {
             sMode.value = 3;
-            // a fast flick can commit BELOW the line — the success beat
-            // still belongs to the commit, so fire it if the pull never
-            // crossed (sDetent still holds the once-only latch)
-            if (!sDetent.value) runOnJS(commitBeat)();
             sheetY.value = withSpring(0, { ...OPEN_SPRING, velocity: e.velocityY });
             runOnJS(markOpen)();
           } else {
