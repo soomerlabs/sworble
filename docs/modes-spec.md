@@ -237,6 +237,11 @@ ONE gesture: tracing P·L·A·Y IS the swipe.
   dock band retires; the sections get the space. Open questions for
   the build: where the next-sworbl countdown lives on a done day, and
   how the corner coexists with the parked sheet's peek/frost.
+- THE RADIANCE (owner addendum 2): the parked frost/blur band retires
+  WITH the dock — affordance comes from the aurora colors RADIATING off
+  the play blocks themselves (soft candy glow bleeding from the FAB:
+  "easy to see they do something"). The storm crest choreography gets
+  rethought against the corner in the same session.
 - BUILD HOME: this is the OPENING move of the universal-play-door
   session — the dock gesture is being rebuilt context-aware there
   anyway; the hockey stick is its input layer. It must not be bolted
