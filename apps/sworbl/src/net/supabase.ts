@@ -2,7 +2,6 @@
 // isConfigured() false and every caller falls back to the local stubs: the
 // app NEVER depends on the network to function (local-first law).
 //   .env:  EXPO_PUBLIC_SUPABASE_URL=…  EXPO_PUBLIC_SUPABASE_ANON_KEY=…
-import { Platform } from 'react-native';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import engine from '@sworbl/engine';
 
@@ -18,8 +17,18 @@ export function isConfigured(): boolean {
 // through app deletion, so a reinstall signs back into the SAME anonymous
 // user. Web (and any secure-store failure) falls back to the engine store.
 // One-time migration lifts a legacy MMKV session into the keychain.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const SecureStore = Platform.OS === 'web' ? null : require('expo-secure-store');
+// NO react-native import here (the Node test runner loads this module —
+// RN's flow-typed entry kills esbuild): web is sniffed by document, and
+// the require is guarded so Node lands on the engine-store fallback.
+const SecureStore = (() => {
+  if (typeof document !== 'undefined') return null; // web
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('expo-secure-store');
+  } catch {
+    return null; // Node tests / anywhere the native module is absent
+  }
+})();
 
 const storageAdapter = {
   getItem: async (k: string): Promise<string | null> => {
