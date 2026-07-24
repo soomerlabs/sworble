@@ -586,6 +586,11 @@ export default function HomeScreen() {
   }));
   // PARALLAX RECEDE (owner trio): home scales back as the sheet rises — the
   // sheet reads as physically ABOVE the screen (App Store card idiom)
+  // floaters fade with the sheet's rise — fully gone by half the travel,
+  // so nothing is being drawn under the opaque sheet at dock
+  const floatersFade = useAnimatedStyle(() => ({
+    opacity: interpolate(sheetY.value, [closedY * 0.45, closedY * 0.85], [0, 1], Extrapolation.CLAMP),
+  }));
   const homeStyle = useAnimatedStyle(() => {
     // boot: the whole screen settles as ONE unit (pro idiom) — a breath of
     // rise + scale, folded into the sheet-driven scale so the transform
@@ -625,14 +630,11 @@ export default function HomeScreen() {
   // a STATIC blur over scrolling content is what iOS is built for — the
   // old rule only bans blur RIDING the moving sheet, so it dies inside the
   // first 40px of travel and unmounts entirely past 80px.
-  const [parkBlurLive, setParkBlurLive] = useState(true);
-  useAnimatedReaction(
-    () => sheetY.value > closedY - 120,
-    (near, prev) => {
-      if (near !== prev) runOnJS(setParkBlurLive)(near);
-    },
-    [closedY]
-  );
+  // ALWAYS MOUNTED (perf audit): the ±120px mount gate tore the native
+  // blur tree down / rebuilt it WHILE the sheet was moving — the jolt near
+  // the dock on both pull and dismiss. parkBlurStyle already drives the
+  // frost to opacity 0 within ~100px of travel; a fully transparent layer
+  // costs the compositor nothing, so the tree just stays.
   const parkBlurStyle = useAnimatedStyle(() => ({
     // THE FROST DISSOLVE (owner: "the blur transition... fade out on the
     // gameboard — that was pretty good"): the frost rides the whole pull,
@@ -690,9 +692,13 @@ export default function HomeScreen() {
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
       <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
-      {/* fully occluded at dock — stop paying for goo + floaters under an
-          opaque sheet */}
-      {!sheetOpen && <Floaters width={width} height={height} />}
+      {/* ALWAYS MOUNTED (perf audit: 15 repeat-loop views tore down at the
+          exact frame every open/close began — mount churn on the sheet's
+          hottest transitions). Occlusion is an OPACITY now, driven from the
+          sheet's own position on the UI thread. */}
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, floatersFade]}>
+        <Floaters width={width} height={height} />
+      </Animated.View>
 
       <Animated.View style={[styles.safe, homeStyle]}>
       <SafeAreaView edges={['top']} style={styles.safe}>
@@ -744,7 +750,7 @@ export default function HomeScreen() {
             played={played || solved}
             solved={solved}
             width={width}
-            onGuess={!played && sworbPending && deal ? openForGuess : undefined}
+            onGuess={dayInProgress && !played && sworbPending && deal ? openForGuess : undefined}
           />
 
           {/* DAY IN PROGRESS (modes-spec): the living day — best round,
@@ -839,7 +845,7 @@ export default function HomeScreen() {
                   "gradually get blurry"): platform-split — native uses
                   gradient-masked BlurViews, web uses CSS backdrop-filter +
                   mask-image. Both dissolve sharp → haze → frost, no line. */}
-              {parkBlurLive && (
+              {(
                 <Animated.View
                   pointerEvents="none"
                   style={[styles.frostBand, { height: peekH }, parkBlurStyle]}>

@@ -21,7 +21,7 @@ export interface Theme {
 }
 
 export const ACCENT = '#8971FF'; // indigo — you / action (both modes)
-export const ACCENT_EDGE = '#6B4EE6';
+export const ACCENT_EDGE = '#6A54D8';
 export const CLUE_GREEN = '#5FD6A8';
 export const CLUE_GREEN_EDGE = '#38AD7F';
 

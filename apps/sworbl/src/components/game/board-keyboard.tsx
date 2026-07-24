@@ -26,16 +26,18 @@ function Key({
   label: string; fontSize: number; onPress: () => void;
 }) {
   const lift = Math.max(3, Math.round(h * 0.08));
-  const rad = Math.round(h * 0.2);
+  const rad = Math.round(h * 0.26); // tile squircle ratio — keys ARE tiles (owner)
   return (
     <Pressable onPress={onPress} style={{ width: w, height: h + lift }}>
       {({ pressed }) => (
         <>
-          <View style={[styles.ledge, { top: lift, width: w, height: h, borderRadius: rad, backgroundColor: edge }]} />
+          <View
+            style={[styles.ledge, { top: lift, width: w, height: h, borderRadius: rad, borderCurve: 'continuous', backgroundColor: edge }]}
+          />
           <View
             style={[
               styles.face,
-              { width: w, height: h, borderRadius: rad, backgroundColor: bg },
+              { width: w, height: h, borderRadius: rad, borderCurve: 'continuous', backgroundColor: bg },
               pressed && { transform: [{ translateY: lift - 1 }] },
             ]}>
             <Text style={[styles.label, { fontSize, color: ink }]}>{label}</Text>

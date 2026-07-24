@@ -2,6 +2,7 @@
 // players don't get free scanning time). Tap resumes via the count-in re-arm.
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { ACCENT_EDGE } from '@/game/theme';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 interface Props {
@@ -53,7 +54,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    boxShadow: '0 4px 0 #5A43C9',
+    boxShadow: `0 4px 0 ${ACCENT_EDGE}`,
   },
   ctaText: {
     fontFamily: 'Fredoka_600SemiBold',

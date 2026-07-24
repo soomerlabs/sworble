@@ -90,8 +90,10 @@ export function ScoreHeader({ score, target, marks, width, gs = GAME_DARK }: Pro
             const passed = score >= at;
             return (
               <View key={label} style={[styles.markWrap, { left: r * trackW - 5 }]}>
-                <Text style={[styles.markLabel, passed && styles.markPassed]}>{label}</Text>
-                <View style={[styles.markTick, passed && styles.markTickPassed]} />
+                <Text style={[styles.markLabel, { color: gs.sub }, passed && styles.markPassed]}>
+                  {label}
+                </Text>
+                <View style={[styles.markTick, { backgroundColor: gs.line }, passed && styles.markTickPassed]} />
               </View>
             );
           })}
@@ -105,7 +107,7 @@ export function ScoreHeader({ score, target, marks, width, gs = GAME_DARK }: Pro
         </View>
         <View style={styles.targetWrap}>
           <Crown width={14} style={styles.crown} />
-          <Text style={styles.target}>{target.toLocaleString()}</Text>
+          <Text style={[styles.target, { color: gs.sub }]}>{target.toLocaleString()}</Text>
         </View>
       </View>
     </View>

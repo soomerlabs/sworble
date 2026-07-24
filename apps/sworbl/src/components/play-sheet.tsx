@@ -114,7 +114,10 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   useEffect(() => {
     if (!active || guessIntent == null || guessIntent === lastGuessIntent.current) return;
     lastGuessIntent.current = guessIntent;
-    if (phase === 'idle' || phase === 'paused') setPhase('finale');
+    // roundend counts too (audit): during the lagged-remount window the
+    // parked sheet still sits in roundend — a guess tap must not strand
+    // the player on the banked-round cover
+    if (phase === 'idle' || phase === 'paused' || phase === 'roundend') setPhase('finale');
   }, [active, guessIntent, phase]);
   // the count-in beat the STEPPER renders (count-in itself is headless now)
   const [countStep, setCountStep] = useState<'3' | '2' | '1' | null>(null);

@@ -6,6 +6,7 @@
 //     top, committed rows reveal their colors block-by-block, keys rise
 //     bottom-up on the morph
 // The ENGINE still decides everything (applyGuess/nextSlots/scoreGuess).
+import { ACCENT_EDGE } from '@/game/theme';
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import Animated, { ZoomIn, FadeIn } from 'react-native-reanimated';
@@ -52,7 +53,7 @@ interface Props {
 // keyboard KEYS (owner-tuned): LETTERS are flat, quiet keys; ENTER and DELETE
 // keep the candy BLOCK construction (ledge + accent) — the two keys that matter
 const KEY_BLOCKS: Record<string, { bg: string; edge: string; ink: string }> = {
-  '⏎': { bg: '#8971FF', edge: '#5A43C9', ink: '#FFFFFF' },
+  '⏎': { bg: '#8971FF', edge: ACCENT_EDGE, ink: '#FFFFFF' },
   '⌫': { bg: MONO_DARK.bg, edge: MONO_DARK.edge, ink: '#F58A66' },
 };
 function Key({
