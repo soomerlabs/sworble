@@ -230,10 +230,12 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
         // round banks (best-round keeps the max, clues merge, submission
         // rides the outbox) and the round-end cover offers the guess
         morph = setTimeout(() => {
-          // ONE MODE (modes-spec): every round banks, the round-end cover
-          // offers the guess — the bonus decays with rounds played
+          // ONE MODE (owner 2026-07-23): every round banks, then the board
+          // FLIPS STRAIGHT INTO THE GUESS (the in-place finale) — no cover
+          // in between. Swiping the sheet away is always legal ("not yet").
+          // Solved / guesses spent → the quiet round-banked cover instead.
           bankRoundRef.current();
-          setPhase('roundend');
+          setPhase(sworbPendingRef.current() ? 'finale' : 'roundend');
         }, 1000);
       }
     }, 250);
@@ -401,6 +403,13 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   }, [deal, score, found]);
   const bankRoundRef = useRef(bankRound);
   bankRoundRef.current = bankRound;
+  // is there still a guess to offer? (read fresh — banking just wrote)
+  const sworbPendingRef = useRef<() => boolean>(() => false);
+  sworbPendingRef.current = () => {
+    if (!deal) return false;
+    const d = loadDay(deal.dayKey);
+    return !d.sworb?.solved && (d.sworb?.guessesUsed ?? 0) < 6;
+  };
 
   const onFinaleDone = useCallback(
     (r: { solved: boolean; guessesUsed: number; bonus: number }) => {
@@ -470,10 +479,9 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
               onLongPress={
                 __DEV__
                   ? () => {
-                      // dev skip = a REAL clock-out: bank the round, land on
-                      // the round-end cover (it pointed at finale pre-modes)
+                      // dev skip = a REAL clock-out: bank, then the guess
                       bankRoundRef.current();
-                      setPhase('roundend');
+                      setPhase(sworbPendingRef.current() ? 'finale' : 'roundend');
                     }
                   : undefined
               }
@@ -584,6 +592,14 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
                       : null
                   }
                 />
+                {/* THE RELEASE VALVE (owner): the guess opens automatically
+                    at round end, but nobody is trapped — swipe down keeps
+                    every guess for later */}
+                {phase === 'finale' && (
+                  <Text style={[styles.notYet, { color: gs.sub }]}>
+                    not yet? swipe down — your guesses keep
+                  </Text>
+                )}
               </View>
               {countInMounted && phase === 'countin' && (
                 <CountIn
@@ -607,7 +623,6 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
           )}
           {phase === 'roundend' && deal && (() => {
             const d = loadDay(deal.dayKey);
-            const sworbPending = !d.sworb?.solved && (d.sworb?.guessesUsed ?? 0) < 6;
             return (
               <View style={styles.doneWrap}>
                 <Text style={[styles.roundEndTitle, { color: gs.ink }]}>
@@ -619,17 +634,8 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
                 <Text style={[styles.roundEndSub, { color: gs.sub }]}>
                   best today · {d.rounds.bestRound.toLocaleString()}
                 </Text>
-                {sworbPending && (
-                  <Pressable onPress={() => setPhase('finale')} style={styles.guessBtn}>
-                    <Text style={styles.guessBtnText}>
-                      GUESS THE WORD · {6 - (d.sworb?.guessesUsed ?? 0)} left
-                    </Text>
-                  </Pressable>
-                )}
                 <Pressable onPress={onClose} style={styles.homeLink}>
-                  <Text style={styles.homeLinkText}>
-                    {sworbPending ? 'later — home ›' : 'home ›'}
-                  </Text>
+                  <Text style={styles.homeLinkText}>home ›</Text>
                 </Pressable>
               </View>
             );
@@ -676,6 +682,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 13,
     marginBottom: 14,
+  },
+  notYet: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 12,
+    letterSpacing: 0.4,
+    textAlign: 'center',
+    marginTop: 12,
+    opacity: 0.85,
   },
   guessBtn: {
     backgroundColor: '#8971FF',
