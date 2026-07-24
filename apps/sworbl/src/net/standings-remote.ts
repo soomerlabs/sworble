@@ -94,12 +94,23 @@ export function readCachedField(key: string): RemoteField | null {
 
 // ---- the outbox: submissions survive offline days ----
 interface Pending {
-  day: string;
+  day: string; // practice entries use 'storm:<seed>' (never collides)
+  seed?: string; // practice only
   score: number;
   solved: boolean;
   guesses: number;
   words: BestWord[];
-  mode?: 'regular' | 'hard'; // per-mode write policy (modes-spec)
+  mode?: 'regular' | 'hard' | 'practice'; // per-mode write policy (modes-spec)
+}
+
+// PRACTICE (duels groundwork): keep-best per seed; words ride along so the
+// run can GHOST a future opponent
+export function enqueuePractice(seed: string, score: number, words: BestWord[]): void {
+  const key = 'storm:' + seed;
+  const box = (engine.store.getJSON(OUTBOX_KEY, []) as Pending[]).filter((p) => p.day !== key);
+  box.push({ day: key, seed, score, solved: false, guesses: 0, words, mode: 'practice' });
+  engine.store.setJSON(OUTBOX_KEY, box);
+  void drainOutbox();
 }
 
 export function enqueueSubmission(
@@ -129,10 +140,12 @@ export async function drainOutbox(): Promise<void> {
       // edge function, which re-scores the words server-side and inserts
       // with the service role — clients lost direct INSERT.
       const { data, error } = await sb.functions.invoke('submit-score', {
-        body: {
-          day: p.day, score: p.score, solved: p.solved, guesses: p.guesses,
-          words: p.words, mode: p.mode ?? 'regular',
-        },
+        body: p.mode === 'practice'
+          ? { seed: p.seed, score: p.score, solved: false, guesses: 0, words: p.words, mode: 'practice' }
+          : {
+              day: p.day, score: p.score, solved: p.solved, guesses: p.guesses,
+              words: p.words, mode: p.mode ?? 'regular',
+            },
       });
       if (data?.ok) continue; // delivered (duplicates count — one-shot law)
       if (error) {
@@ -140,7 +153,9 @@ export async function drainOutbox(): Promise<void> {
         // direct insert (works until schema-v2 drops the policy). A 4xx
         // VALIDATION rejection is final — drop it, don't retry forever.
         const status = (error as { context?: { status?: number } }).context?.status;
-        if (status === 404) {
+        if (status === 404 && p.mode !== 'practice') {
+          // (practice NEVER falls back — a direct insert would land a
+          // 'storm:<seed>' row in the daily submissions table)
           const { error: insErr } = await sb.from('submissions').insert({
             player_id: uid, day: p.day, score: p.score,
             solved: p.solved, guesses: p.guesses, words: p.words,

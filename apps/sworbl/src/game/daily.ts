@@ -146,6 +146,45 @@ export function dealDaily(now = new Date(), opts: DealOpts = {}): DailyDeal | nu
   };
 }
 
+// PRACTICE / DUEL BOARDS (modes-spec "ghost duels"): a pure seed-string
+// deal — no day entry, no sworb, no clues; the board is the whole game.
+// Deterministic: the same seed is the same board for every player, which
+// is the entire premise of per-seed leaderboards and ghost races.
+export function dealPractice(seed: string): DailyDeal {
+  const qr = engine.core.mulberry32(engine.core.hashSeed('storm|' + seed) ^ 0x51ac1e);
+  const queue: string[] = engine.core
+    .shuffledBag(engine.core.FRIENDLY, qr)
+    .concat(
+      engine.core.shuffledBag(engine.core.BAG, qr),
+      engine.core.shuffledBag(engine.core.BAG, qr),
+      engine.core.shuffledBag(engine.core.BAG, qr)
+    );
+  let qi = 0;
+  const nextLetter = () => queue[qi++ % queue.length];
+  const tiles: TileT[] = [];
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      const letter = nextLetter();
+      const id = nextId++;
+      tiles.push({ id, letter, col, row, ci: tileColorFor(letter, id), spawnDrop: 0, bornAt: Date.now() });
+    }
+  }
+  return {
+    dayKey: 'storm:' + seed, // namespaced — never collides with a real day
+    sworb: '',
+    definition: '',
+    archetype: null,
+    clues: [],
+    poolExtras: [],
+    tiles,
+    nextLetter,
+    getQueueIdx: () => qi,
+    setQueueIdx: (i: number) => {
+      qi = i;
+    },
+  };
+}
+
 export function makeTile(letter: string, col: number, row: number, spawnDrop: number): TileT {
   const id = nextId++;
   return { id, letter, col, row, ci: tileColorFor(letter, id), spawnDrop, bornAt: Date.now() };

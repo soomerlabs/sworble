@@ -3,7 +3,7 @@
 // (a broken un-found clue rides back in on the refill).
 import assert from 'assert';
 import engine from '@sworbl/engine';
-import { dealDaily, settle, restampBroken, activeClues } from '../src/game/daily';
+import { dealDaily, dealPractice, settle, restampBroken, activeClues } from '../src/game/daily';
 import { COLS, ROWS, CLUE_COUNT } from '../src/game/types';
 
 // use a date the content feed covers (dailies.json ships in-repo)
@@ -81,3 +81,30 @@ assert.strictEqual(untouched, settled, 'nothing unfound → identical reference,
 }
 
 console.log('daily: deal/settle/re-stamp invariants all passed');
+
+// ---- PRACTICE / SEED BOARDS (duels groundwork) ----
+// a seed deal is a full clue-less board, deterministic per seed
+const pr = dealPractice('first-storm');
+assert.strictEqual(pr.tiles.length, COLS * ROWS, 'practice: full board dealt');
+assert.strictEqual(pr.clues.length, 0, 'practice: no clues');
+assert.strictEqual(pr.sworb, '', 'practice: no sworb');
+assert.strictEqual(pr.dayKey, 'storm:first-storm', 'practice: namespaced dayKey');
+
+const pr2 = dealPractice('first-storm');
+assert.deepStrictEqual(
+  pr.tiles.map((t) => `${t.row},${t.col}:${t.letter}`),
+  pr2.tiles.map((t) => `${t.row},${t.col}:${t.letter}`),
+  'practice: same seed → byte-identical board (the shared-board law)'
+);
+
+const pr3 = dealPractice('second-storm');
+assert.notDeepStrictEqual(
+  pr.tiles.map((t) => t.letter),
+  pr3.tiles.map((t) => t.letter),
+  'practice: different seed → different board'
+);
+
+// the refill queue is deterministic too — ghost replays depend on it
+assert.strictEqual(pr.nextLetter(), pr2.nextLetter(), 'practice: identical refill queue');
+
+console.log('daily: practice seed-deal invariants pinned');

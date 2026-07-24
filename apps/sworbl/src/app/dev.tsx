@@ -5,6 +5,7 @@
 //   · LB FIELD: full/2/1/0 stub-field knob (web lbFieldDbg)
 //   · ACTIONS: restart day, wipe all (two-tap arm, never an Alert)
 // __DEV__ builds only (settings hides the entry otherwise).
+import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -279,6 +280,12 @@ export default function DevScreen() {
           <Text style={[styles.metaLine, { color: theme.faint }]}>
             tip: long-press the CLOCK on a live board → skip straight to the finale
           </Text>
+          <Pressable
+            onPress={() => router.push('/storm?seed=first-storm')}
+            style={[styles.actionRow, { backgroundColor: theme.card }]}>
+            <Text style={[styles.actionText, { color: theme.ink }]}>storm board (seed run)</Text>
+            <Text style={[styles.actionText, { color: theme.faint }]}>first-storm ›</Text>
+          </Pressable>
           <Pressable
             onPress={() => {
               const next = !getCountInStall();
