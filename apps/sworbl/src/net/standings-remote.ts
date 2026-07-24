@@ -91,6 +91,7 @@ export function readCachedField(key: string): RemoteField | null {
 
 // ---- the outbox: submissions survive offline days ----
 interface Pending {
+  id?: string; // unique row id — the drain's write-back matches on THIS
   day: string; // practice entries use 'storm:<seed>' (never collides)
   seed?: string; // practice only
   score: number;
@@ -106,7 +107,7 @@ interface Pending {
 export function enqueuePractice(seed: string, score: number, words: BestWord[]): void {
   const key = 'storm:' + seed;
   const box = (engine.store.getJSON(OUTBOX_KEY, []) as Pending[]).filter((p) => p.day !== key);
-  box.push({ day: key, seed, score, solved: false, guesses: 0, words, mode: 'practice' });
+  box.push({ id: mintRowId(), day: key, seed, score, solved: false, guesses: 0, words, mode: 'practice' });
   engine.store.setJSON(OUTBOX_KEY, box);
   void drainOutbox();
 }
@@ -147,21 +148,56 @@ export function enqueueSubmission(
 ): void {
   const box = (engine.store.getJSON(OUTBOX_KEY, []) as Pending[]).filter((p) => p.day !== dayKey);
   box.push({
-    day: dayKey, score, solved: sworb.solved, guesses: sworb.guessesUsed,
+    id: mintRowId(), day: dayKey, score, solved: sworb.solved, guesses: sworb.guessesUsed,
     words, mode: 'regular', rounds,
   });
   engine.store.setJSON(OUTBOX_KEY, box);
   void drainOutbox(); // best effort now; boot/foreground retries the rest
 }
 
+// THE DRAIN GUARD (audit: silent score loss) — a drain snapshots the box,
+// awaits the network, then writes back. An enqueue landing inside that
+// await window (round banks → solve seconds later) used to be clobbered by
+// the write-back. Now: rows carry ids, the write-back REMOVES processed ids
+// from the CURRENT box instead of replacing it, and drains never overlap.
+let rowSeq = 0;
+function mintRowId(): string {
+  return `${Date.now().toString(36)}-${++rowSeq}`;
+}
+let draining = false;
+let drainQueued = false;
+
 export async function drainOutbox(): Promise<void> {
   if (!isConfigured()) return;
+  if (draining) {
+    drainQueued = true; // a fresh row arrived mid-drain — run again after
+    return;
+  }
+  draining = true;
+  try {
+    await drainPass();
+  } finally {
+    draining = false;
+    if (drainQueued) {
+      drainQueued = false;
+      void drainOutbox();
+    }
+  }
+}
+
+async function drainPass(): Promise<void> {
+  // legacy rows (pre-id builds) get ids stamped before the snapshot so the
+  // write-back can match them
+  const raw = engine.store.getJSON(OUTBOX_KEY, []) as Pending[];
+  if (!raw.length) return;
+  if (raw.some((p) => !p.id)) {
+    engine.store.setJSON(OUTBOX_KEY, raw.map((p) => (p.id ? p : { ...p, id: mintRowId() })));
+  }
   const box = engine.store.getJSON(OUTBOX_KEY, []) as Pending[];
-  if (!box.length) return;
   const uid = await ensurePlayer(getPlayerName());
   const sb = supabase();
   if (!uid || !sb) return;
-  const remaining: Pending[] = [];
+  const done = new Set<string>(); // delivered or finally-rejected row ids
   for (const p of box) {
     try {
       // THE HONESTY GATE (schema v2): results go through the submit-score
@@ -175,7 +211,10 @@ export async function drainOutbox(): Promise<void> {
               words: p.words, mode: 'regular', rounds: p.rounds ?? 1,
             },
       });
-      if (data?.ok) continue; // delivered (duplicates count — one-shot law)
+      if (data?.ok) {
+        done.add(p.id!); // delivered
+        continue;
+      }
       if (error) {
         // TRANSITION FALLBACK: function not deployed yet → the legacy
         // direct insert (works until schema-v2 drops the policy). A 4xx
@@ -188,15 +227,21 @@ export async function drainOutbox(): Promise<void> {
             player_id: uid, day: p.day, score: p.score,
             solved: p.solved, guesses: p.guesses, words: p.words,
           });
-          if (insErr && !`${insErr.code}`.startsWith('23')) remaining.push(p);
+          if (!insErr || `${insErr.code}`.startsWith('23')) done.add(p.id!);
           continue;
         }
-        if (status === 422 || status === 400) continue; // rejected: final
-        remaining.push(p); // network/5xx: retry later
+        if (status === 422 || status === 400) {
+          done.add(p.id!); // rejected: final — never retry
+          continue;
+        }
+        // network/5xx: NOT done — stays in the box for the next drain
       }
     } catch {
-      remaining.push(p);
+      // network throw: stays in the box
     }
   }
-  engine.store.setJSON(OUTBOX_KEY, remaining);
+  // write-back by REMOVAL from the current box — rows enqueued mid-drain
+  // (ids we never saw) survive untouched
+  const current = engine.store.getJSON(OUTBOX_KEY, []) as Pending[];
+  engine.store.setJSON(OUTBOX_KEY, current.filter((p) => !p.id || !done.has(p.id)));
 }
