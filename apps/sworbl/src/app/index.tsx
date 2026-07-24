@@ -13,6 +13,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ArchetypeBadge } from '@/components/home/archetype-badge';
 import { ShowdownsRail } from '@/components/home/showdowns-rail';
 import { StandingsStrip } from '@/components/home/standings-strip';
 import { StormShelf } from '@/components/home/storm-shelf';
@@ -753,8 +754,6 @@ export default function HomeScreen() {
             <DateHeader
               theme={theme}
               dayKey={deal.dayKey}
-              archetypeLabel={deal.archetype ? twistLabel(deal.archetype) : null}
-              archetype={deal.archetype}
               score={myScore > 0 ? myScore : null}
               streak={streak}
               onInfo={!played ? () => router.push('/how-to') : undefined}
@@ -804,6 +803,9 @@ export default function HomeScreen() {
             )}
           </Pressable>
 
+
+          {/* the day's contract, between the hints and the board (owner) */}
+          {deal && <ArchetypeBadge theme={theme} archetype={deal.archetype} />}
 
           {/* CONSOLIDATED (owner): the strip is home's glance; the full
               floating podium lives on the leaderboard page */}

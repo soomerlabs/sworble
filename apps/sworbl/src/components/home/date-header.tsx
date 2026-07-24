@@ -4,8 +4,6 @@
 import { router } from 'expo-router';
 import React from 'react';
 import { Text, Pressable, StyleSheet, View } from 'react-native';
-import { ARCHETYPE_PAL } from '@/components/game/result-view';
-import { PALETTE } from '@/game/palette';
 import { Icon } from '@/components/icon';
 import { ScreenHeader } from '@/components/screen-header';
 import { type Theme, ACCENT } from '@/game/theme';
@@ -18,12 +16,9 @@ interface Props {
   streak?: number; // 🔥 in the eyebrow when ≥2
   onShare?: () => void;
   onInfo?: () => void; // pre-play: the ⓘ lives where the score will
-  archetypeLabel?: string | null; // the day's archetype — masthead right tag
-  archetype?: string | null; // the raw key — picks the tag's reasoned hue
 }
 
-export function DateHeader({ theme, dayKey, score, streak, onShare, onInfo, archetypeLabel, archetype }: Props) {
-  const archPal = PALETTE[ARCHETYPE_PAL[archetype ?? ''] ?? 2];
+export function DateHeader({ theme, dayKey, score, streak, onShare, onInfo }: Props) {
   const now = new Date();
   const weekday = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
   const monthDay = now
@@ -61,28 +56,6 @@ export function DateHeader({ theme, dayKey, score, streak, onShare, onInfo, arch
         </View>
         {/* the ARCHETYPE tag (owner: right side, on-brand, with the i) —
             a candy chip naming the day's rule; tap = the archetype book */}
-        {!!archetypeLabel && (
-          <Pressable
-            onPress={() => router.push('/archetypes')}
-            hitSlop={8}
-            style={styles.archBadge}>
-            {/* the split badge (owner: say 'archetype' without a tap) —
-                dark key half, candy value half in the reasoned hue */}
-            <View style={[styles.archKey, { backgroundColor: theme.pill }]}>
-              <Text style={[styles.archKeyText, { color: theme.sub }]}>archetype</Text>
-            </View>
-            <View
-              style={[
-                styles.archVal,
-                { backgroundColor: archPal.bg, boxShadow: `inset 0 -2.5px 0 ${archPal.edge}` },
-              ]}>
-              <Text style={styles.archValText}>{archetypeLabel}</Text>
-              <View style={styles.archInfo}>
-                <Text style={styles.archInfoText}>i</Text>
-              </View>
-            </View>
-          </Pressable>
-        )}
       </View>
     </View>
   );
@@ -102,48 +75,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 5,
-  },
-  archBadge: {
-    flexDirection: 'row',
-    borderRadius: 10, borderCurve: 'continuous',
-    overflow: 'hidden',
-  },
-  archKey: {
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  archKeyText: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 9,
-    letterSpacing: 1.1,
-    textTransform: 'uppercase',
-  },
-  archVal: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingLeft: 9,
-    paddingRight: 6,
-    paddingVertical: 4.5,
-  },
-  archValText: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 12,
-    letterSpacing: 0.3,
-    color: '#1F1442',
-  },
-  archInfo: {
-    width: 15,
-    height: 15,
-    borderRadius: 5, borderCurve: 'continuous',
-    backgroundColor: 'rgba(31,20,66,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  archInfoText: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 10,
-    color: '#1F1442',
   },
   mastheadBrand: {
     fontFamily: 'Fredoka_600SemiBold',
