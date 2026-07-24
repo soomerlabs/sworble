@@ -42,7 +42,7 @@ export function StormShelf({ theme, refreshNonce }: { theme: Theme; refreshNonce
           return (
             <Pressable
               key={b.seed}
-              onPress={() => router.push(`/storm?seed=${b.seed}`)}
+              onPress={() => router.push(`/lobby?seed=${b.seed}`)}
               style={[styles.block, { backgroundColor: theme.card }]}>
               {/* the LOGO chip: bolts for the lower tiers; the hurricane
                   IS the maritime warning flag (owner: "get it") */}

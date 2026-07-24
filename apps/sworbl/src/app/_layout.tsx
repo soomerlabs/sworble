@@ -94,6 +94,7 @@ export default function RootLayout() {
               down to bail (intel parks on every guess regardless) */}
           <Stack.Screen name="guess" options={{ presentation: 'modal' }} />
           <Stack.Screen name="archetypes" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="lobby" options={{ presentation: 'modal' }} />
         </Stack>
         <ToastHost />
       </ThemeProvider>

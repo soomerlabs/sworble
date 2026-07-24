@@ -36,7 +36,10 @@ function fmtClock(secs: number): string {
 
 export default function StormScreen() {
   const theme = useTheme();
-  const params = useLocalSearchParams<{ seed?: string; clock?: string; vs?: string; target?: string; did?: string }>();
+  const params = useLocalSearchParams<{
+    seed?: string; clock?: string; vs?: string; target?: string; did?: string;
+    go?: string; post?: string;
+  }>();
   const rawSeed = typeof params.seed === 'string' ? params.seed : '';
   const seed = SEED_RE.test(rawSeed) ? rawSeed : null;
   // THE LADDER (owner): rules derive from the seed itself — the clock
@@ -102,11 +105,11 @@ export default function StormScreen() {
   useEffect(() => () => countTimers.current.forEach(clearTimeout), []);
   const [claimLost, setClaimLost] = useState(false);
   const [verdict, setVerdict] = useState<ShowdownVerdict | null>(null);
+  // the LOBBY claims before launching (go=1) — no double-claim here
+  const preClaimed = params.go === '1';
   const startRun = () => {
     if (phaseRef.current !== 'ready') return;
-    // SHOWDOWN CLAIM (owner: taking locks it 1v1) — fire-and-check; a
-    // lost race flips the cover instead of wasting the run
-    if (duel && Number.isFinite(duelId)) {
+    if (!preClaimed && duel && Number.isFinite(duelId)) {
       void claimShowdown(duelId).then((r) => {
         if (r === 'taken') setClaimLost(true);
       });
@@ -141,6 +144,17 @@ export default function StormScreen() {
 
   // cold deep links have no history — done/back must always land somewhere
   const leave = () => (router.canGoBack() ? router.back() : router.replace('/'));
+
+  // FROM THE LOBBY (owner: "dismiss that, then launch the gameboard") —
+  // the sheet was the ready cover, so the board starts itself
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (params.go !== '1' || autoStarted.current) return;
+    autoStarted.current = true;
+    const t = setTimeout(() => startRun(), 420);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ---- the tick loop: pure clock module decides, this screen renders ----
   useEffect(() => {
@@ -179,6 +193,15 @@ export default function StormScreen() {
     submittedRef.current = true;
     haptic.soft();
     enqueuePractice(seed, score, wordsRef.current);
+    // PLAY & POST (lobby intent): the showdown posts itself after the
+    // outbox lands — no second tap
+    if (params.post === '1') {
+      setTimeout(() => {
+        void postDuel(seed, 'blitz').then((r) => {
+          setPosted(r === 'ok' ? 'ok' : r === 'has-open' ? 'has-open' : 'error');
+        });
+      }, 1400);
+    }
     // give the outbox a beat to land, then standings + the showdown verdict
     // (retry once — the validated run may still be in flight)
     const t = setTimeout(() => {

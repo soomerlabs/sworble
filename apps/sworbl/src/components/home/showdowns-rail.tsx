@@ -43,7 +43,7 @@ export function ShowdownsRail({ theme, refreshNonce }: { theme: Theme; refreshNo
         contentContainerStyle={styles.rowContent}>
         {/* START A SHOWDOWN: you vs the open seat */}
         <Pressable
-          onPress={() => router.push(`/storm?seed=${squall.seed}`)}
+          onPress={() => router.push(`/lobby?seed=${squall.seed}&create=1`)}
           style={[styles.block, { backgroundColor: theme.card }]}>
           <View style={styles.vsRow}>
             <View style={[styles.avatar, { backgroundColor: myPal.bg, boxShadow: `inset 0 -3px 0 ${myPal.edge}` }]}>
@@ -66,7 +66,7 @@ export function ShowdownsRail({ theme, refreshNonce }: { theme: Theme; refreshNo
               key={d.id}
               onPress={() =>
                 router.push(
-                  `/storm?seed=${d.seed}&vs=${encodeURIComponent(d.name)}&target=${d.score}&did=${d.id}`
+                  `/lobby?seed=${d.seed}&vs=${encodeURIComponent(d.name)}&target=${d.score}&did=${d.id}`
                 )
               }
               style={[styles.block, { backgroundColor: theme.card }]}>
