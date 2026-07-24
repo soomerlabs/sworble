@@ -78,10 +78,11 @@ export default function DevScreen() {
     }
     // the wipe also deletes the reset nonce — re-seed it ABOVE its pre-wipe
     // value so the mounted sheet still remounts (no zombie phases).
-    // IDENTITY SURVIVES (owner: "why do we keep making new ids") — the
-    // Supabase auth session (sb-*-auth-token) and the username stay, so a
-    // wipe resets the GAME, not who you are. Anonymous accounts have no
-    // way back once their session is destroyed.
+    // IDENTITY SURVIVES: the session's PRIMARY home is the iOS Keychain
+    // now (survives wipes by nature) — these skips guard the FALLBACK
+    // paths (web has no keychain; secure-store failures land in the
+    // engine store) plus the username, which never goes to the keychain.
+    // A wipe resets the GAME, never who you are.
     const n = getResetNonce();
     for (const k of engine.store.keys()) {
       if (k.includes('auth-token') || k === 'sworbl_rn_name') continue;
