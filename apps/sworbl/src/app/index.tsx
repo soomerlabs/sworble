@@ -43,7 +43,6 @@ import {
 import { playMetrics } from '@/components/home/trace-play';
 import { AppBar } from '@/components/home/app-bar';
 import { DateHeader } from '@/components/home/date-header';
-import { SuperlativesPager } from '@/components/home/superlatives-pager';
 import { PlaySheet, type PlaySheetHandle } from '@/components/play-sheet';
 import { gameSurface } from '@/game/palette';
 import { useTheme } from '@/game/theme';
@@ -769,10 +768,14 @@ export default function HomeScreen() {
               clue bank, and the guess door (6 a day, spend anytime) */}
           {!played && dayInProgress && deal && (
             <View style={styles.dayStatusRow}>
-              <Text style={[styles.dayStatusText, { color: theme.sub }]}>
-                best round {(day?.rounds.bestRound ?? 0).toLocaleString()} ·{' '}
-                {day?.found.length ?? 0} clue{(day?.found.length ?? 0) === 1 ? '' : 's'}
-              </Text>
+              <Pressable onPress={() => router.push('/words')} hitSlop={8}>
+                <Text style={[styles.dayStatusText, { color: theme.sub }]}>
+                  best round {(day?.rounds.bestRound ?? 0).toLocaleString()} ·{' '}
+                  {day?.found.length ?? 0} clue{(day?.found.length ?? 0) === 1 ? '' : 's'}
+                  {day?.bestWords?.[0] ? ` · ${day.bestWords[0].word.toUpperCase()} +${day.bestWords[0].pts}` : ''}
+                  {'  ›'}
+                </Text>
+              </Pressable>
               {sworbPending && (
                 <Text style={[styles.guessHint, { color: '#8971FF' }]}>
                   tap the word to guess · {6 - (day?.sworb?.guessesUsed ?? 0)} left
@@ -781,18 +784,6 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {(played || dayInProgress) && deal && (
-            <View style={styles.pagerWrap}>
-            <SuperlativesPager
-              theme={theme}
-              bestWords={day?.bestWords ?? []}
-              foundClues={day?.found ?? []}
-              clues={deal.clues}
-              allWords={dayWords}
-              totalWords={dayWords.length}
-            />
-            </View>
-          )}
 
           <StandingsSection
             theme={theme}
