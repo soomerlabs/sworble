@@ -56,7 +56,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test": "npx tsx tests/trace.test.ts && npx tsx tests/persist.test.ts && npx tsx tests/daily.test.ts && npx tsx tests/dict.test.ts && npx tsx tests/finale-logic.test.ts && npx tsx tests/round-clock.test.ts && npx tsx tests/count-in.test.ts && npx tsx tests/share.test.ts"
+    "test": "npx tsx tests/trace.test.ts && npx tsx tests/persist.test.ts && npx tsx tests/daily.test.ts && npx tsx tests/dict.test.ts && npx tsx tests/finale-logic.test.ts && npx tsx tests/round-clock.test.ts && npx tsx tests/count-in.test.ts && npx tsx tests/share.test.ts && npx tsx tests/storms.test.ts"
   },
   "private": true
 }

@@ -6,6 +6,7 @@ import engine from '@sworbl/engine';
 import {
   loadDay, saveProgress, finishDay, saveRun, loadRun, clearRun, saveSheetOpen,
   wasSheetOpen, type RunSnap,
+  saveFinaleProgress, loadFinaleProgress, clearFinaleProgress, loadDayWords, resetDay,
 } from '../src/game/persist';
 
 const day = '2099-01-01';
@@ -80,5 +81,46 @@ assert.strictEqual(wasSheetOpen(day), false, 'stale flag was discarded at read (
 saveSheetOpen(day);
 saveSheetOpen(null);
 assert.strictEqual(wasSheetOpen(day), false, 'cleared flag stays cleared');
+
+// ---- PARKED FINALE INTEL (the not-yet valve) ----
+{
+  const d2 = '2099-02-01';
+  const prog = {
+    rows: [{ letters: ['s', 't', 'o', 'r', 'm'], colors: ['gray', 'yellow', 'gray', 'gray', 'gray'] }],
+    slots: ['', 't', '', '', ''],
+    colors: [null, 'yellow', null, null, null],
+    guessesUsed: 2,
+  };
+  saveFinaleProgress(d2, prog);
+  assert.deepStrictEqual(loadFinaleProgress(d2), prog, 'parked intel round-trips');
+  // the spent guesses are LAW even without a completed finale
+  assert.strictEqual(loadDay(d2).sworb?.guessesUsed, 2, 'guess counter persists with the park');
+  assert.strictEqual(loadDay(d2).sworb?.solved, false, 'parked ≠ solved');
+  // a SOLVED day never gets its sworb overwritten by a late park
+  engine.store.setJSON('sworbl_sworb_' + d2, { guessesUsed: 3, solved: true, bonus: 320 });
+  saveFinaleProgress(d2, { ...prog, guessesUsed: 4 });
+  assert.strictEqual(loadDay(d2).sworb?.solved, true, 'solved sworb survives a stray park');
+  clearFinaleProgress(d2);
+  assert.strictEqual(loadFinaleProgress(d2), null, 'spent intel clears');
+  // resetDay wipes the park too
+  saveFinaleProgress(d2, prog);
+  resetDay(d2);
+  assert.strictEqual(loadFinaleProgress(d2), null, 'resetDay clears parked intel');
+}
+console.log('persist: parked finale intel pinned');
+
+// ---- loadDayWords dedupes on read (the duplicate-key crash class) ----
+{
+  const d3 = '2099-03-01';
+  engine.store.setJSON('sworbl_rn_daywords_' + d3, [
+    { word: 'gusty', pts: 100 },
+    { word: 'foggy', pts: 80 },
+    { word: 'gusty', pts: 140 },
+  ]);
+  const words = loadDayWords(d3);
+  assert.strictEqual(words.length, 2, 'dupes collapse');
+  assert.strictEqual(words.find((w) => w.word === 'gusty')?.pts, 140, 'best pts wins');
+}
+console.log('persist: day-words dedupe pinned');
 
 console.log('persist: all round-trip + routing tests passed');
