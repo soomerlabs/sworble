@@ -5,6 +5,7 @@
 // spell for 3 minutes, the score rides the practice outbox (keep-best per
 // seed, server-validated with delta 0).
 import { router, useLocalSearchParams } from 'expo-router';
+import { AppState, Share } from 'react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,7 +17,8 @@ import { type BestWord } from '@/game/persist';
 import {
   mkClock, clockStart, clockPause, clockRemaining, clockGrant, type ClockState,
 } from '@/game/round-clock';
-import { useTheme } from '@/game/theme';
+import { gameSurface } from '@/game/palette';
+import { useTheme, ACCENT, ACCENT_EDGE } from '@/game/theme';
 import { TUNING } from '@/game/tuning';
 import { enqueuePractice, fetchPractice } from '@/net/standings-remote';
 
@@ -50,18 +52,46 @@ export default function StormScreen() {
   const clockRef = useRef<ClockState>(mkClock());
   const [remaining, setRemaining] = useState(CT.baseSecs);
 
-  // ---- count-in: the stepper speaks 3·2·1 (play-sheet's grammar) ----
+  // ---- count-in: the stepper speaks 3·2·1 (play-sheet's grammar).
+  // Timers are TRACKED (leave mid-count → cleared) and entry is guarded
+  // (double-tap can't stack two timelines / restart the clock).
+  const countTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => () => countTimers.current.forEach(clearTimeout), []);
   const startRun = () => {
+    if (phaseRef.current !== 'ready') return;
+    phaseRef.current = 'countin';
     setPhase('countin');
     setCountStep('3');
     const steps: Array<'2' | '1'> = ['2', '1'];
-    steps.forEach((s, i) => setTimeout(() => setCountStep(s), 700 * (i + 1)));
-    setTimeout(() => {
-      setCountStep(null);
-      clockRef.current = clockStart(mkClock(), Date.now());
-      setPhase('live');
-    }, 700 * 3);
+    steps.forEach((st, i) => countTimers.current.push(setTimeout(() => setCountStep(st), 700 * (i + 1))));
+    countTimers.current.push(
+      setTimeout(() => {
+        setCountStep(null);
+        clockRef.current = clockStart(mkClock(), Date.now());
+        phaseRef.current = 'live';
+        setPhase('live');
+      }, 700 * 3)
+    );
   };
+  const phaseRef = useRef<Phase>('ready');
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+
+  // BACKGROUND FAIRNESS (audit): the clock derives from wall-time — without
+  // this, backgrounding bled the whole absence off the round. Same contract
+  // as the daily: time only passes while you can see the board.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      if (phaseRef.current !== 'live') return;
+      if (st === 'active') clockRef.current = clockStart(clockRef.current, Date.now());
+      else clockRef.current = clockPause(clockRef.current, Date.now());
+    });
+    return () => sub.remove();
+  }, []);
+
+  // cold deep links have no history — done/back must always land somewhere
+  const leave = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   // ---- the tick loop: pure clock module decides, this screen renders ----
   useEffect(() => {
@@ -132,7 +162,7 @@ export default function StormScreen() {
         <Text style={[styles.sub, { color: theme.sub }]}>
           storm links look like /storm?seed=first-storm
         </Text>
-        <Pressable onPress={() => router.back()} style={[styles.cta, { backgroundColor: theme.card }]}>
+        <Pressable onPress={leave} style={[styles.cta, styles.ctaCard, { backgroundColor: theme.card }]}>
           <Text style={[styles.ctaText, { color: theme.ink }]}>back</Text>
         </Pressable>
       </SafeAreaView>
@@ -143,7 +173,7 @@ export default function StormScreen() {
     <SafeAreaView style={[styles.root, { backgroundColor: theme.bg }]}>
       {/* top bar: seed identity + the clock + live score */}
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
+        <Pressable onPress={leave} hitSlop={12}>
           <Text style={[styles.backGlyph, { color: theme.icon }]}>‹</Text>
         </Pressable>
         <View style={styles.topMid}>
@@ -151,7 +181,11 @@ export default function StormScreen() {
           <Text style={[styles.seedName, { color: theme.ink }]}>{seed}</Text>
         </View>
         <View style={styles.topRight}>
-          <Text style={[styles.clock, { color: phase === 'live' && remaining <= 12 ? '#FF8A8E' : theme.ink }]}>
+          <Text
+            style={[
+              styles.clock,
+              { color: phase === 'live' && remaining <= 30 ? gameSurface(theme.mode).timerLow : theme.ink },
+            ]}>
             {fmtClock(phase === 'live' ? remaining : phase === 'done' ? 0 : CT.baseSecs)}
           </Text>
           <Text style={[styles.scoreLine, { color: theme.sub }]}>{score} pts</Text>
@@ -180,8 +214,8 @@ export default function StormScreen() {
             <Text style={[styles.sub, { color: theme.sub }]}>
               everyone gets this exact board.{'\n'}3 minutes — best run counts.
             </Text>
-            <Pressable onPress={startRun} style={[styles.cta, { backgroundColor: '#8971FF' }]}>
-              <Text style={[styles.ctaText, { color: '#fff' }]}>RUN IT</Text>
+            <Pressable onPress={startRun} style={[styles.cta, { backgroundColor: ACCENT, boxShadow: `0 4px 0 ${ACCENT_EDGE}` }]}>
+              <Text style={[styles.ctaText, { color: '#FFFFFF' }]}>RUN IT</Text>
             </Pressable>
           </View>
         )}
@@ -193,13 +227,16 @@ export default function StormScreen() {
             <Text style={[styles.sub, { color: theme.sub }]}>
               {wordsRef.current.length} words · score sent — best run counts
             </Text>
+            {board != null && board.length === 0 && (
+              <Text style={[styles.sub, { color: theme.faint }]}>first run on this board ✦</Text>
+            )}
             {board != null && board.length > 0 && (
               <View style={styles.lbBox}>
                 {board.map((r, i) => (
                   <View key={`${r.name}-${i}`} style={styles.lbRow}>
                     <Text style={[styles.lbRank, { color: theme.faint }]}>{i + 1}</Text>
                     <Text
-                      style={[styles.lbName, { color: r.isMe ? '#8971FF' : theme.ink }]}
+                      style={[styles.lbName, { color: r.isMe ? ACCENT : theme.ink }]}
                       numberOfLines={1}>
                       {r.name}
                     </Text>
@@ -208,11 +245,20 @@ export default function StormScreen() {
                 ))}
               </View>
             )}
-            <Pressable onPress={runAgain} style={[styles.cta, { backgroundColor: '#8971FF' }]}>
-              <Text style={[styles.ctaText, { color: '#fff' }]}>RUN IT AGAIN</Text>
+            <Pressable onPress={runAgain} style={[styles.cta, { backgroundColor: ACCENT, boxShadow: `0 4px 0 ${ACCENT_EDGE}` }]}>
+              <Text style={[styles.ctaText, { color: '#FFFFFF' }]}>RUN IT AGAIN</Text>
             </Pressable>
-            <Pressable onPress={() => router.back()} style={[styles.cta, { backgroundColor: theme.card }]}>
-              <Text style={[styles.ctaText, { color: theme.ink }]}>done</Text>
+            <Pressable
+              onPress={() =>
+                Share.share({
+                  message: `sworbl storm ⛈ ${seed} — ${score} pts in 3:00. same board, every player. beat my run: sworbl://storm?seed=${seed}`,
+                }).catch(() => {})
+              }
+              style={[styles.cta, styles.ctaCard, { backgroundColor: theme.card }]}>
+              <Text style={[styles.ctaText, { color: theme.ink }]}>share this board</Text>
+            </Pressable>
+            <Pressable onPress={leave} style={styles.homeLink}>
+              <Text style={[styles.ctaText, { color: theme.sub }]}>done ›</Text>
             </Pressable>
           </View>
         )}
@@ -242,8 +288,10 @@ const styles = StyleSheet.create({
   title: { fontFamily: 'Fredoka_600SemiBold', fontSize: 26 },
   bigScore: { fontFamily: 'Fredoka_600SemiBold', fontSize: 54 },
   sub: { fontFamily: 'Fredoka_600SemiBold', fontSize: 13.5, textAlign: 'center', lineHeight: 20 },
+  ctaCard: {},
+  homeLink: { paddingVertical: 6 },
   cta: {
-    borderRadius: 16,
+    borderRadius: 14,
     borderCurve: 'continuous',
     paddingHorizontal: 28,
     paddingVertical: 13,
