@@ -37,6 +37,10 @@ export const haptic = {
   soft() {
     if (on()) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft).catch(() => {});
   },
+  // the settle thud: ONE light tap when a refill wave lands (web sfxThud)
+  land() {
+    if (on()) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+  },
   good() {
     if (on()) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
   },

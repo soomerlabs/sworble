@@ -146,7 +146,9 @@ export function HeroWord({ theme, deal, played, solved, width, onGuess }: Props)
           not cracked — tomorrow's another sworbl
         </Text>
       )}
-      {played && deal?.archetype && twistLabel(deal.archetype) && (
+      {/* CONTRACT INTEL (owner): the twist shows BEFORE play too — the
+          rule is knowable from the first glance, only the answer hides */}
+      {deal?.archetype && twistLabel(deal.archetype) && (
         <View style={styles.twistPill}>
           <Text style={styles.twistText}>today's twist: {twistLabel(deal.archetype)}</Text>
         </View>

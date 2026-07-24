@@ -341,7 +341,10 @@ function GameBoardInner({
     }
     sGrid.value = g;
     if (maxWait > 0) {
-      const h = setTimeout(() => setLandTick((n) => n + 1), maxWait + 20);
+      const h = setTimeout(() => {
+        setLandTick((n) => n + 1);
+        haptic.land(); // the wave's ONE thud (owner: light impact on the board)
+      }, maxWait + 20);
       return () => clearTimeout(h);
     }
   }, [tiles, clearingIds, landTick]);

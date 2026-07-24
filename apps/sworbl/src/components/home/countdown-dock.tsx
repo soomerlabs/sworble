@@ -89,7 +89,7 @@ export function CountdownDock({ played, sLit, sPoke, armed, tile, gap }: {
             <Text style={[styles.swipeLabel, { color: theme.ink }]}>swipe up to start</Text>
           </Animated.View>
           <Animated.View style={[styles.hintPose, hintPose]} pointerEvents="none">
-            <Text style={[styles.hintLabel, { color: theme.sub }]}>trace P·L·A·Y</Text>
+            <Text style={[styles.hintLabel, { color: theme.ink }]}>swipe to play</Text>
           </Animated.View>
         </View>
       )}
@@ -105,10 +105,11 @@ const styles = StyleSheet.create({
     bottom: 4,
     alignItems: 'center',
   },
+  // the brand's own face (owner: "swipe to play in the sworbl font")
   hintLabel: {
     fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 11,
-    letterSpacing: 1.2,
+    fontSize: 13,
+    letterSpacing: 0.4,
   },
   wrap: {
     alignItems: 'center',

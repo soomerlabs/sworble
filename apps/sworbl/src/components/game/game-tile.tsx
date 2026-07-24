@@ -196,19 +196,25 @@ function GameTileInner({ tile, size, gap, sPath, sSubmit, clearingSeq, flight, n
     opacity: sLitBlend.value * (sLit.value === 2 ? 1 : 0.65),
   }));
 
-  const inner = useAnimatedStyle(() => ({
-    transform: [
+  const inner = useAnimatedStyle(() => {
+    const t: Array<Record<string, number | string>> = [
       { translateX: x + flyX.value },
       { translateY: y.value + liftY.value + flyY.value },
       { scale: scale.value * deflate.value * stackPop.value * wakePop.value },
       { scale: headScale.value },
-      { rotate: `${popSpin.value}deg` },
-      { scaleY: squashY.value },
-    ],
-    // submit breath (fossil submitDim): the whole field recedes toward 0.72
-    // while an accepted word leaves; clearing/flying tiles are already fading
-    opacity: opacity.value * sDim.value * (1 - 0.28 * sSubmit.value),
-  }));
+    ];
+    // rotate joins ONLY mid-pop — an identity rotate re-rasterizes the
+    // layer and cracked a hairline seam at the face's top edge (owner:
+    // "white line at the top")
+    if (popSpin.value !== 0) t.push({ rotate: `${popSpin.value}deg` });
+    t.push({ scaleY: squashY.value });
+    return {
+      transform: t as never,
+      // submit breath (fossil submitDim): the field recedes toward 0.72
+      // while an accepted word leaves; clearing tiles are already fading
+      opacity: opacity.value * sDim.value * (1 - 0.28 * sSubmit.value),
+    };
+  });
 
   // the red BLENDS in and drains out (web rjArrive/rjDrainOut are color
   // transitions) — the old `> 0.5` test snapped mid-drain, the reported jank
@@ -255,13 +261,13 @@ function GameTileInner({ tile, size, gap, sPath, sSubmit, clearingSeq, flight, n
             glowStyle,
             {
               position: 'absolute',
-              left: 0,
-              top: 0,
-              width: size,
-              height: size,
-              borderRadius: rad,
+              left: 2,
+              top: 2,
+              width: size - 4,
+              height: size - 4,
+              borderRadius: Math.max(2, rad - 2),
               borderCurve: 'continuous',
-              boxShadow: `0 0 ${Math.round(size * 0.22)}px ${Math.round(size * 0.04)}px ${pal.bg}`,
+              boxShadow: `0 0 ${Math.round(size * 0.22)}px ${Math.round(size * 0.05)}px ${pal.bg}`,
             },
           ]}
         />
