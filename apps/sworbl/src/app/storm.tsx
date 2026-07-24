@@ -20,6 +20,7 @@ import {
 import { gameSurface } from '@/game/palette';
 import { useTheme, ACCENT, ACCENT_EDGE } from '@/game/theme';
 import { TUNING } from '@/game/tuning';
+import { postDuel } from '@/net/duels';
 import { enqueuePractice, fetchPractice } from '@/net/standings-remote';
 
 type Phase = 'ready' | 'countin' | 'live' | 'done';
@@ -33,9 +34,15 @@ function fmtClock(secs: number): string {
 
 export default function StormScreen() {
   const theme = useTheme();
-  const params = useLocalSearchParams<{ seed?: string }>();
+  const params = useLocalSearchParams<{ seed?: string; clock?: string; vs?: string; target?: string }>();
   const rawSeed = typeof params.seed === 'string' ? params.seed : '';
   const seed = SEED_RE.test(rawSeed) ? rawSeed : null;
+  // DUEL CONTEXT (open duels): vs+target = a posted run to beat; clock=120
+  // is the blitz format (2:00, pure points)
+  const blitz = params.clock === '120';
+  const vsName = typeof params.vs === 'string' && params.vs.length <= 24 ? params.vs : null;
+  const vsScore = Number(params.target);
+  const duel = vsName && Number.isFinite(vsScore) ? { name: vsName, score: vsScore } : null;
 
   // dealNonce lets RUN IT AGAIN rebuild the SAME board fresh (deterministic
   // deal — replays are legal, the server keeps the best)
@@ -48,7 +55,7 @@ export default function StormScreen() {
   const [score, setScore] = useState(0);
   const wordsRef = useRef<BestWord[]>([]);
 
-  const CT = { baseSecs: TUNING.BASE_SECS, capSecs: TUNING.CAP_SECS };
+  const CT = { baseSecs: blitz ? 120 : TUNING.BASE_SECS, capSecs: blitz ? 200 : TUNING.CAP_SECS };
   const clockRef = useRef<ClockState>(mkClock());
   const [remaining, setRemaining] = useState(CT.baseSecs);
 
@@ -139,7 +146,16 @@ export default function StormScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [posted, setPosted] = useState<'idle' | 'busy' | 'ok' | 'error'>('idle');
+  const postAsDuel = async () => {
+    if (!seed || posted === 'busy' || posted === 'ok') return;
+    setPosted('busy');
+    const r = await postDuel(seed, blitz ? 'blitz' : 'themed');
+    setPosted(r === 'ok' ? 'ok' : 'error');
+  };
+
   const runAgain = () => {
+    setPosted('idle');
     submittedRef.current = false;
     wordsRef.current = [];
     setBoard(null);
@@ -212,7 +228,9 @@ export default function StormScreen() {
             <Text style={[styles.eyebrow, { color: theme.faint }]}>SHARED BOARD</Text>
             <Text style={[styles.title, { color: theme.ink }]}>{seed}</Text>
             <Text style={[styles.sub, { color: theme.sub }]}>
-              everyone gets this exact board.{'\n'}3 minutes — best run counts.
+              {duel
+                ? `${duel.name.toLowerCase()} put up ${duel.score.toLocaleString()} on this board.\n${blitz ? '2:00, pure points' : '3 minutes'} — beat it.`
+                : `everyone gets this exact board.\n${blitz ? '2:00, pure points' : '3 minutes'} — best run counts.`}
             </Text>
             <Pressable onPress={startRun} style={[styles.cta, { backgroundColor: ACCENT, boxShadow: `0 4px 0 ${ACCENT_EDGE}` }]}>
               <Text style={[styles.ctaText, { color: '#FFFFFF' }]}>RUN IT</Text>
@@ -222,8 +240,17 @@ export default function StormScreen() {
 
         {phase === 'done' && (
           <View style={styles.cover}>
-            <Text style={[styles.eyebrow, { color: theme.faint }]}>RUN BANKED</Text>
+            <Text style={[styles.eyebrow, { color: theme.faint }]}>
+              {duel ? (score > duel.score ? 'DUEL WON ✦' : 'DUEL LOST') : 'RUN BANKED'}
+            </Text>
             <Text style={[styles.bigScore, { color: theme.ink }]}>{score}</Text>
+            {duel && (
+              <Text style={[styles.sub, { color: score > duel.score ? '#5FD6A8' : theme.sub }]}>
+                {score > duel.score
+                  ? `you beat ${duel.name.toLowerCase()}'s ${duel.score.toLocaleString()}`
+                  : `${duel.name.toLowerCase()} holds it — ${duel.score.toLocaleString()}`}
+              </Text>
+            )}
             <Text style={[styles.sub, { color: theme.sub }]}>
               {wordsRef.current.length} words · score sent — best run counts
             </Text>
@@ -247,6 +274,19 @@ export default function StormScreen() {
             )}
             <Pressable onPress={runAgain} style={[styles.cta, { backgroundColor: ACCENT, boxShadow: `0 4px 0 ${ACCENT_EDGE}` }]}>
               <Text style={[styles.ctaText, { color: '#FFFFFF' }]}>RUN IT AGAIN</Text>
+            </Pressable>
+            <Pressable
+              onPress={postAsDuel}
+              style={[styles.cta, styles.ctaCard, { backgroundColor: theme.card }]}>
+              <Text style={[styles.ctaText, { color: posted === 'ok' ? '#5FD6A8' : theme.ink }]}>
+                {posted === 'ok'
+                  ? 'posted — waiting for a taker ✦'
+                  : posted === 'busy'
+                    ? 'posting…'
+                    : posted === 'error'
+                      ? 'post failed — again?'
+                      : 'post as open duel'}
+              </Text>
             </Pressable>
             <Pressable
               onPress={() =>

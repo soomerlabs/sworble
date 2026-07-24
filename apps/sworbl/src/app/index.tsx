@@ -13,6 +13,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
+import { DuelsRail } from '@/components/home/duels-rail';
 import { ParkFrost } from '@/components/home/park-frost';
 import { router, useFocusEffect } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -103,6 +104,9 @@ export default function HomeScreen() {
   useFocusEffect(refreshDay);
 
   const stats = useMemo(() => loadStats(), [day]); // re-read when the day state moves
+  // ONE storage read per day-state change (audit: this was read twice
+  // inline per render, during the close-settle burst too)
+  const dayWords = useMemo(() => (deal ? loadDayWords(deal.dayKey) : []), [deal, day]);
   const streak = useMemo(() => streakDays(stats), [stats]);
   const played = day?.route === 'consumed'; // legacy one-shot days
   const solved = !!day?.sworb?.solved; // regular: solve reveals the hero mid-day
@@ -139,6 +143,7 @@ export default function HomeScreen() {
   }, [deal, day]);
   // HOME PULL-TO-REFRESH (owner networking audit): standings + day spec
   const [homeRefreshing, setHomeRefreshing] = useState(false);
+  const [duelsNonce, setDuelsNonce] = useState(0);
   const homeRefresh = useCallback(async () => {
     if (!deal) return;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -151,6 +156,7 @@ export default function HomeScreen() {
       ]);
       if (field?.entries.length) setRemote(field);
       if (changed && loadDay(deal.dayKey).route === 'fresh') setContentNonce((n) => n + 1);
+      setDuelsNonce((n) => n + 1); // the duels rail re-pulls on the same gesture
     } finally {
       setHomeRefreshing(false);
     }
@@ -782,8 +788,8 @@ export default function HomeScreen() {
               bestWords={day?.bestWords ?? []}
               foundClues={day?.found ?? []}
               clues={deal.clues}
-              allWords={loadDayWords(deal.dayKey)}
-              totalWords={loadDayWords(deal.dayKey).length}
+              allWords={dayWords}
+              totalWords={dayWords.length}
             />
             </View>
           )}
@@ -795,6 +801,8 @@ export default function HomeScreen() {
             hasYou={!!you || entries.some((e) => e.isMe || e.name === getPlayerName())}
             devCount={__DEV__ && devSnap.diag}
           />
+
+          <DuelsRail theme={theme} refreshNonce={duelsNonce} />
         </ScrollView>
 
       </SafeAreaView>
