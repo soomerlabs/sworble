@@ -174,3 +174,44 @@ confusion points become the curriculum.
   unchanged — invites add a `target` player on the post.
 - INTENSITY LADDER shipped 2026-07-24: drizzle/squall/hurricane derive
   from the seed slot (a/b/c); rewards weighting by intensity = later.
+
+## THE ECONOMY LAW (owner approved 2026-07-24)
+ONE currency: POINTS. Earned by playing, topped up with money. The
+leaderboards stay sacred — money can never buy score.
+
+NEVER PURCHASABLE (the pay-to-win line):
+- raw score, mid-round time, or any ranked advantage
+- crowns, standings positions, showdown outcomes
+
+POINTS ARE EARNED BY:
+- showdown wins (+10) / played (+2) — shipped (players.showdown_points
+  becomes the wallet)
+- storm crowns held at day's end, daily solves, streak milestones (tune)
+
+POINTS ARE SPENT ON:
+1. STREAK REPAIR — miss a day, save the flame (highest-converting spend
+   in daily games; zero competitive impact)
+2. THE ARCHIVE — replay past days (unranked or separate archive board)
+3. PRIVATE STORM creation (joining stays free — the payer recruits)
+4. SHOWDOWN STAKES — wager points on a 1v1 (the gamble feel, legally
+   clean; buy ENTRIES, never cash out)
+5. COSMETICS — tile palettes, trail colors, crown flair (the candy
+   engine is built for this)
+6. HONEST HINTS — a bought hint on the daily guess CHARGES THE BONUS
+   (reveal a clue → the reward tier drops a notch, engine-priced). You
+   buy completion, never net score.
+
+FREE TIER + ADS:
+- daily sworb ritual: free forever (the growth engine — never gated)
+- round volume metered LATER, priced from DATA: ship an invisible
+  per-day round meter first, set the free cap above tester P95
+- rewarded ads ONLY, at the out-of-rounds moment ("watch one, +3
+  rounds"); banners never (the butter aesthetic is the product)
+- SWORBLE+ sub (~$3-5/mo): unlimited rounds, zero ads, private storm
+  creation, a cosmetics drop
+- real-money wagering: NO (licensing/5.3 minefield) — points stakes
+  capture the feeling
+
+BUILD ORDER: wallet (rename showdown_points → points, earn hooks) →
+streak repair → archive → stakes → cosmetics → metering/ads last (needs
+usage data + App Store setup).
