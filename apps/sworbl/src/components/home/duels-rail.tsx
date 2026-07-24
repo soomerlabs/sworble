@@ -33,7 +33,7 @@ export function DuelsRail({ theme, refreshNonce }: { theme: Theme; refreshNonce?
             disabled={d.mine}
             onPress={() =>
               router.push(
-                `/storm?seed=${d.seed}&vs=${encodeURIComponent(d.name)}&target=${d.score}${d.format === 'blitz' ? '&clock=120' : ''}`
+                `/storm?seed=${d.seed}&vs=${encodeURIComponent(d.name)}&target=${d.score}&did=${d.id}${d.format === 'blitz' ? '&clock=120' : ''}`
               )
             }
             style={[styles.row, { backgroundColor: theme.card }]}>

@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
 
   let body: {
     day?: string; score?: number; solved?: boolean; guesses?: number;
-    words?: { word?: string; pts?: number }[];
+    words?: { word?: string; pts?: number; t?: number }[];
     mode?: string; // 'regular' (keep-best) | 'practice' (keep-best per seed)
     seed?: string; // practice only
     rounds?: number; // rounds played at solve time — decays the legal bonus
@@ -84,6 +84,9 @@ Deno.serve(async (req) => {
     // ×8 slack: streak mult caps at 2×, boost-stack tiles cover the rest —
     // a 10× word is a cheat, not a lucky board
     if (w.pts > scoreWord(w.word) * 8) return bad(`implausible pts for ${w.word}`);
+    // optional timing (ghost replays): ms from round start, sane range only
+    if (w.t !== undefined && (typeof w.t !== "number" || w.t < 0 || w.t > 3_600_000))
+      return bad("bad word timing");
     sum += w.pts;
   }
   // the total must RECONCILE: score - word points is exactly a legal bonus
@@ -119,8 +122,8 @@ Deno.serve(async (req) => {
       seed: body.seed!,
       score,
       // the run's word list rides along (schema v6) — a stored run is a
-      // future GHOST opponent
-      words: words.map((w) => ({ word: w.word, pts: w.pts })),
+      // future GHOST opponent; timings (t) make the replay real
+      words: words.map((w) => (w.t !== undefined ? { word: w.word, pts: w.pts, t: Math.round(w.t) } : { word: w.word, pts: w.pts })),
       updated_at: new Date().toISOString(),
     });
     if (error) return bad(error.message, 500);
@@ -134,7 +137,9 @@ Deno.serve(async (req) => {
     solved,
     guesses,
     mode,
-    words: words.map((w) => ({ word: w.word, pts: w.pts })),
+    words: words.map((w) =>
+      w.t !== undefined ? { word: w.word, pts: w.pts, t: Math.round(w.t) } : { word: w.word, pts: w.pts }
+    ),
   };
   const { error } = await admin.from("submissions").insert(row);
   if (!error) return json({ ok: true, duplicate: false });

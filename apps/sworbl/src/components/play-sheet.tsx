@@ -287,7 +287,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   // amnesia the recap/stats word list (score kept it; the words vanished)
   const wordsRef = useRef<BestWord[]>(boot?.run?.words ?? []);
   const onWordSpelled = useCallback((word: string, pts: number, caughtClue: boolean) => {
-    wordsRef.current.push({ word, pts });
+    wordsRef.current.push({ word, pts, t: Math.round(clockElapsedMs(clockRef.current, Date.now())) });
     const { clock, grantMs } = clockGrant(
       clockRef.current,
       { len: word.length, isClue: caughtClue },

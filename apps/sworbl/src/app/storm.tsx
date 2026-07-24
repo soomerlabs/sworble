@@ -15,12 +15,13 @@ import { dealPractice } from '@/game/daily';
 import { haptic } from '@/game/haptics';
 import { type BestWord } from '@/game/persist';
 import {
-  mkClock, clockStart, clockPause, clockRemaining, clockGrant, type ClockState,
+  mkClock, clockStart, clockPause, clockRemaining, clockElapsedMs, clockGrant, type ClockState,
 } from '@/game/round-clock';
 import { gameSurface } from '@/game/palette';
 import { useTheme, ACCENT, ACCENT_EDGE } from '@/game/theme';
 import { TUNING } from '@/game/tuning';
-import { postDuel } from '@/net/duels';
+import { RaceBar } from '@/components/game/race-bar';
+import { fetchDuelGhost, postDuel } from '@/net/duels';
 import { enqueuePractice, fetchPractice } from '@/net/standings-remote';
 
 type Phase = 'ready' | 'countin' | 'live' | 'done';
@@ -34,7 +35,7 @@ function fmtClock(secs: number): string {
 
 export default function StormScreen() {
   const theme = useTheme();
-  const params = useLocalSearchParams<{ seed?: string; clock?: string; vs?: string; target?: string }>();
+  const params = useLocalSearchParams<{ seed?: string; clock?: string; vs?: string; target?: string; did?: string }>();
   const rawSeed = typeof params.seed === 'string' ? params.seed : '';
   const seed = SEED_RE.test(rawSeed) ? rawSeed : null;
   // DUEL CONTEXT (open duels): vs+target = a posted run to beat; clock=120
@@ -43,6 +44,40 @@ export default function StormScreen() {
   const vsName = typeof params.vs === 'string' && params.vs.length <= 24 ? params.vs : null;
   const vsScore = Number(params.target);
   const duel = vsName && Number.isFinite(vsScore) ? { name: vsName, score: vsScore } : null;
+  const duelId = Number(params.did);
+
+  // THE GHOST (modes-spec): the poster's recorded run replays beside yours.
+  // Real timings when the run carried them; an even synthetic climb across
+  // the round otherwise (pre-timing posts). One state change per landed
+  // ghost word — never per frame.
+  const ghostSched = useRef<Array<{ at: number; total: number }>>([]);
+  const [ghostScore, setGhostScore] = useState(0);
+  useEffect(() => {
+    if (!duel || !Number.isFinite(duelId)) return;
+    let live = true;
+    void fetchDuelGhost(duelId).then((words) => {
+      if (!live) return;
+      const roundMs = CT.baseSecs * 1000;
+      const list = words && words.length ? words : null;
+      let running = 0;
+      ghostSched.current = list
+        ? list.map((w, i) => {
+            running += w.pts;
+            const at = typeof w.t === 'number' ? Math.min(w.t, roundMs) : ((i + 1) / (list.length + 1)) * roundMs;
+            return { at, total: running };
+          })
+        : // no words stored: a smooth 12-step synthetic climb to the target
+          Array.from({ length: 12 }, (_, i) => ({
+            at: ((i + 1) / 13) * roundMs,
+            total: Math.round((duel.score * (i + 1)) / 12),
+          }));
+      ghostSched.current.sort((a, b) => a.at - b.at);
+    });
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [duelId]);
 
   // dealNonce lets RUN IT AGAIN rebuild the SAME board fresh (deterministic
   // deal — replays are legal, the server keeps the best)
@@ -107,6 +142,15 @@ export default function StormScreen() {
     const h = setInterval(() => {
       const left = clockRemaining(clockRef.current, Date.now(), CT);
       setRemaining(left);
+      if (ghostSched.current.length) {
+        const el = clockElapsedMs(clockRef.current, Date.now());
+        let g = 0;
+        for (const ev of ghostSched.current) {
+          if (ev.at > el) break;
+          g = ev.total;
+        }
+        setGhostScore((cur) => (cur === g ? cur : g));
+      }
       if (left <= 0) {
         clearInterval(h);
         clockRef.current = clockPause(clockRef.current, Date.now());
@@ -140,7 +184,7 @@ export default function StormScreen() {
   // decided, cap-clipped) — the same economy as a daily round. useCallback:
   // the memoized board must not re-render on storm's 1Hz clock ticks.
   const onWordSpelled = useCallback((word: string, pts: number, caughtClue: boolean) => {
-    wordsRef.current.push({ word, pts });
+    wordsRef.current.push({ word, pts, t: Math.round(clockElapsedMs(clockRef.current, Date.now())) });
     const { clock } = clockGrant(clockRef.current, { len: word.length, isClue: caughtClue }, CT);
     clockRef.current = clock;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -156,6 +200,7 @@ export default function StormScreen() {
 
   const runAgain = () => {
     setPosted('idle');
+    setGhostScore(0);
     submittedRef.current = false;
     wordsRef.current = [];
     setBoard(null);
@@ -209,6 +254,16 @@ export default function StormScreen() {
       </View>
 
       <View style={styles.boardWrap}>
+        {duel && (phase === 'live' || phase === 'countin') && (
+          <RaceBar
+            theme={theme}
+            width={Math.min(winW, 480) - 40}
+            you={score}
+            ghost={ghostScore}
+            ghostName={duel.name}
+            ceiling={Math.max(duel.score, score)}
+          />
+        )}
         {deal && phase !== 'ready' && phase !== 'done' && (
           <GameBoard
             key={`${seed}-${dealNonce}`}

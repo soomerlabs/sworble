@@ -47,6 +47,24 @@ export async function fetchOpenDuels(limit = 6): Promise<OpenDuel[] | null> {
   }
 }
 
+// one duel's recorded run — the ghost that races you. Null on any miss;
+// the race bar falls back to an even synthetic climb.
+export async function fetchDuelGhost(
+  id: number
+): Promise<Array<{ pts: number; t?: number }> | null> {
+  const sb = supabase();
+  if (!sb) return null;
+  try {
+    const { data, error } = await sb.from('open_duels').select('words').eq('id', id).maybeSingle();
+    if (error || !data || !Array.isArray(data.words)) return null;
+    return (data.words as Array<{ pts?: number; t?: number }>)
+      .map((w) => ({ pts: Number(w.pts) || 0, t: typeof w.t === 'number' ? w.t : undefined }))
+      .filter((w) => w.pts > 0);
+  } catch {
+    return null;
+  }
+}
+
 // publish the caller's validated run on a seed; 'no-run' = play it first
 export async function postDuel(
   seed: string,

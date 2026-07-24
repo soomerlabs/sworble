@@ -34,6 +34,6 @@ create policy "duels delete own" on public.open_duels
 
 -- the rail's join view: poster names ride along
 create or replace view public.open_duel_board as
-  select d.id, d.seed, d.format, d.score, d.created_at, d.poster, p.name
+  select d.id, d.seed, d.format, d.score, d.words, d.created_at, d.poster, p.name
   from public.open_duels d
   join public.players p on p.id = d.poster;

@@ -16,6 +16,7 @@ export interface SworbState {
 export interface BestWord {
   word: string;
   pts: number;
+  t?: number; // ms from round start — the ghost replay's heartbeat
 }
 
 export interface DayRounds {
