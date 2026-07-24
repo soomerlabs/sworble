@@ -7,7 +7,7 @@ import { dealDaily, dealPractice, settle, restampBroken, activeClues } from '../
 import { COLS, ROWS, CLUE_COUNT } from '../src/game/types';
 
 // use a date the content feed covers (dailies.json ships in-repo)
-const FIXTURE = new Date('2026-07-22T12:00:00');
+const FIXTURE = new Date('2026-07-28T12:00:00'); // a fresh-book day (content reseed 2026-07-23)
 
 const deal = dealDaily(FIXTURE);
 assert.ok(deal, 'fixture day deals');
