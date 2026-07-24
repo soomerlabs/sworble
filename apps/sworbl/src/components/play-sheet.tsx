@@ -613,7 +613,8 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
                     every guess for later */}
                 {phase === 'finale' && (
                   <Text style={[styles.notYet, { color: gs.sub }]}>
-                    not yet? swipe down — your guesses keep
+                    not yet? swipe down — guesses keep, but the bonus shrinks
+                    every round
                   </Text>
                 )}
               </View>

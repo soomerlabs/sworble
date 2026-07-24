@@ -26,12 +26,12 @@ const STEPS: { pal: number; title: string; body: string }[] = [
   {
     pal: 0,
     title: "crack the day's word",
-    body: 'at 0:00 the board becomes a keyboard. you get 6 guesses at the one word behind the clues — fewer clues found, bigger the bonus.',
+    body: 'at 0:00 the board becomes a keyboard. you get 6 guesses for the WHOLE day at the one word behind the clues — fewer clues found, bigger the bonus.',
   },
   {
     pal: 4,
-    title: 'one board a day',
-    body: 'everyone plays the same puzzle. one shot — then compare on the standings and share your card.',
+    title: 'play all day — but guess early',
+    body: "rounds are replayable until midnight and your BEST round counts. every extra round shrinks the solve bonus, so bravery pays: guess while it's rich.",
   },
 ];
 
