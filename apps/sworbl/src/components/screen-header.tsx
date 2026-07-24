@@ -10,16 +10,17 @@ import { type Theme, ACCENT } from '@/game/theme';
 interface Props {
   theme: Theme;
   eyebrow: string;
+  eyebrowNode?: React.ReactNode; // custom eyebrow (home's masthead) — wins over the string
   title: string;
   titleAccent?: string; // optional second segment in indigo
   titleAdornment?: React.ReactNode; // small tail after the title (e.g. edit pencil)
   right?: React.ReactNode;
 }
 
-export function ScreenHeader({ theme, eyebrow, title, titleAccent, titleAdornment, right }: Props) {
+export function ScreenHeader({ theme, eyebrow, eyebrowNode, title, titleAccent, titleAdornment, right }: Props) {
   return (
     <View style={styles.wrap}>
-      <Text style={[styles.eyebrow, { color: theme.faint }]}>{eyebrow}</Text>
+      {eyebrowNode ?? <Text style={[styles.eyebrow, { color: theme.faint }]}>{eyebrow}</Text>}
       <View style={styles.line}>
         <View style={styles.titleRow}>
           <Text style={[styles.big, { color: theme.ink }]}>{title}</Text>

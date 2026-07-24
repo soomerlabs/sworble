@@ -26,7 +26,19 @@ export function DateHeader({ theme, dayKey, score, streak, onShare, onInfo }: Pr
   return (
     <ScreenHeader
       theme={theme}
-      eyebrow={`DAILY PUZZLE · Nº ${puzzleNo(dayKey)}${streak && streak >= 2 ? `  ·  🔥 ${streak}` : ''}`}
+      eyebrow=""
+      // THE MASTHEAD (owner): brand-font "sworb" + italic "of the day" —
+      // the daily ritual wears its name; Nº and the flame ride the tail
+      eyebrowNode={
+        <View style={styles.masthead}>
+          <Text style={[styles.mastheadBrand, { color: theme.ink }]}>sworb</Text>
+          <Text style={[styles.mastheadItalic, { color: theme.sub }]}>of the day</Text>
+          <Text style={[styles.mastheadTail, { color: theme.faint }]}>
+            · Nº {puzzleNo(dayKey)}
+            {streak && streak >= 2 ? `  🔥 ${streak}` : ''}
+          </Text>
+        </View>
+      }
       title={weekday}
       titleAccent={monthDay}
       right={
@@ -49,6 +61,27 @@ export function DateHeader({ theme, dayKey, score, streak, onShare, onInfo }: Pr
 }
 
 const styles = StyleSheet.create({
+  masthead: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 5,
+  },
+  mastheadBrand: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 15,
+    letterSpacing: 0.3,
+  },
+  mastheadItalic: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 13.5,
+    fontStyle: 'italic',
+    letterSpacing: 0.2,
+  },
+  mastheadTail: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.6,
+  },
   scoreTap: {
     alignItems: 'flex-end',
     gap: 1,
