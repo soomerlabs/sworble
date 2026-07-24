@@ -461,7 +461,16 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
             // a player-facing integrity hole in release builds)
             <Pressable
               onPress={pauseInPlace}
-              onLongPress={__DEV__ ? () => setPhase('finale') : undefined}
+              onLongPress={
+                __DEV__
+                  ? () => {
+                      // dev skip = a REAL clock-out: bank the round, land on
+                      // the round-end cover (it pointed at finale pre-modes)
+                      bankRoundRef.current();
+                      setPhase('roundend');
+                    }
+                  : undefined
+              }
               delayLongPress={600}>
               <View style={styles.clockWrap}>
                 <Text
