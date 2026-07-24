@@ -32,24 +32,41 @@ function FlipTile({ ch, i, w, h, r, palBg, palEdge, monoBg, monoEdge }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const pose = useAnimatedStyle(() => {
+    // AT REST: a PLAIN untransformed tile (owner: letters pixelated — iOS
+    // rasterizes perspective layers, so resting at rotateX 180 kept the
+    // text in a low-res raster forever). The flip is transient; the
+    // destination is an ordinary crisp tile.
+    if (p.value >= 1) {
+      return {
+        transform: [],
+        backgroundColor: palBg,
+        boxShadow: `inset 0 -5px 0 ${palEdge}, 0 2px 3px rgba(0,0,0,0.3)`,
+      };
+    }
     const deg = interpolate(p.value, [0, 1], [0, 180]);
     const flipped = p.value > 0.5;
     return {
       transform: [{ perspective: 600 }, { rotateX: `${deg}deg` }],
       backgroundColor: flipped ? palBg : monoBg,
-      // the shadows FLIP SIGN with the face (owner: "the blocks are upside
-      // down") — the tile rests rotated 180°, so its local-coords shadows
-      // must invert for the ledge to read at the BOTTOM on screen
+      // mid-flip the tile is rotated, so its local-coords shadows invert
+      // to keep the ledge reading at the BOTTOM on screen
       boxShadow: flipped
         ? `inset 0 5px 0 ${palEdge}, 0 -2px 3px rgba(0,0,0,0.3)`
         : `inset 0 -5px 0 ${monoEdge}, 0 2px 3px rgba(0,0,0,0.3)`,
     };
   });
-  const inkPose = useAnimatedStyle(() => ({
-    opacity: p.value > 0.5 ? 1 : 0,
-    // the face is mid-flip mirrored — counter-rotate the letter upright
-    transform: [{ rotateX: p.value > 0.5 ? '180deg' : '0deg' }],
-  }));
+  const inkPose = useAnimatedStyle(() => {
+    // letters center on the FACE, not the box — the inset ledge eats the
+    // bottom 5px, so true center is ~2.5px above box center (owner)
+    if (p.value >= 1) return { opacity: 1, transform: [{ translateY: -2.5 }] };
+    const flipped = p.value > 0.5;
+    return {
+      opacity: flipped ? 1 : 0,
+      // mid-flip the face is mirrored — counter-rotate the letter upright;
+      // +2.5 in flipped local coords = 2.5px UP on screen
+      transform: [{ rotateX: flipped ? '180deg' : '0deg' }, { translateY: flipped ? 2.5 : -2.5 }],
+    };
+  });
   return (
     <Animated.View
       style={[
