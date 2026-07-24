@@ -785,7 +785,6 @@ export default function HomeScreen() {
                 <Text style={[styles.dayStatusText, { color: theme.sub }]}>
                   best round {(day?.rounds.bestRound ?? 0).toLocaleString()} ·{' '}
                   {day?.found.length ?? 0} clue{(day?.found.length ?? 0) === 1 ? '' : 's'}
-                  {day?.bestWords?.[0] ? ` · ${day.bestWords[0].word.toUpperCase()} +${day.bestWords[0].pts}` : ''}
                 </Text>
                 {sworbPending && (
                   <Text style={[styles.guessHint, { color: '#8971FF' }]}>
