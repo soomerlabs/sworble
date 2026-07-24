@@ -51,6 +51,7 @@ import { dealDaily, getDevDay } from '@/game/daily';
 import { getDiagnostics } from '@/game/dev-flags';
 import { loadDay, saveSheetOpen, wasSheetOpen, getResetNonce, loadDayWords, type DayState, clearRun } from '@/game/persist';
 import { standingsStub, rankFor, type LbEntry } from '@/game/standings';
+import { checkContentEpoch } from '@/net/config-remote';
 import { fetchDaily, readCachedField, type RemoteField } from '@/net/standings-remote';
 import { fetchRemoteEntry } from '@/net/dailies-remote';
 import { loadStats, streakDays } from '@/game/stats';
@@ -138,6 +139,16 @@ export default function HomeScreen() {
         const d = loadDay(deal.dayKey);
         if (d.route === 'fresh') setContentNonce((n) => n + 1);
       });
+      // THE TORCH (owner): a bumped content epoch burns every cached day
+      // spec + today's state and re-deals fresh — parked sheets only
+      if (!sheetOpen) {
+        void checkContentEpoch(deal.dayKey).then((torched) => {
+          if (live && torched) {
+            setContentNonce((n) => n + 1);
+            refreshDay();
+          }
+        });
+      }
     }
     return () => {
       live = false;
