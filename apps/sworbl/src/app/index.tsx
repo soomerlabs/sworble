@@ -784,15 +784,6 @@ export default function HomeScreen() {
               onGuess={!played && sworbPending && deal ? () => router.push('/guess') : undefined}
             />
 
-            {/* the strip carries the day's numbers now (owner) — only the
-                guess door hint remains up top */}
-            {!played && dayInProgress && deal && sworbPending && (
-              <View style={styles.dayStatusRow}>
-                <Text style={[styles.guessHint, { color: '#8971FF' }]}>
-                  tap the word to guess · {6 - (day?.sworb?.guessesUsed ?? 0)} left
-                </Text>
-              </View>
-            )}
           </Pressable>
 
 
@@ -1015,19 +1006,6 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     alignItems: 'center',
     gap: 22,
-  },
-  dayStatusRow: {
-    alignItems: 'center',
-    gap: 5,
-  },
-  dayStatusText: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 12,
-  },
-  guessHint: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 11.5,
-    letterSpacing: 0.4,
   },
   guessPill: {
     backgroundColor: '#8971FF',
