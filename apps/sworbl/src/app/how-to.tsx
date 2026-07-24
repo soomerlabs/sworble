@@ -91,14 +91,14 @@ const styles = StyleSheet.create({
   step: {
     flexDirection: 'row',
     gap: 13,
-    borderRadius: 14,
+    borderRadius: 14, borderCurve: 'continuous',
     padding: 14,
     alignItems: 'flex-start',
   },
   stepBlock: {
     width: 34,
     height: 34,
-    borderRadius: 10,
+    borderRadius: 10, borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },

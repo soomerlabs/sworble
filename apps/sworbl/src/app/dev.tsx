@@ -90,6 +90,7 @@ export default function DevScreen() {
       engine.store.remove(k);
     }
     engine.store.setJSON('sworbl_rn_reset_nonce', n + 1);
+    setDevDay(null); // the override is MEMORY-FIRST — a raw key delete leaves it live
     setArmWipe(false);
     refresh('all storage wiped');
     haptic.bad();
@@ -363,7 +364,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   card: {
-    borderRadius: 14,
+    borderRadius: 14, borderCurve: 'continuous',
     padding: 14,
     gap: 10,
   },
@@ -388,7 +389,7 @@ const styles = StyleSheet.create({
   },
   overrideBadge: {
     backgroundColor: '#F5B84A',
-    borderRadius: 6,
+    borderRadius: 6, borderCurve: 'continuous',
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
@@ -409,7 +410,7 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   clueChip: {
-    borderRadius: 9,
+    borderRadius: 9, borderCurve: 'continuous',
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
@@ -429,7 +430,7 @@ const styles = StyleSheet.create({
   },
   dayChip: {
     borderWidth: 2,
-    borderRadius: 10,
+    borderRadius: 10, borderCurve: 'continuous',
     paddingHorizontal: 9,
     paddingVertical: 5,
     alignItems: 'center',
@@ -461,7 +462,7 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
-    borderRadius: 9,
+    borderRadius: 9, borderCurve: 'continuous',
     paddingVertical: 8,
     alignItems: 'center',
   },
@@ -473,7 +474,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: 14,
+    borderRadius: 14, borderCurve: 'continuous',
     paddingVertical: 13,
     paddingHorizontal: 14,
   },

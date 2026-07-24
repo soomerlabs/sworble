@@ -48,7 +48,7 @@ import { gameSurface } from '@/game/palette';
 import { useTheme } from '@/game/theme';
 import { dealDaily, getDevDay } from '@/game/daily';
 import { getDiagnostics } from '@/game/dev-flags';
-import { loadDay, saveSheetOpen, wasSheetOpen, getResetNonce, loadDayWords, type DayState } from '@/game/persist';
+import { loadDay, saveSheetOpen, wasSheetOpen, getResetNonce, loadDayWords, type DayState, clearRun } from '@/game/persist';
 import { standingsStub, rankFor, type LbEntry } from '@/game/standings';
 import { fetchDaily, readCachedField, type RemoteField } from '@/net/standings-remote';
 import { fetchRemoteEntry } from '@/net/dailies-remote';
@@ -263,9 +263,15 @@ export default function HomeScreen() {
   }, [sheetOpen]);
   const sheetRef = useRef<PlaySheetHandle>(null);
 
-  // the rollover gate: adopt the new day only while no round is in flight
+  // the rollover gate: adopt the new day only while no round is in flight.
+  // A paused round closed across midnight leaves a snapshot under the OLD
+  // key — nothing can ever resume it (home only deals today), so it clears
+  // here instead of haunting storage (audit: the midnight strand).
   useEffect(() => {
-    if (dayKey !== activeDayKey && !sheetOpen) setActiveDayKey(dayKey);
+    if (dayKey !== activeDayKey && !sheetOpen) {
+      clearRun(activeDayKey);
+      setActiveDayKey(dayKey);
+    }
   }, [dayKey, activeDayKey, sheetOpen]);
 
   // SELF-HEAL (hot-reload stranding): Reanimated PRESERVES shared values

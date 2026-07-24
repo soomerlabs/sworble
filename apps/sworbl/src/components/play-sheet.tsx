@@ -143,14 +143,16 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     }
   }, [awake, active, phase, arm]);
 
-  // SAFETY NET: a count-in may never survive a closed sheet, whatever path
-  // closed it — reopening must always start from 3 (owner rule)
+  // SAFETY NET: a count-in may never survive a closed sheet OR a
+  // backgrounded app (audit: the drift-corrected ticker fast-forwarded to
+  // live on return, skipping the ceremony) — always back to idle; the
+  // dock/return edge re-arms a fresh 3·2·1.
   useEffect(() => {
-    if (!active && phase === 'countin') {
+    if ((!active || !awake) && phase === 'countin') {
       setCountInMounted(false);
       setPhase('idle');
     }
-  }, [active, phase]);
+  }, [active, awake, phase]);
 
   // WATCHDOG (owner: restored board "dead in the water"): a phase that can
   // never resolve on its own must ALWAYS recover to a tappable state. Two

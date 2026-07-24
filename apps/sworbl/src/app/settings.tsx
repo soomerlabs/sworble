@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: 14,
+    borderRadius: 14, borderCurve: 'continuous',
     paddingVertical: 12,
     paddingHorizontal: 14,
     minHeight: 50,
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
-    borderRadius: 9,
+    borderRadius: 9, borderCurve: 'continuous',
     paddingVertical: 7,
     alignItems: 'center',
   },
