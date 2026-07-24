@@ -13,7 +13,6 @@ import engine from '@sworbl/engine';
 import { ScreenBar } from '@/components/screen-bar';
 import { ScreenHeader } from '@/components/screen-header';
 import { FloatingPodium } from '@/components/home/floating-podium';
-import { CountdownDock } from '@/components/home/countdown-dock';
 import { Floaters } from '@/components/home/floaters';
 import { Arrive } from '@/components/arrive';
 import { useTheme, ACCENT, ACCENT_EDGE } from '@/game/theme';
@@ -216,6 +215,19 @@ export default function LeaderboardScreen() {
                     }
                   />
                 ))}
+                {/* GHOST SEATS (owner): a sparse field still reads like a
+                    field — dashed open chairs down to six total */}
+                {Array.from({ length: Math.max(0, 6 - listed.length - 3) }, (_, i) => (
+                  <View
+                    key={`ghost-${i}`}
+                    style={[styles.ghostSeat, { borderColor: theme.dashed }]}>
+                    <Text style={[styles.ghostRank, { color: theme.faint }]}>
+                      {listed.length + 4 + i}
+                    </Text>
+                    <View style={[styles.ghostBlock, { borderColor: theme.dashed }]} />
+                    <Text style={[styles.ghostName, { color: theme.faint }]}>open seat</Text>
+                  </View>
+                ))}
                 {!played && (
                   <Text style={[styles.joinLine, { color: theme.faint }]}>
                     play today to land on the board
@@ -224,7 +236,6 @@ export default function LeaderboardScreen() {
               </View>
             </Arrive>
             <View style={styles.foot}>
-              <CountdownDock played />
             </View>
           </ScrollView>
       </SafeAreaView>
@@ -233,6 +244,35 @@ export default function LeaderboardScreen() {
 }
 
 const styles = StyleSheet.create({
+  ghostSeat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 14,
+    borderCurve: 'continuous',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+  },
+  ghostRank: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 13,
+    width: 20,
+    textAlign: 'center',
+  },
+  ghostBlock: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    borderCurve: 'continuous',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+  },
+  ghostName: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 13.5,
+  },
   root: { flex: 1 },
   safe: { flex: 1 },
   content: {

@@ -24,21 +24,10 @@ export function DateHeader({ theme, dayKey, score, streak, onShare, onInfo }: Pr
     .toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
     .toLowerCase();
   return (
+    <View style={styles.headWrap}>
     <ScreenHeader
       theme={theme}
-      eyebrow=""
-      // THE MASTHEAD (owner): brand-font "sworb" + italic "of the day" —
-      // the daily ritual wears its name; Nº and the flame ride the tail
-      eyebrowNode={
-        <View style={styles.masthead}>
-          <Text style={[styles.mastheadBrand, { color: theme.ink }]}>sworb</Text>
-          <Text style={[styles.mastheadItalic, { color: theme.sub }]}>of the day</Text>
-          <Text style={[styles.mastheadTail, { color: theme.faint }]}>
-            · Nº {puzzleNo(dayKey)}
-            {streak && streak >= 2 ? `  🔥 ${streak}` : ''}
-          </Text>
-        </View>
-      }
+      eyebrow={`Nº ${puzzleNo(dayKey)}${streak && streak >= 2 ? `  ·  🔥 ${streak}` : ''}`}
       title={weekday}
       titleAccent={monthDay}
       right={
@@ -57,10 +46,21 @@ export function DateHeader({ theme, dayKey, score, streak, onShare, onInfo }: Pr
         ) : undefined
       }
     />
+      {/* THE MASTHEAD (owner: "under the divider under thursday") —
+          brand-font "sworb" + italic "of the day" hangs off the hairline */}
+      <View style={styles.masthead}>
+        <Text style={[styles.mastheadBrand, { color: theme.ink }]}>sworb</Text>
+        <Text style={[styles.mastheadItalic, { color: theme.sub }]}>of the day</Text>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  headWrap: {
+    alignSelf: 'stretch',
+    gap: 10,
+  },
   masthead: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -68,19 +68,14 @@ const styles = StyleSheet.create({
   },
   mastheadBrand: {
     fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 15,
+    fontSize: 16,
     letterSpacing: 0.3,
   },
   mastheadItalic: {
     fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 13.5,
+    fontSize: 14,
     fontStyle: 'italic',
     letterSpacing: 0.2,
-  },
-  mastheadTail: {
-    fontFamily: 'Fredoka_600SemiBold',
-    fontSize: 11,
-    letterSpacing: 0.6,
   },
   scoreTap: {
     alignItems: 'flex-end',

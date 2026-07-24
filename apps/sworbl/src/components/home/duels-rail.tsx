@@ -23,7 +23,7 @@ export function DuelsRail({ theme, refreshNonce }: { theme: Theme; refreshNonce?
 
   return (
     <View style={styles.wrap}>
-      <Text style={[styles.title, { color: theme.sub }]}>storms</Text>
+      <Text style={[styles.title, { color: theme.ink }]}>storms</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -76,10 +76,12 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     gap: 12,
   },
-  // the standings section's exact header type — the two sections rhyme
+  // rhymes with the masthead (owner: "sworb of the day, then storms") —
+  // the two section names wear the same type
   title: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 16,
+    letterSpacing: 0.3,
   },
   rowContent: {
     gap: 10,
