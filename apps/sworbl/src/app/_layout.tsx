@@ -89,8 +89,11 @@ export default function RootLayout() {
             contentStyle: { backgroundColor: scheme === 'light' ? '#EDEFF7' : '#101014' },
             // NATIVE PUSH (owner: "i want that normal push") — the fade was
             // set explicitly; default iOS slide matches the back-swipe
-          }}
-        />
+          }}>
+          {/* the guess rides up as a SHEET (owner) — iOS pageSheet, pull
+              down to bail (intel parks on every guess regardless) */}
+          <Stack.Screen name="guess" options={{ presentation: 'modal' }} />
+        </Stack>
         <ToastHost />
       </ThemeProvider>
     </GestureHandlerRootView>

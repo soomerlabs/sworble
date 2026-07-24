@@ -10,8 +10,6 @@ import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GuessStage } from '@/components/game/guess-stage';
-import { ScreenBar } from '@/components/screen-bar';
-import { ScreenHeader } from '@/components/screen-header';
 import { applySwaps, loadSwaps } from '@/game/clue-swaps';
 import { activeClues, dealDaily } from '@/game/daily';
 import { loadLadder, saveLadder, FINALE_FLOOR } from '@/game/hints';
@@ -116,13 +114,7 @@ export default function GuessScreen() {
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
       <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
       <SafeAreaView style={styles.safe}>
-        <ScreenBar theme={theme} />
-        <ScreenHeader
-          theme={theme}
-          eyebrow={`${6 - (boot?.sworb?.guessesUsed ?? 0)} GUESSES LEFT · BONUS SHRINKS EVERY ROUND`}
-          title="crack"
-          titleAccent="the word"
-        />
+        {/* nothing above the stepper (owner) — the stage IS the sheet */}
         <View style={styles.stageWrap}>
           {deal && ctx && (
             <GuessStage
