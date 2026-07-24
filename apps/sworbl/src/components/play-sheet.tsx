@@ -163,7 +163,13 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
         if (__DEV__) console.log('[sworbl] watchdog: stuck countin → paused cover');
         setPhase('paused');
       }
-      if (phase === 'live' && !clockRef.current.liveStartAt) {
+      if (
+        phase === 'live' &&
+        !clockRef.current.liveStartAt &&
+        clockRemaining(clockRef.current, Date.now(), CT) > 0
+      ) {
+        // at 0:00 a paused clock is the CLOCK-OUT window (the morph timer
+        // owns it) — rescuing there caused the stuck-paused loop (owner)
         if (__DEV__) console.log('[sworbl] watchdog: live with a paused clock → paused cover');
         setPhase('paused');
       }
@@ -389,11 +395,25 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
   }, [phase, pause, result, deal]);
   const rearm = useCallback(() => {
     if (phase === 'paused') {
+      // SPENT ROUND (owner: "stuck on paused at 0:00") — a snapshot saved
+      // at the wire has nothing to resume; it banks and routes like any
+      // clock-out instead of flashing a dead live board
+      if (clockRemaining(clockRef.current, Date.now(), CT) <= 0) {
+        bankRoundRef.current();
+        if (sworbPendingRef.current()) {
+          onClose();
+          router.push('/guess');
+        } else {
+          setPhase('roundend');
+        }
+        return;
+      }
       onRelease(); // instant start (owner: "hit play and it just starts up")
     } else if (phase === 'idle') {
       arm(); // never actually started — the ceremony still applies
     }
-  }, [phase, arm, onRelease]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, arm, onRelease, onClose]);
   // the PAUSE BUTTON (owner: "pause to do something and come back"): stays ON
   // the gameboard — letters conceal (anti-stare), tap-to-resume re-arms 3·2·1
   // owner design: LIVE/COUNTIN → pause (bars). PAUSED/IDLE → the button is
