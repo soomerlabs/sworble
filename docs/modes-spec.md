@@ -73,6 +73,15 @@ system, one validated submission path.
 - `alltime_totals` trigger gains an UPDATE arm: `total += new - old`.
 - `daily_standings` view filtered/labeled by mode.
 
+## GUESS UX TARGET (owner 2026-07-23): THE HERO IS THE INPUT
+- Tap the dashed word-of-the-day on home → the hero tiles become LIVE
+  guess slots in place; the content below BLUR-REPLACES into the
+  keyboard (progressive blur + crossfade, the parked-frost idiom).
+- Wordle feedback colors land ON THE HERO and PERSIST as the day's
+  intel (needs guess rows/colors persisted day-level, not run-level).
+- Shipped now: the hero is tappable (opens the sheet guess) + a
+  "tap the word to guess · N left" caption replaces the pill.
+
 ## CLIENT MODEL (day state v2)
 - Day: `{ mode, roundsPlayed, bestRound, found[], sworb{guessesUsed,
   solved}, bestWords }`; day score derives: bestRound + solveBonus.

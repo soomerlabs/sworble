@@ -743,7 +743,15 @@ export default function HomeScreen() {
             />
           )}
 
-          <HeroWord theme={theme} deal={deal} played={played || solved} solved={solved} width={width} />
+          {/* THE HERO IS THE GUESS DOOR (owner): the dashed word is the
+              question — tapping it asks. Inline blur-replace keyboard is
+              the specced follow-up; this ships the affordance now. */}
+          <Pressable
+            disabled={!(dayInProgress && sworbPending)}
+            onPress={openForGuess}
+            style={styles.heroTap}>
+            <HeroWord theme={theme} deal={deal} played={played || solved} solved={solved} width={width} />
+          </Pressable>
 
           {/* DAY IN PROGRESS (modes-spec): the living day — best round,
               clue bank, and the guess door (6 a day, spend anytime) */}
@@ -754,11 +762,9 @@ export default function HomeScreen() {
                 {day?.found.length ?? 0} clue{(day?.found.length ?? 0) === 1 ? '' : 's'}
               </Text>
               {sworbPending && (
-                <Pressable onPress={openForGuess} hitSlop={8} style={styles.guessPill}>
-                  <Text style={styles.guessPillText}>
-                    GUESS · {6 - (day?.sworb?.guessesUsed ?? 0)} left
-                  </Text>
-                </Pressable>
+                <Text style={[styles.guessHint, { color: '#8971FF' }]}>
+                  tap the word to guess · {6 - (day?.sworb?.guessesUsed ?? 0)} left
+                </Text>
               )}
             </View>
           )}
@@ -987,6 +993,14 @@ const styles = StyleSheet.create({
   dayStatusText: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 12,
+  },
+  heroTap: {
+    alignSelf: 'stretch',
+  },
+  guessHint: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: 11.5,
+    letterSpacing: 0.4,
   },
   guessPill: {
     backgroundColor: '#8971FF',
