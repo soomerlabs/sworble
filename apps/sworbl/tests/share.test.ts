@@ -42,3 +42,24 @@ const noFire = buildShareText({
 assert.ok(noFire.endsWith('2,000 pts'), 'a 1-day streak stays quiet');
 
 console.log('share: card format pinned (solved, failed, bonus, untagged, streak)');
+
+// MODES (modes-spec): hard wears its badge in the header; regular shows
+// "best of N rounds" on the score line when the day had 2+ rounds
+{
+  const hard = buildShareText({
+    dayKey: '2026-07-21', archetypeLabel: null, clues: ['aa', 'bb'], found: [],
+    solved: false, guessesUsed: 2, score: 100, mode: 'hard',
+  });
+  assert.ok(hard.split('\n')[0].endsWith('· HARD'), 'hard badge in header');
+  const reg = buildShareText({
+    dayKey: '2026-07-21', archetypeLabel: null, clues: ['aa'], found: [],
+    solved: false, guessesUsed: 1, score: 900, mode: 'regular', rounds: 4,
+  });
+  assert.ok(reg.includes('900 pts · best of 4 rounds'), 'regular rounds tag');
+  const one = buildShareText({
+    dayKey: '2026-07-21', archetypeLabel: null, clues: ['aa'], found: [],
+    solved: false, guessesUsed: 1, score: 900, mode: 'regular', rounds: 1,
+  });
+  assert.ok(!one.includes('best of'), 'single round stays quiet');
+}
+console.log('share: card format pinned (solved, failed, bonus, untagged, streak, modes)');
