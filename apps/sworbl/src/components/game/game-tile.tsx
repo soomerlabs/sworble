@@ -21,9 +21,9 @@ import Animated, {
 import { PALETTE, INK, type GameSurface } from '@/game/palette';
 import { COLS, ROWS, type TileT, type TraceTile } from '@/game/types';
 
-// FOSSIL-EXACT falls (owner unhappy with two rounds of hand-tuning — the
-// web IS the reference): bezier(0.45,0.02,0.7,0.5), dur max(.32,min(.6,
-// dist/1100)), per-COLUMN ripple 30ms. Spawn: ALL refill tiles enter from
+// FOSSIL-EXACT falls (owner: the web IS the reference — re-audited against
+// index.html 2026-07-23): bezier(0.45,0.02,0.7,0.5), dur clamp(.28,.55,
+// dist/1200), per-COLUMN ripple 20ms. Spawn: ALL refill tiles enter from
 // 1.6 cells above the roof (web), not stacked by depth.
 const FALL_EASE = Easing.bezier(0.45, 0.02, 0.7, 0.5);
 
@@ -58,8 +58,8 @@ function GameTileInner({ tile, size, gap, sPath, clearingSeq, flight, nope, nope
   useEffect(() => {
     const dist = Math.abs(targetY - y.value);
     if (dist < 1) return;
-    const dur = Math.max(320, Math.min(600, (dist / 1100) * 1000));
-    const delay = tile.col * 30; // web: one per-column ripple, refill or shift alike
+    const dur = Math.max(280, Math.min(550, (dist / 1200) * 1000));
+    const delay = tile.col * 20; // web: one per-column ripple, refill or shift alike
     y.value = withDelay(
       delay,
       withTiming(targetY, { duration: dur, easing: FALL_EASE }, (fin) => {

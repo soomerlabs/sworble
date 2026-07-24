@@ -208,10 +208,14 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
 
   // ---- clock: ONE ClockState ref; all accounting decided by round-clock.ts
   // (pure, test-pinned) — this screen only schedules ticks and renders ----
-  const CT = {
-    baseSecs: __DEV__ && getShortRounds() ? 20 : TUNING.BASE_SECS,
-    capSecs: TUNING.CAP_SECS,
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const CT = useMemo(
+    () => ({
+      baseSecs: __DEV__ && getShortRounds() ? 20 : TUNING.BASE_SECS,
+      capSecs: TUNING.CAP_SECS,
+    }),
+    []
+  );
   const clockRef = useRef<ClockState>(mkClock(boot?.run ?? undefined));
   const [remaining, setRemaining] = useState(() => clockRemaining(clockRef.current, Date.now(), CT));
   const [timePop, setTimePop] = useState<{ key: number; secs: number } | null>(null);
@@ -292,11 +296,20 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     }
   }, []);
 
-  // persist progress + live snapshot on every meaningful change
+  // persist progress + live snapshot on every meaningful change.
+  // DEBOUNCED (perf audit): the full ~30-tile serialize used to land
+  // synchronously on EVERY word, mid letter-flight. Now it settles 600ms
+  // after the last change; pause/close still snapshot instantly.
+  const snapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!deal || phase === 'done') return;
     saveProgress(deal.dayKey, score, found);
-    if (phase === 'live') snapLive();
+    if (phase !== 'live') return;
+    if (snapTimer.current) clearTimeout(snapTimer.current);
+    snapTimer.current = setTimeout(snapLive, 600);
+    return () => {
+      if (snapTimer.current) clearTimeout(snapTimer.current);
+    };
   }, [deal, phase, score, found]);
 
   const onFinaleProgress = useCallback(
@@ -443,6 +456,21 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
     [deal, score, found, onClose]
   );
 
+  // ONE object per finale entry (perf audit: rebuilding this every render
+  // churned identity into the memoized board, and the loadDay read landed
+  // in the render path during finale keystrokes)
+  const finaleProp = useMemo(() => {
+    if (phase !== 'finale' || !deal) return null;
+    return {
+      sworb: deal.sworb,
+      // the engine decays the solve bonus by rounds played at guess time
+      rounds: Math.max(1, loadDay(deal.dayKey).rounds.played),
+      restore: finaleRestore.current,
+      onProgress: onFinaleProgress,
+      onDone: onFinaleDone,
+    };
+  }, [phase, deal, onFinaleProgress, onFinaleDone]);
+
   const tile = Math.min(64, Math.floor((Math.min(width, 480) - 32) / (5 + 4 * 0.16)));
   const gap = Math.round(tile * 0.16);
   const clock = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`;
@@ -578,19 +606,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
                   gestureRef={boardPanRef}
                   concealed={phase !== 'live' && phase !== 'finale'}
                   countIn={phase === 'countin' ? countStep : null}
-                  finale={
-                    phase === 'finale'
-                      ? {
-                          sworb: deal.sworb,
-                          // the engine decays the solve bonus by rounds
-                          // played at guess time (modes-spec: priced bravery)
-                          rounds: Math.max(1, loadDay(deal.dayKey).rounds.played),
-                          restore: finaleRestore.current,
-                          onProgress: onFinaleProgress,
-                          onDone: onFinaleDone,
-                        }
-                      : null
-                  }
+                  finale={finaleProp}
                 />
                 {/* THE RELEASE VALVE (owner): the guess opens automatically
                     at round end, but nobody is trapped — swipe down keeps

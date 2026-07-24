@@ -1,7 +1,7 @@
 // The daily board — engine-dealt, tier-2 traced (PHASE2 #1-#6).
 // The ENGINE decides (deal, validation targets, clue banking); this component acts.
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, InteractionManager } from 'react-native';
 import { Gesture, GestureDetector, type PanGesture } from 'react-native-gesture-handler';
 import Animated, {
   FadeIn, useSharedValue, useAnimatedReaction, useAnimatedStyle, runOnJS, runOnUI,
@@ -57,7 +57,7 @@ interface Props {
   } | null;
 }
 
-export function GameBoard({
+function GameBoardInner({
   deal, size, gap, initialTiles, initialFound, initialScore, secsLeft, onScore, onClues, onTiles, onWordSpelled, mercySecs, gestureRef, finale, concealed, countIn,
 }: Props) {
   // LIGHT MODE (owner): one stable surface object per scheme — memo-safe props
@@ -140,6 +140,24 @@ export function GameBoard({
 
   // after every refill settles: count consecutive-broken refills per unfound
   // clue; at the threshold, swap it for a pool extra (owner availability rule)
+  // DEFERRED (perf audit vs the fossil): the web ran zero JS during tile
+  // motion — this solver sweep used to fire inside the settle window and
+  // stuttered the drop after EVERY word. It now waits for interactions to
+  // finish, then a beat past the longest fall, before sweeping.
+  const auditRef = useRef<TileT[] | null>(null);
+  const scheduleStarvationAudit = useCallback((board: TileT[]) => {
+    const first = auditRef.current === null;
+    auditRef.current = board; // newest board wins if audits pile up
+    if (!first) return;
+    InteractionManager.runAfterInteractions(() => {
+      setTimeout(() => {
+        const b = auditRef.current;
+        auditRef.current = null;
+        if (b) auditStarvationRef.current(b);
+      }, 650); // past the longest fall (600ms) + squash
+    });
+  }, []);
+
   const auditStarvation = useCallback(
     (board: TileT[]) => {
       const activeNow = applySwaps(deal.clues, swapsRef.current);
@@ -170,6 +188,8 @@ export function GameBoard({
     },
     [deal]
   );
+  const auditStarvationRef = useRef(auditStarvation);
+  auditStarvationRef.current = auditStarvation;
 
   // fire the ping at a clue's STARTING tile (compass, not answer).
   // VALIDATED AT GIVE-TIME (owner bug catch): a clue's path can be temporarily
@@ -511,7 +531,7 @@ export function GameBoard({
                 (c) => foundRef.current.includes(c) || playedRef.current.has(c)
               );
               const out = restampBroken({ deal, tiles: settled, added, unfound, caught });
-              auditStarvation(out);
+              scheduleStarvationAudit(out);
               return out;
             });
           }, 285);
@@ -552,23 +572,29 @@ export function GameBoard({
           : { word: word.toUpperCase(), pts, ok: true, fly: true }
       );
       if (res.isNew) setFound(res.banked);
-      // HINT LADDER steps (validated at give-time):
-      setLadder((l) => {
-        const words = l.words + 1;
-        let next = { ...l, words };
-        // starter nudge: 3 words, still clueless → one first letter + ping
-        if (!l.nudged && words >= NUDGE_AT_WORDS && res.banked.length === 0) {
-          const clue = findableUnfound();
-          if (clue) {
-            next = { ...next, nudged: clue };
-            firePing(clue, Math.max(0, applySwaps(deal.clues, swapsRef.current).indexOf(clue)));
-          }
-        }
-        // the 7-word free clue: full intel for the guess round
-        if (!l.freeGiven && words >= FREE_CLUE_AT_WORDS && res.banked.length < deal.clues.length) {
-          if (grantFreeClue()) next = { ...next, freeGiven: true };
-        }
-        return next;
+      // HINT LADDER steps (validated at give-time). DEFERRED (perf audit):
+      // the nudge/free-clue milestones run solver sweeps — they used to fire
+      // synchronously at commit, stacked on the letter flight. The word
+      // count updates now; the solver-backed grants land after interactions
+      // (a hint arriving a beat late is invisible; a stutter is not).
+      setLadder((l) => ({ ...l, words: l.words + 1 }));
+      InteractionManager.runAfterInteractions(() => {
+        setTimeout(() => {
+          setLadder((l) => {
+            let next = l;
+            if (!l.nudged && l.words >= NUDGE_AT_WORDS && foundRef.current.length === 0) {
+              const clue = findableUnfound();
+              if (clue) {
+                next = { ...next, nudged: clue };
+                firePing(clue, Math.max(0, applySwaps(deal.clues, swapsRef.current).indexOf(clue)));
+              }
+            }
+            if (!next.freeGiven && next.words >= FREE_CLUE_AT_WORDS && foundRef.current.length < deal.clues.length) {
+              if (grantFreeClue()) next = { ...next, freeGiven: true };
+            }
+            return next;
+          });
+        }, 700);
       });
       setTimeout(() => setVerdict(null), 1200);
       haptic.good();
@@ -650,7 +676,7 @@ export function GameBoard({
             (c) => foundRef.current.includes(c) || playedRef.current.has(c)
           );
           const out = restampBroken({ deal, tiles: settled, added, unfound, caught });
-          auditStarvation(out);
+          scheduleStarvationAudit(out);
           return out;
         });
       }, 240 + ids.length * 45);
@@ -890,3 +916,8 @@ const styles = StyleSheet.create({
     color: '#9DA2B3',
   },
 });
+
+// MEMO (perf audit vs the fossil): the board re-renders on its OWN state and
+// the 1Hz secsLeft feed — parent re-renders for covers/pills must not touch
+// the 30-tile subtree. All props are stable or primitive by contract.
+export const GameBoard = React.memo(GameBoardInner);

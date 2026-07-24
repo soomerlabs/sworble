@@ -5,7 +5,7 @@
 // spell for 3 minutes, the score rides the practice outbox (keep-best per
 // seed, server-validated with delta 0).
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -100,12 +100,14 @@ export default function StormScreen() {
   }, [phase]);
 
   // every spelled word: superlative record + the TIME-FUEL grant (engine-
-  // decided, cap-clipped) — the same economy as a daily round
-  const onWordSpelled = (word: string, pts: number, caughtClue: boolean) => {
+  // decided, cap-clipped) — the same economy as a daily round. useCallback:
+  // the memoized board must not re-render on storm's 1Hz clock ticks.
+  const onWordSpelled = useCallback((word: string, pts: number, caughtClue: boolean) => {
     wordsRef.current.push({ word, pts });
     const { clock } = clockGrant(clockRef.current, { len: word.length, isClue: caughtClue }, CT);
     clockRef.current = clock;
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const runAgain = () => {
     submittedRef.current = false;
