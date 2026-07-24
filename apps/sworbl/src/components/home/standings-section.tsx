@@ -25,10 +25,14 @@ export function StandingsSection({ theme, entries, standings, hasYou, devCount }
   return (
     <View style={styles.standingsWrap}>
       <View style={styles.standingsHead}>
-        <Text style={[styles.standingsTitle, { color: theme.sub }]}>
-          standings
-          {devCount ? `  ·  ${entries.length} in field` : ''}
-        </Text>
+        {/* title gone (owner: "get rid of the standings title") — the
+            podium IS the label; the chart button keeps the door visible */}
+        <View />
+        {__DEV__ && devCount && (
+          <Text style={[styles.standingsTitle, { color: theme.sub }]}>
+            {entries.length} in field
+          </Text>
+        )}
         <Pressable
           onPress={() => router.push('/leaderboard')}
           hitSlop={10}

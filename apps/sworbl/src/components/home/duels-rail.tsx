@@ -84,12 +84,15 @@ const styles = StyleSheet.create({
   rowContent: {
     gap: 10,
     paddingRight: 18,
+    paddingBottom: 6, // the start block's 4px ledge must not clip
+    paddingTop: 2,
   },
   block: {
-    width: 108,
+    width: 112,
+    minHeight: 118,
     borderRadius: 16,
     borderCurve: 'continuous',
-    paddingVertical: 12,
+    paddingVertical: 13,
     paddingHorizontal: 12,
     gap: 3,
     alignItems: 'flex-start',

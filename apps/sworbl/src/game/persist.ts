@@ -206,6 +206,41 @@ export function clearRun(dayKey: string): void {
   engine.store.remove(K.RUN_PREFIX + dayKey);
 }
 
+// ---- PARKED FINALE INTEL (owner: "not yet") — a dismissed guess keeps its
+// rows/colors/guesses at the DAY level, so the run snapshot can clear and
+// the next open deals a normal round. Reopening the guess restores this.
+const FINALE_KEY = 'sworbl_rn_finale_'; // + dayKey
+
+export interface FinaleProgress {
+  rows: { letters: string[]; colors: string[] }[];
+  slots: string[];
+  colors: (string | null)[];
+  guessesUsed: number;
+}
+
+export function saveFinaleProgress(dayKey: string, p: FinaleProgress): void {
+  engine.store.setJSON(FINALE_KEY + dayKey, p);
+  // the spent guesses are LAW even if the finale never completes — the
+  // sworb state carries them so home's counters and the 6-cap hold
+  const sworb = engine.store.getJSON(K.SWORB_PREFIX + dayKey, null) as SworbState | null;
+  if (!sworb?.solved) {
+    engine.store.setJSON(K.SWORB_PREFIX + dayKey, {
+      guessesUsed: p.guessesUsed,
+      solved: false,
+      bonus: 0,
+    });
+  }
+}
+
+export function loadFinaleProgress(dayKey: string): FinaleProgress | null {
+  const v = engine.store.getJSON(FINALE_KEY + dayKey, null) as FinaleProgress | null;
+  return v && Array.isArray(v.rows) ? v : null;
+}
+
+export function clearFinaleProgress(dayKey: string): void {
+  engine.store.remove(FINALE_KEY + dayKey);
+}
+
 const DAY_WORDS_KEY = 'sworbl_rn_daywords_';
 
 export function loadDayWords(dayKey: string): BestWord[] {
@@ -266,6 +301,7 @@ export function resetDay(dayKey: string): void {
   ].filter(Boolean);
   for (const p of prefixes) engine.store.remove(p + dayKey);
   engine.store.remove(ROUNDS_KEY + dayKey);
+  engine.store.remove(FINALE_KEY + dayKey);
   engine.store.remove(MODE_KEY + dayKey);
   engine.store.remove(DAY_WORDS_KEY + dayKey);
   bumpResetNonce(); // the mounted sheet must remount — no zombie phases

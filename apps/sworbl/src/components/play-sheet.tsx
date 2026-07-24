@@ -25,7 +25,8 @@ import { useTheme } from '@/game/theme';
 import { dealDaily, bumpNextId } from '@/game/daily';
 import { type TileT } from '@/game/types';
 import {
-  loadDay, loadDayWords, saveProgress, finishRound, recordSworb, saveRun,
+  loadDay, loadDayWords, saveProgress, finishRound, recordSworb, saveRun, clearRun,
+  saveFinaleProgress, loadFinaleProgress, clearFinaleProgress,
   type RunSnap, type BestWord,
 } from '@/game/persist';
 import { enqueueSubmission } from '@/net/standings-remote';
@@ -377,8 +378,16 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
       setCountInMounted(false);
       setCountStep(null);
       setPhase('idle');
+    } else if (phase === 'finale' && !result && deal) {
+      // NOT YET (owner): the dismissed guess parks its intel at the DAY
+      // level and frees the run snapshot — without this, the persisted
+      // finale phase hijacked every future open ("stuck on the guessing
+      // board no matter what")
+      if (finaleRestore.current) saveFinaleProgress(deal.dayKey, finaleRestore.current);
+      clearRun(deal.dayKey);
+      setPhase('idle');
     }
-  }, [phase, pause]);
+  }, [phase, pause, result, deal]);
   const rearm = useCallback(() => {
     if (phase === 'paused') {
       onRelease(); // instant start (owner: "hit play and it just starts up")
@@ -440,6 +449,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
         // count (the server re-derives the legal decayed bonus from it)
         const sworb = { guessesUsed: r.guessesUsed, solved: r.solved, bonus: r.bonus };
         const dayScore = recordSworb(deal.dayKey, sworb);
+        clearFinaleProgress(deal.dayKey); // the parked intel is spent
         enqueueSubmission(
           deal.dayKey, dayScore, sworb, loadDayWords(deal.dayKey),
           Math.max(1, loadDay(deal.dayKey).rounds.played)
@@ -470,7 +480,7 @@ export const PlaySheet = forwardRef<PlaySheetHandle, PlaySheetProps>(function Pl
       sworb: deal.sworb,
       // the engine decays the solve bonus by rounds played at guess time
       rounds: Math.max(1, loadDay(deal.dayKey).rounds.played),
-      restore: finaleRestore.current,
+      restore: finaleRestore.current ?? loadFinaleProgress(deal.dayKey) ?? undefined,
       onProgress: onFinaleProgress,
       onDone: onFinaleDone,
     };

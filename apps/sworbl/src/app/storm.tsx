@@ -234,9 +234,11 @@ export default function StormScreen() {
     <SafeAreaView style={[styles.root, { backgroundColor: theme.bg }]}>
       {/* top bar: seed identity + the clock + live score */}
       <View style={styles.topBar}>
-        <Pressable onPress={leave} hitSlop={12}>
-          <Text style={[styles.backGlyph, { color: theme.icon }]}>‹</Text>
-        </Pressable>
+        <View style={styles.topLeft}>
+          <Pressable onPress={leave} hitSlop={12}>
+            <Text style={[styles.backGlyph, { color: theme.icon }]}>‹</Text>
+          </Pressable>
+        </View>
         <View style={styles.topMid}>
           <Text style={[styles.eyebrow, { color: theme.faint }]}>STORM BOARD</Text>
           <Text style={[styles.seedName, { color: theme.ink }]}>{seed}</Text>
@@ -372,13 +374,15 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   backGlyph: { fontFamily: 'Fredoka_600SemiBold', fontSize: 30, marginTop: -4 },
+  // symmetric rails (owner: "so off center") — the title owns true center
+  topLeft: { width: 64, alignItems: 'flex-start' },
   topMid: { flex: 1, alignItems: 'center' },
-  topRight: { alignItems: 'flex-end', minWidth: 64 },
+  topRight: { alignItems: 'flex-end', width: 64 },
   eyebrow: { fontFamily: 'Fredoka_600SemiBold', fontSize: 11, letterSpacing: 1.2 },
   seedName: { fontFamily: 'Fredoka_600SemiBold', fontSize: 17 },
   clock: { fontFamily: 'Fredoka_600SemiBold', fontSize: 19, fontVariant: ['tabular-nums'] },
   scoreLine: { fontFamily: 'Fredoka_600SemiBold', fontSize: 12 },
-  boardWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  boardWrap: { flex: 1, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
   cover: { alignItems: 'center', gap: 14, paddingHorizontal: 32 },
   title: { fontFamily: 'Fredoka_600SemiBold', fontSize: 26 },
   bigScore: { fontFamily: 'Fredoka_600SemiBold', fontSize: 54 },
