@@ -743,15 +743,14 @@ export default function HomeScreen() {
             />
           )}
 
-          {/* THE HERO IS THE GUESS DOOR (owner): the dashed word is the
-              question — tapping it asks. Inline blur-replace keyboard is
-              the specced follow-up; this ships the affordance now. */}
-          <Pressable
-            disabled={!(dayInProgress && sworbPending)}
-            onPress={openForGuess}
-            style={styles.heroTap}>
-            <HeroWord theme={theme} deal={deal} played={played || solved} solved={solved} width={width} />
-          </Pressable>
+          <HeroWord
+            theme={theme}
+            deal={deal}
+            played={played || solved}
+            solved={solved}
+            width={width}
+            onGuess={!played && sworbPending && deal ? openForGuess : undefined}
+          />
 
           {/* DAY IN PROGRESS (modes-spec): the living day — best round,
               clue bank, and the guess door (6 a day, spend anytime) */}
@@ -993,9 +992,6 @@ const styles = StyleSheet.create({
   dayStatusText: {
     fontFamily: 'Fredoka_600SemiBold',
     fontSize: 12,
-  },
-  heroTap: {
-    alignSelf: 'stretch',
   },
   guessHint: {
     fontFamily: 'Fredoka_600SemiBold',

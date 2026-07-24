@@ -3,7 +3,7 @@
 // and the six blank hint slots. Extracted from home (the index god-file
 // split); pure display.
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withDelay, withTiming, interpolate, Easing,
 } from 'react-native-reanimated';
@@ -90,9 +90,10 @@ interface Props {
   played: boolean;
   solved: boolean;
   width: number;
+  onGuess?: () => void; // THE HERO IS THE GUESS DOOR (owner): tap the word
 }
 
-export function HeroWord({ theme, deal, played, solved, width }: Props) {
+export function HeroWord({ theme, deal, played, solved, width, onGuess }: Props) {
   const wordLen = deal?.sworb.length ?? 5;
   // 46 was the 300px design-mock cap — real phones earn bigger blocks; the
   // word of the day is the hero and must dominate everything under it
@@ -103,8 +104,12 @@ export function HeroWord({ theme, deal, played, solved, width }: Props) {
   return (
     <>
       {/* word of the day: candy bloom when the day is done, dashed
-          blanks before (the answer is hidden — no spoilers) */}
-      <View style={styles.heroRow}>
+          blanks before (the answer is hidden — no spoilers). The ROW is
+          the guess door when a guess is live (owner). */}
+      <Pressable
+        onPress={onGuess}
+        disabled={!onGuess}
+        style={styles.heroRow}>
         {played && deal
           ? [...deal.sworb].map((ch, i) => {
               const pal = PALETTE[tileColorFor(ch, i)];
@@ -135,7 +140,7 @@ export function HeroWord({ theme, deal, played, solved, width }: Props) {
                 ]}
               />
             ))}
-      </View>
+      </Pressable>
       {played && !solved && (
         <Text style={[styles.missLine, { color: theme.sub }]}>
           not cracked — tomorrow's another sworbl
@@ -151,7 +156,7 @@ export function HeroWord({ theme, deal, played, solved, width }: Props) {
       {!played && (
         <View style={styles.hintRow}>
           {HINT_SLOT_W.map((w, i) => (
-            <View key={i} style={[styles.hintSlot, { width: w, backgroundColor: theme.card }]} />
+            <View key={i} style={[styles.hintSlot, { width: w, borderColor: theme.dashed }]} />
           ))}
         </View>
       )}
@@ -193,10 +198,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  // solid low-contrast cards (owner audit): the HERO owns the dash idiom —
-  // a second row of dashes read as wireframe, not mystery
+  // BOARD PARITY (owner): the same dashed ghost pills as the in-game clue
+  // fan — blank slot, presence only, never shape
   hintSlot: {
-    height: 33,
-    borderRadius: 11,
+    height: 26,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderStyle: 'dashed',
   },
 });
