@@ -97,6 +97,42 @@ export async function fetchStormCrowns(
   }
 }
 
+// SHOWDOWN lifecycle (owner: taking claims it; decided = off the rail)
+export async function claimShowdown(id: number): Promise<'ok' | 'taken' | 'error'> {
+  const sb = supabase();
+  if (!sb) return 'error';
+  try {
+    const { data, error } = await sb.functions.invoke('showdown', { body: { action: 'claim', id } });
+    if (data?.ok) return 'ok';
+    const status = (error as { context?: { status?: number } } | null)?.context?.status;
+    return status === 409 ? 'taken' : 'error';
+  } catch {
+    return 'error';
+  }
+}
+
+export interface ShowdownVerdict {
+  won: boolean;
+  yourScore: number;
+  theirScore: number;
+}
+
+export async function resolveShowdown(id: number): Promise<ShowdownVerdict | 'pending' | 'error'> {
+  const sb = supabase();
+  if (!sb) return 'error';
+  try {
+    const { data, error } = await sb.functions.invoke('showdown', { body: { action: 'resolve', id } });
+    if (data?.ok && typeof data.won === 'boolean') {
+      return { won: data.won, yourScore: Number(data.yourScore), theirScore: Number(data.theirScore) };
+    }
+    if (data?.ok) return 'error'; // alreadyDecided — nothing to show
+    const status = (error as { context?: { status?: number } } | null)?.context?.status;
+    return status === 422 ? 'pending' : 'error'; // no validated run yet → retry
+  } catch {
+    return 'error';
+  }
+}
+
 // publish the caller's validated run on a seed; 'no-run' = play it first
 export async function postDuel(
   seed: string,

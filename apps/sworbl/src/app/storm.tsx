@@ -22,7 +22,7 @@ import { gameSurface } from '@/game/palette';
 import { useTheme, ACCENT, ACCENT_EDGE } from '@/game/theme';
 import { TUNING } from '@/game/tuning';
 import { RaceBar } from '@/components/game/race-bar';
-import { fetchDuelGhost, postDuel } from '@/net/duels';
+import { claimShowdown, fetchDuelGhost, postDuel, resolveShowdown, type ShowdownVerdict } from '@/net/duels';
 import { enqueuePractice, fetchPractice } from '@/net/standings-remote';
 
 type Phase = 'ready' | 'countin' | 'live' | 'done';
@@ -100,8 +100,17 @@ export default function StormScreen() {
   // (double-tap can't stack two timelines / restart the clock).
   const countTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   useEffect(() => () => countTimers.current.forEach(clearTimeout), []);
+  const [claimLost, setClaimLost] = useState(false);
+  const [verdict, setVerdict] = useState<ShowdownVerdict | null>(null);
   const startRun = () => {
     if (phaseRef.current !== 'ready') return;
+    // SHOWDOWN CLAIM (owner: taking locks it 1v1) — fire-and-check; a
+    // lost race flips the cover instead of wasting the run
+    if (duel && Number.isFinite(duelId)) {
+      void claimShowdown(duelId).then((r) => {
+        if (r === 'taken') setClaimLost(true);
+      });
+    }
     phaseRef.current = 'countin';
     setPhase('countin');
     setCountStep('3');
@@ -173,9 +182,23 @@ export default function StormScreen() {
     submittedRef.current = true;
     haptic.soft();
     enqueuePractice(seed, score, wordsRef.current);
-    // give the outbox a beat to land, then pull the per-seed standings
+    // give the outbox a beat to land, then standings + the showdown verdict
+    // (retry once — the validated run may still be in flight)
     const t = setTimeout(() => {
       void fetchPractice(seed, 5).then((rows) => rows && setBoard(rows));
+      if (duel && Number.isFinite(duelId)) {
+        void resolveShowdown(duelId).then((v) => {
+          if (v === 'pending') {
+            setTimeout(() => {
+              void resolveShowdown(duelId).then((v2) => {
+                if (typeof v2 === 'object') setVerdict(v2);
+              });
+            }, 2500);
+          } else if (typeof v === 'object') {
+            setVerdict(v);
+          }
+        });
+      }
     }, 900);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -286,9 +309,11 @@ export default function StormScreen() {
             <Text style={[styles.eyebrow, { color: theme.faint }]}>SHARED BOARD</Text>
             <Text style={[styles.title, { color: theme.ink }]}>{stormName(seed)}</Text>
             <Text style={[styles.sub, { color: theme.sub }]}>
-              {duel
-                ? `${duel.name.toLowerCase()} put up ${duel.score.toLocaleString()} on this board.\n${blitz ? '2:00, pure points' : '3 minutes'} — beat it.`
-                : `everyone gets this exact board.\n${blitz ? '2:00, pure points' : '3 minutes'} — best run counts.`}
+              {claimLost
+                ? 'someone took this showdown first — the board is still yours to run.'
+                : duel
+                  ? `${duel.name.toLowerCase()} put up ${duel.score.toLocaleString()} on this board.\n${blitz ? '2:00, pure points' : '3 minutes'} — beat it.`
+                  : `everyone gets this exact board.\n${blitz ? '2:00, pure points' : '3 minutes'} — best run counts.`}
             </Text>
             <Pressable onPress={startRun} style={[styles.cta, { backgroundColor: ACCENT, boxShadow: `0 4px 0 ${ACCENT_EDGE}` }]}>
               <Text style={[styles.ctaText, { color: '#FFFFFF' }]}>RUN IT</Text>
@@ -307,6 +332,11 @@ export default function StormScreen() {
                 {score > duel.score
                   ? `you beat ${duel.name.toLowerCase()}'s ${duel.score.toLocaleString()}`
                   : `${duel.name.toLowerCase()} holds it — ${duel.score.toLocaleString()}`}
+              </Text>
+            )}
+            {verdict && (
+              <Text style={[styles.sub, { color: verdict.won ? '#5FD6A8' : theme.faint }]}>
+                {verdict.won ? '+12 showdown points ✦' : '+2 for the fight'} · settled
               </Text>
             )}
             <Text style={[styles.sub, { color: theme.sub }]}>
