@@ -7,6 +7,7 @@ import {
   loadDay, saveProgress, finishDay, saveRun, loadRun, clearRun, saveSheetOpen,
   wasSheetOpen, type RunSnap,
   saveFinaleProgress, loadFinaleProgress, clearFinaleProgress, loadDayWords, resetDay,
+  finishRound, recordSworb, loadRounds, getResetNonce,
 } from '../src/game/persist';
 
 const day = '2099-01-01';
@@ -122,5 +123,48 @@ console.log('persist: parked finale intel pinned');
   assert.strictEqual(words.find((w) => w.word === 'gusty')?.pts, 140, 'best pts wins');
 }
 console.log('persist: day-words dedupe pinned');
+
+// ---- REGULAR-MODE SCORING (finishRound + recordSworb) ----
+{
+  const d4 = '2099-04-01';
+  // round 1 banks 300 with one word
+  const s1 = finishRound(d4, 300, ['aa'], [{ word: 'ab', pts: 300 }]);
+  assert.strictEqual(s1, 300, 'round 1: dayScore = bestRound (no solve)');
+  // a WORSE round 2 must not lower the day — best round holds; words merge best-pts
+  const s2 = finishRound(d4, 100, ['aa', 'bb'], [
+    { word: 'ab', pts: 120 },
+    { word: 'cd', pts: 100 },
+  ]);
+  assert.strictEqual(s2, 300, 'round 2 worse: best round holds');
+  assert.strictEqual(loadRounds(d4).played, 2, 'two rounds banked');
+  assert.strictEqual(loadRounds(d4).bestRound, 300, 'bestRound = max');
+  const words = loadDayWords(d4);
+  assert.strictEqual(words.find((w) => w.word === 'ab')?.pts, 300, 'merge keeps the BEST pts per word');
+  assert.strictEqual(words.length, 2, 'merged, never duplicated');
+  // the solve lands OUTSIDE a round end: bonus rides the day score
+  const s3 = recordSworb(d4, { guessesUsed: 3, solved: true, bonus: 200 });
+  assert.strictEqual(s3, 500, 'solve: dayScore = bestRound + bonus');
+  // a final MISS never adds bonus
+  const d5 = '2099-04-02';
+  finishRound(d5, 250, [], [{ word: 'ee', pts: 250 }]);
+  assert.strictEqual(recordSworb(d5, { guessesUsed: 6, solved: false, bonus: 0 }), 250, 'miss: no bonus');
+}
+console.log('persist: regular-mode scoring pinned (best-round law, merge, solve bonus)');
+
+// ---- resetDay: the FULL per-day sweep + the anti-zombie nonce ----
+{
+  const d6 = '2099-05-01';
+  finishRound(d6, 100, ['aa'], [{ word: 'ab', pts: 100 }]);
+  saveFinaleProgress(d6, { rows: [], slots: [], colors: [], guessesUsed: 1 });
+  const n0 = getResetNonce();
+  resetDay(d6);
+  assert.strictEqual(loadDay(d6).score, 0, 'score wiped');
+  assert.strictEqual(loadRounds(d6).played, 0, 'rounds wiped');
+  assert.deepStrictEqual(loadDayWords(d6), [], 'day words wiped');
+  assert.strictEqual(loadFinaleProgress(d6), null, 'parked finale wiped');
+  assert.strictEqual(loadDay(d6).sworb, null, 'sworb wiped');
+  assert.strictEqual(getResetNonce(), n0 + 1, 'nonce bumped — the mounted sheet must remount');
+}
+console.log('persist: resetDay full sweep pinned');
 
 console.log('persist: all round-trip + routing tests passed');

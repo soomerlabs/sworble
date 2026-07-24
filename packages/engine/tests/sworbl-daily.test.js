@@ -423,6 +423,23 @@ console.log('sworbl-daily: mercyPulseShouldFire passed');
   const legacy = D.applySworbGuess({ input: 'ocean', entry, guessesUsed: 0, solved: false, foundCount: 0, total: 5 });
   assert.strictEqual(legacy.bonus, 500, 'no rounds arg = full price (back-compat)');
 }
+// NON-JACKPOT tiers through the decay: the client bonus must be a member
+// of the server's legalBonuses(rounds) set at EVERY tier (drift = 422)
+{
+  const entry = { sworb: 'ocean', themeWords: ['wave', 'tide', 'salt', 'reef', 'kelp', 'foam'] };
+  const cases = [
+    { found: 2, total: 6, rounds: 3, tier: 350 },
+    { found: 4, total: 6, rounds: 3, tier: 200 },
+    { found: 6, total: 6, rounds: 7, tier: 75 },
+  ];
+  for (const c of cases) {
+    const r = D.applySworbGuess({ input: 'ocean', entry, guessesUsed: 0, solved: false, foundCount: c.found, total: c.total, rounds: c.rounds });
+    assert.strictEqual(r.bonus, D.decayedBonus(c.tier, c.rounds), 'tier ' + c.tier + ' r' + c.rounds + ' matches decayedBonus');
+    assert.ok(D.legalBonuses(c.rounds).includes(r.bonus), 'tier ' + c.tier + ' r' + c.rounds + ' is in the legal set');
+  }
+}
+console.log('sworbl-daily: tier x rounds parity pinned (client bonus always legal server-side)');
+
 console.log('sworbl-daily: round decay pinned');
 
 console.log('sworbl-daily: all passed');

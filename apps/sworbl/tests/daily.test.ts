@@ -108,3 +108,26 @@ assert.notDeepStrictEqual(
 assert.strictEqual(pr.nextLetter(), pr2.nextLetter(), 'practice: identical refill queue');
 
 console.log('daily: practice seed-deal invariants pinned');
+
+// ---- ROUND RE-DEALS (modes-spec: fresh board per round) ----
+{
+  const r2a = dealDaily(FIXTURE, { round: 2 });
+  const r2b = dealDaily(FIXTURE, { round: 2 });
+  assert.ok(r2a && r2b, 'round 2 deals');
+  assert.deepStrictEqual(
+    r2a!.tiles.map((t) => `${t.row},${t.col}:${t.letter}`),
+    r2b!.tiles.map((t) => `${t.row},${t.col}:${t.letter}`),
+    'round 2 is deterministic (ghost/replay law)'
+  );
+  assert.notDeepStrictEqual(
+    r2a!.tiles.map((t) => t.letter),
+    deal!.tiles.map((t) => t.letter),
+    'round 2 differs from round 1 (no memorized speedruns)'
+  );
+  // a FOUND clue never re-seeds into a later round
+  const gone = deal!.clues[0];
+  const r3 = dealDaily(FIXTURE, { round: 3, excludeClues: [gone] });
+  assert.ok(r3, 'round 3 deals with an exclusion');
+  assert.ok(!r3!.clues.includes(gone), `found clue "${gone}" never re-seeds`);
+}
+console.log('daily: round re-deal invariants pinned (determinism, divergence, exclusion)');

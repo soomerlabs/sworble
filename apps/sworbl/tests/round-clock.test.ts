@@ -49,3 +49,17 @@ assert.strictEqual(
 );
 
 console.log('round-clock: pause/resume/fuel/cap/snapshot accounting all pinned');
+
+// ---- BLITZ TUNING (storms: 2:00 base, 200s cap) ----
+{
+  const T = { baseSecs: 120, capSecs: 200 };
+  let c = mkClock();
+  assert.strictEqual(clockRemaining(c, 1000, T), 120, 'fresh blitz clock = 2:00');
+  // pump fuel until the cap: effective seconds never pass 200
+  for (let i = 0; i < 200; i++) {
+    c = clockGrant(c, { len: 8, isClue: true }, T).clock;
+  }
+  assert.ok(clockEffSecs(c, T) <= 200, 'blitz fuel hard-caps at 200s');
+  assert.strictEqual(clockGrant(c, { len: 8, isClue: true }, T).grantMs, 0, 'at the cap, grants pay zero');
+}
+console.log('round-clock: blitz tuning pinned (120 base, 200 cap)');
