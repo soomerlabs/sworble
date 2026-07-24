@@ -77,9 +77,16 @@ export default function DevScreen() {
       return;
     }
     // the wipe also deletes the reset nonce — re-seed it ABOVE its pre-wipe
-    // value so the mounted sheet still remounts (no zombie phases)
+    // value so the mounted sheet still remounts (no zombie phases).
+    // IDENTITY SURVIVES (owner: "why do we keep making new ids") — the
+    // Supabase auth session (sb-*-auth-token) and the username stay, so a
+    // wipe resets the GAME, not who you are. Anonymous accounts have no
+    // way back once their session is destroyed.
     const n = getResetNonce();
-    for (const k of engine.store.keys()) engine.store.remove(k);
+    for (const k of engine.store.keys()) {
+      if (k.includes('auth-token') || k === 'sworbl_rn_name') continue;
+      engine.store.remove(k);
+    }
     engine.store.setJSON('sworbl_rn_reset_nonce', n + 1);
     setArmWipe(false);
     refresh('all storage wiped');
